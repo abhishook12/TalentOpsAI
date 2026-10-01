@@ -61,7 +61,7 @@ export default function Maintenance() {
             gap: 10,
             letterSpacing: '-0.02em',
           }}>
-            <i className="ti ti-alert-triangle" style={{ color: '#fbbf24', fontSize: 26 }} />
+            <i className="ti ti-alert-triangle" style={{ color: '#d4d4d8', fontSize: 26 }} />
             Development Notice
           </h1>
           

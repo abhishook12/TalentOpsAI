@@ -352,6 +352,7 @@ def serialize_recruiter(r):
         "repair_reason": getattr(r, "repair_reason", None),
         "last_scan_at": str(r.last_scan_at) if getattr(r, "last_scan_at", None) else None,
         "is_active": r.is_active,
+        "data_source": getattr(r, "data_source", None),
         "source_job_id": getattr(r, "source_job_id", None),
         "created_at": str(r.created_at) if getattr(r, "created_at", None) else None,
         

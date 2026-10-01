@@ -34,6 +34,7 @@ from .location_resolver import LocationResolver, ResolvedLocation
 from .confidence_engine import ConfidenceEngine, ConfidenceReport, STATUS_VERIFIED, STATUS_DUPLICATE
 from .evidence_manager import EvidenceManager, ExtractionAuditTrail, FieldEvidenceItem, ENGINE_VERSION
 from .models import Observation, EntityCluster
+from .patterns import is_valid_person_name, is_plausible_title, is_valid_company_name
 
 logger = logging.getLogger("scout.extraction_engine")
 
@@ -120,6 +121,7 @@ class ScoutExtractionEngine:
         platform: str = "",
         capture_id: str = "",
         force_process: bool = False,
+        uia_candidate: Optional[Dict[str, Any]] = None,
     ) -> Tuple[List[CanonicalCandidate], Dict[str, Any]]:
         """
         Executes the full semantic extraction pipeline on the frame.
@@ -148,13 +150,17 @@ class ScoutExtractionEngine:
 
         # GATING: If page is NOT candidate eligible (e.g. FEED, HOME, JOB_PAGE, MESSAGING, UNKNOWN), ABORT immediately!
         if not p_class["is_candidate_eligible"]:
-            telemetry["reason"] = f"Frame rejected by PageClassifier: {page_type} ({p_class['reason']})"
-            logger.debug(telemetry["reason"])
-            return [], telemetry
+            if uia_candidate and uia_candidate.get("canonical_name") and is_valid_person_name(uia_candidate["canonical_name"]):
+                page_type = PAGE_TYPE_PERSON_PROFILE
+                telemetry["page_type"] = page_type
+            else:
+                telemetry["reason"] = f"Frame rejected by PageClassifier: {page_type} ({p_class['reason']})"
+                logger.debug(telemetry["reason"])
+                return [], telemetry
 
         # Step 2: Screen Stability Gate (if img provided)
-        # If ocr_lines already has text or force_process is True, frame is ready for extraction
-        has_text = len(ocr_lines) >= 2
+        # If ocr_lines already has text, uia_candidate is present, or force_process is True, frame is ready
+        has_text = len(ocr_lines) >= 2 or bool(uia_candidate and uia_candidate.get("canonical_name"))
         if img and not force_process and not has_text:
             is_ready, state, f_hash = self.stability_detector.update_frame(img, delta, window_title)
             telemetry["stability_state"] = state
@@ -206,6 +212,35 @@ class ScoutExtractionEngine:
             name_conf = 0.90
             name_ev = "Modular Parser Header Extraction"
 
+        # Direct High-Precision UIA Candidate override / priority (Zero-OCR)
+        if uia_candidate and uia_candidate.get("canonical_name"):
+            u_name = uia_candidate["canonical_name"]
+            if is_valid_person_name(u_name):
+                name = u_name
+                name_conf = uia_candidate.get("confidence", 0.95)
+                name_ev = "UIA Direct DOM Extraction (Zero-OCR)"
+
+        # Frontier 5: Self-Evolving Code (Self-Healing DOM & Extraction Reflexes)
+        # If standard layout classification failed or had low confidence, attempt adaptive healing
+        if not name or name_conf < 0.75:
+            try:
+                from .adaptive_reflex_engine import adaptive_reflex_engine
+                healed_frame = adaptive_reflex_engine.heal_frame(
+                    ocr_lines=ocr_lines,
+                    window_title=window_title,
+                    source_url=source_url,
+                    platform=platform or p_class.get("platform", ""),
+                    current_name=name,
+                )
+                if healed_frame and healed_frame.get("canonical_name"):
+                    name = healed_frame["canonical_name"]
+                    name_conf = healed_frame.get("confidence", 0.85)
+                    name_ev = healed_frame.get("evidence", "Adaptive Reflex Engine (Self-Healed)")
+                    telemetry["is_adaptive_healed"] = True
+                    telemetry["adaptive_rule_id"] = healed_frame.get("rule_id")
+            except Exception as reflex_err:
+                logger.debug("Adaptive reflex fallback error: %s", reflex_err)
+
         # GATING: If candidate name could not be found with confidence, ABORT!
         # Prevents "REASON: Overview", "Active Window", etc. from becoming candidates
         if not name or name_conf < 0.75:
@@ -225,14 +260,44 @@ class ScoutExtractionEngine:
                 company = modular_res["company_name"]
                 company_conf = 0.85
 
-        # Location with corruption detection
-        raw_loc_str = layout.location_candidates[0] if layout.location_candidates else None
-        loc_resolved: ResolvedLocation = LocationResolver.resolve(raw_loc_str)
-        clean_location = loc_resolved.display_name if not loc_resolved.is_corrupted else None
-        loc_conf = loc_resolved.confidence
+        if uia_candidate:
+            if uia_candidate.get("title"):
+                title = uia_candidate["title"]
+                title_conf = 0.95
+            if uia_candidate.get("company"):
+                company = uia_candidate["company"]
+                company_conf = 0.95
+
+        # Fallback Post-OCR Neural Lexicon Healing: ONLY run if title is NOT already plausible or has OCR corruption
+        if title and not is_plausible_title(title) and (not uia_candidate or not uia_candidate.get("title")):
+            from .neural_lexicon_repair import lexicon_repair
+            repaired_title, rep_conf = lexicon_repair.repair_title(title)
+            if rep_conf >= 0.78:
+                title = repaired_title
+                title_conf = max(title_conf, rep_conf)
+
+        if company and not is_valid_company_name(company) and (not uia_candidate or not uia_candidate.get("company")):
+            from .neural_lexicon_repair import lexicon_repair
+            repaired_company, _ = lexicon_repair.repair_company_name(company)
+            if repaired_company:
+                company = repaired_company
+
+        # Location with corruption detection & candidate list scanning
+        clean_location = None
+        loc_conf = 0.0
+        if layout.location_candidates:
+            for raw_cand in layout.location_candidates:
+                loc_res: ResolvedLocation = LocationResolver.resolve(raw_cand)
+                if loc_res.display_name and not loc_res.is_corrupted:
+                    clean_location = loc_res.display_name
+                    loc_conf = loc_res.confidence
+                    break
         if not clean_location and modular_res and modular_res.get("location"):
             clean_location = modular_res["location"]
             loc_conf = 0.85
+        if uia_candidate and uia_candidate.get("location"):
+            clean_location = uia_candidate["location"]
+            loc_conf = 0.95
 
         # Canonical Profile URL
         canonical_url, url_conf = FieldClassifier.extract_canonical_profile_url(source_url, platform=p_class["platform"])
@@ -242,6 +307,9 @@ class ScoutExtractionEngine:
         if not canonical_url and modular_res and modular_res.get("canonical_profile_url"):
             canonical_url = modular_res["canonical_profile_url"]
             url_conf = 0.90
+        if uia_candidate and uia_candidate.get("source_url"):
+            canonical_url = uia_candidate["source_url"]
+            url_conf = 0.95
 
         # Step 5: Entity Resolution & Deduplication
         # Build deduplication key: canonical profile URL if available, else name+company

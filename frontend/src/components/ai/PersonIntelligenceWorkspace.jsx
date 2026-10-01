@@ -141,7 +141,7 @@ export default function PersonIntelligenceWorkspace({ person, onClose, onExplain
                   <span style={{ color: 'var(--text-primary)', fontWeight: 700, width: '100px' }}>{ch.field}:</span>
                   <span style={{ color: '#ef4444', textDecoration: 'line-through' }}>{ch.before}</span>
                   <span style={{ color: 'var(--text-secondary)' }}>→</span>
-                  <span style={{ color: '#10b981', fontWeight: 600 }}>{ch.after}</span>
+                  <span style={{ color: '#ffffff', fontWeight: 600 }}>{ch.after}</span>
                 </div>
               ))}
             </div>
@@ -156,7 +156,7 @@ export default function PersonIntelligenceWorkspace({ person, onClose, onExplain
             </div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginTop: '4px' }}>
               <span style={{ fontSize: '24px', fontWeight: 900, color: '#e4e4e7' }}>94</span>
-              <span style={{ fontSize: '12px', color: '#10b981', fontWeight: 700 }}>▲ Top 5%</span>
+              <span style={{ fontSize: '12px', color: '#ffffff', fontWeight: 700 }}>▲ Top 5%</span>
             </div>
             <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>
               Promotion interval: 14 months (industry avg: 26m)
@@ -168,7 +168,7 @@ export default function PersonIntelligenceWorkspace({ person, onClose, onExplain
               Intelligence Trust Index
             </div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginTop: '4px' }}>
-              <span style={{ fontSize: '24px', fontWeight: 900, color: '#10b981' }}>{trustScore}</span>
+              <span style={{ fontSize: '24px', fontWeight: 900, color: '#ffffff' }}>{trustScore}</span>
               <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>/100</span>
             </div>
             <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>

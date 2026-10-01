@@ -73,7 +73,7 @@ export default function SentinelDashboard({ setToast }) {
             borderRadius: '100px', 
             fontSize: '0.85rem',
             background: queue?.status === 'Running' ? 'rgba(0,255,100,0.1)' : 'rgba(255,255,255,0.05)',
-            color: queue?.status === 'Running' ? '#00ff66' : 'var(--text-muted)',
+            color: queue?.status === 'Running' ? '#ffffff' : 'var(--text-muted)',
             border: `1px solid ${queue?.status === 'Running' ? 'rgba(0,255,100,0.2)' : 'rgba(255,255,255,0.1)'}`,
             display: 'flex',
             alignItems: 'center',
@@ -81,8 +81,8 @@ export default function SentinelDashboard({ setToast }) {
           }}>
             <div style={{
               width: '8px', height: '8px', borderRadius: '50%',
-              background: queue?.status === 'Running' ? '#00ff66' : '#666',
-              boxShadow: queue?.status === 'Running' ? '0 0 8px #00ff66' : 'none'
+              background: queue?.status === 'Running' ? '#ffffff' : '#666',
+              boxShadow: queue?.status === 'Running' ? '0 0 8px #ffffff' : 'none'
             }} />
             Engine: {queue?.status || 'Unknown'}
           </div>
@@ -126,7 +126,7 @@ export default function SentinelDashboard({ setToast }) {
               <div style={{ 
                 width: `${progressPct}%`, 
                 height: '100%', 
-                background: 'linear-gradient(90deg, var(--brand), #ff00ff)',
+                background: 'linear-gradient(90deg, #ffffff, #a1a1aa)',
                 transition: 'width 1s ease'
               }} />
             </div>
@@ -139,7 +139,7 @@ export default function SentinelDashboard({ setToast }) {
             </div>
             <div>
               <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Anomalies Repaired</div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 600, color: '#00ff66' }}>{queue?.profiles_repaired.toLocaleString()}</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 600, color: '#ffffff' }}>{queue?.profiles_repaired.toLocaleString()}</div>
             </div>
           </div>
           <div style={{ marginTop: '1rem', fontSize: '0.8rem', color: 'var(--text-muted)', fontFamily: 'var(--mono)' }}>
@@ -164,7 +164,7 @@ export default function SentinelDashboard({ setToast }) {
                 <span style={{ color: 'var(--text-main)', fontSize: '0.9rem' }}>{item.label}</span>
                 <span style={{ 
                   background: item.val > 0 ? 'rgba(255, 50, 50, 0.1)' : 'rgba(0, 255, 100, 0.1)',
-                  color: item.val > 0 ? '#ff4444' : '#00ff66',
+                  color: item.val > 0 ? '#ff4444' : '#ffffff',
                   padding: '0.2rem 0.6rem',
                   borderRadius: '100px',
                   fontSize: '0.8rem',
@@ -195,7 +195,7 @@ export default function SentinelDashboard({ setToast }) {
                       <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>{log.recruiter_name}</span>
                       <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{new Date(log.timestamp + 'Z').toLocaleTimeString()}</span>
                     </div>
-                    <div style={{ color: '#00ff66', marginBottom: '0.25rem' }}>Fixed {log.field_changed} ({log.reason})</div>
+                    <div style={{ color: '#ffffff', marginBottom: '0.25rem' }}>Fixed {log.field_changed} ({log.reason})</div>
                     <div style={{ display: 'flex', gap: '0.5rem', color: 'var(--text-muted)', fontFamily: 'var(--mono)', fontSize: '0.8rem' }}>
                       <span style={{ textDecoration: 'line-through', opacity: 0.5 }}>{log.previous_value || 'NULL'}</span>
                       <span>&rarr;</span>

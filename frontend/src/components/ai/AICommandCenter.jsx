@@ -306,7 +306,7 @@ export default function AICommandCenter({ onSelectCandidate }) {
                 </span>
               )}
               {response.intent.location && (
-                <span style={{ fontSize: '11px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                <span style={{ fontSize: '11px', background: 'rgba(255, 255, 255, 0.08)', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.08)', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
                   Location: {response.intent.location}
                 </span>
               )}
@@ -316,7 +316,7 @@ export default function AICommandCenter({ onSelectCandidate }) {
                 </span>
               )}
               {response.intent.action_type && (
-                <span style={{ fontSize: '11px', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                <span style={{ fontSize: '11px', background: 'rgba(255, 255, 255, 0.05)', color: '#d4d4d8', border: '1px solid rgba(255, 255, 255, 0.05)', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
                   Action: {response.intent.action_type}
                 </span>
               )}

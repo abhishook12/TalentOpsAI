@@ -92,13 +92,13 @@ export default function BridgeStatus({ onStatusChange, compact = false }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: isHealthy ? 0 : 16 }}>
         <div style={{ 
           width: 48, height: 48, borderRadius: 6, 
-          background: isHealthy ? 'rgba(74, 222, 128, 0.1)' : 'rgba(255, 170, 0, 0.1)', 
+          background: isHealthy ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 170, 0, 0.1)', 
           display: 'flex', alignItems: 'center', justifyContent: 'center' 
         }}>
-          <Database size={24} color={isHealthy ? "#4ade80" : "#ffaa00"} />
+          <Database size={24} color={isHealthy ? "#ffffff" : "#d4d4d8"} />
         </div>
         <div>
-          <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif", color: isHealthy ? '#4ade80' : '#ffaa00' }}>
+          <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif", color: isHealthy ? '#ffffff' : '#d4d4d8' }}>
             {isHealthy ? 'Bridge Online & Healthy' : 'Bridge Offline / Error'}
           </h4>
           <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', fontFamily: "'DM Sans', sans-serif" }}>

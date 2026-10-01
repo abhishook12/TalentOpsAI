@@ -38,12 +38,12 @@ export default function DataIntelligence({ setToast }) {
 
   const statCards = [
     { label: 'Total Recruiters', value: stats?.total_recruiters, color: 'var(--brand)' },
-    { label: 'Profiles Processed', value: stats?.total_processed, color: '#ffb020' },
-    { label: 'Profiles Enriched', value: stats?.profiles_enriched, color: '#00ff66' },
+    { label: 'Profiles Processed', value: stats?.total_processed, color: '#d4d4d8' },
+    { label: 'Profiles Enriched', value: stats?.profiles_enriched, color: '#ffffff' },
     { label: 'Duplicates Merged', value: stats?.duplicates_merged, color: '#ff4444' },
-    { label: 'Domains Mapped', value: stats?.domains_mapped, color: '#00ccff' },
-    { label: 'Logos Assigned', value: stats?.logos_assigned, color: '#a020f0' },
-    { label: 'Needs Review', value: stats?.records_needing_review, color: '#ff8c00' },
+    { label: 'Domains Mapped', value: stats?.domains_mapped, color: '#ffffff' },
+    { label: 'Logos Assigned', value: stats?.logos_assigned, color: '#e4e4e7' },
+    { label: 'Needs Review', value: stats?.records_needing_review, color: '#ef4444' },
     { label: 'Avg Completeness', value: stats?.average_completeness != null ? `${stats.average_completeness}%` : null, color: 'var(--text-main)' },
   ]
 
@@ -62,7 +62,7 @@ export default function DataIntelligence({ setToast }) {
         {engineState && (
           <div style={{ padding: '0.5rem 1rem', borderRadius: 8, background: 'var(--card-bg)', border: '1px solid var(--card-border)', fontSize: 13 }}>
             <span style={{ color: 'var(--text-muted)' }}>Engine: </span>
-            <span style={{ color: engineState.status === 'Running' ? '#00ff66' : 'var(--text-secondary)', fontWeight: 600 }}>{engineState.status}</span>
+            <span style={{ color: engineState.status === 'Running' ? '#ffffff' : 'var(--text-secondary)', fontWeight: 600 }}>{engineState.status}</span>
             {engineState.current_task && engineState.current_task !== 'No active task' && (
               <span style={{ color: 'var(--text-muted)', marginLeft: 8 }}>— {engineState.current_task}</span>
             )}

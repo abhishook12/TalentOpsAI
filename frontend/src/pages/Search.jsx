@@ -10,6 +10,7 @@ import AIExplainabilityModal from '../components/ai/AIExplainabilityModal'
 import EvidenceBadge from '../components/ai/EvidenceBadge'
 import PersonIntelligenceWorkspace from '../components/ai/PersonIntelligenceWorkspace'
 import CompanyIntelligenceWorkspace from '../components/ai/CompanyIntelligenceWorkspace'
+import SourceProvenanceBadge from '../components/common/SourceProvenanceBadge'
 
 function initials(name) {
   const parts = (name || '').trim().split(' ').filter(Boolean)
@@ -73,9 +74,9 @@ function badgeForMatch(matchType) {
   const exact = matchType === 'Exact'
   return {
     label: exact ? 'EXACT' : 'FUZZY',
-    bg: exact ? 'rgba(22, 163, 74, 0.14)' : 'rgba(245, 158, 11, 0.14)',
-    fg: exact ? '#2f8f53' : '#b07843',
-    border: exact ? 'rgba(22, 163, 74, 0.25)' : 'rgba(245, 158, 11, 0.28)',
+    bg: exact ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.05)',
+    fg: exact ? '#ffffff' : '#a1a1aa',
+    border: exact ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.1)',
   }
 }
 
@@ -233,21 +234,22 @@ const SearchResultRow = React.memo(function SearchResultRow({ r, active, query, 
             {initials(r.recruiter_name)}
           </div>
           <div style={{ minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexWrap: 'wrap' }}>
               <span>{safe(r.recruiter_name)}</span>
+              <SourceProvenanceBadge source={r.data_source} size="xs" />
               {r.seniority_level && r.seniority_level !== 'Specialist' && (
                 <span style={{ 
                   fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, 
                   background: r.seniority_level === 'Executive' ? 'rgba(161, 161, 170,0.15)' :
                               r.seniority_level === 'Lead' ? 'rgba(161, 161, 170,0.15)' :
-                              r.seniority_level === 'Senior' ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)',
+                              r.seniority_level === 'Senior' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.05)',
                   color: r.seniority_level === 'Executive' ? '#d4d4d8' :
                          r.seniority_level === 'Lead' ? '#a1a1aa' :
-                         r.seniority_level === 'Senior' ? '#34d399' : '#fbbf24',
+                         r.seniority_level === 'Senior' ? '#e4e4e7' : '#d4d4d8',
                   border: `1px solid ${
                     r.seniority_level === 'Executive' ? 'rgba(161, 161, 170,0.3)' :
                     r.seniority_level === 'Lead' ? 'rgba(161, 161, 170,0.3)' :
-                    r.seniority_level === 'Senior' ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.3)'
+                    r.seniority_level === 'Senior' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.05)'
                   }`
                 }}>
                   {r.seniority_level}
@@ -268,7 +270,7 @@ const SearchResultRow = React.memo(function SearchResultRow({ r, active, query, 
         <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           <div>{safe(r.email)}</div>
           {r.is_deliverable !== false && (
-            <div style={{ fontSize: 9.5, color: '#10b981', fontWeight: 600, marginTop: 2 }}>✓ MX Verified</div>
+            <div style={{ fontSize: 9.5, color: '#ffffff', fontWeight: 600, marginTop: 2 }}>✓ MX Verified</div>
           )}
         </div>
         <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(r.phone)}</div>
@@ -782,9 +784,9 @@ export default function AISearch() {
               display: 'flex',
               alignItems: 'center',
               gap: 6,
-              background: 'rgba(245, 158, 11, 0.12)',
-              color: '#f59e0b',
-              border: '1px solid rgba(245, 158, 11, 0.3)',
+              background: 'rgba(255, 255, 255, 0.05)',
+              color: '#d4d4d8',
+              border: '1px solid rgba(255, 255, 255, 0.05)',
               padding: '0 12px',
               width: 'auto'
             }}
@@ -1214,8 +1216,9 @@ export default function AISearch() {
                     {initials(selected.recruiter_name)}
                   </div>
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 16, fontWeight: 900, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {safe(selected.recruiter_name)}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 16, fontWeight: 900, color: 'var(--text-primary)' }}>{safe(selected.recruiter_name)}</span>
+                      <SourceProvenanceBadge source={selected.data_source} size="xs" detailed={false} />
                     </div>
                     <div style={{ marginTop: 3, fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {selected.specialization && String(selected.specialization).trim() ? String(selected.specialization).trim() : ''}
@@ -1246,7 +1249,7 @@ export default function AISearch() {
                     PROFILE MATCH: {selected?.trust_score || 94}%
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
-                    Career Progression: <span style={{ color: '#10b981', fontWeight: 700 }}>Accelerated</span>
+                    Career Progression: <span style={{ color: '#ffffff', fontWeight: 700 }}>Accelerated</span>
                   </div>
                 </div>
                 <button
@@ -1480,7 +1483,7 @@ export default function AISearch() {
                         {selected?.completeness_score ?? 0}%
                       </div>
                     </div>
-                    <div style={{ border: '1px dashed var(--card-border)', borderRadius: 6, padding: 10, background: 'var(--panel-bg)', borderColor: selected?.needs_review ? 'rgba(245,158,11,0.4)' : 'var(--card-border)' }}>
+                    <div style={{ border: '1px dashed var(--card-border)', borderRadius: 6, padding: 10, background: 'var(--panel-bg)', borderColor: selected?.needs_review ? 'rgba(255, 255, 255, 0.05)' : 'var(--card-border)' }}>
                       <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Data Quality</div>
                       <div style={{ marginTop: 8, fontSize: 12, fontWeight: 700, color: selected?.needs_review ? '#d97706' : 'var(--success)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {selected?.needs_review ? (selected?.review_reason || 'Needs Review') : 'Verified Clean'}
@@ -1794,15 +1797,15 @@ export default function AISearch() {
             {booleanResult && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12, borderTop: '1px solid var(--card-border)', paddingTop: 16 }}>
                 {/* TalentOps Search Card */}
-                <div style={{ padding: 12, borderRadius: 8, background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                <div style={{ padding: 12, borderRadius: 8, background: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: '#10b981' }}>TalentOps Direct Query</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#ffffff' }}>TalentOps Direct Query</span>
                     <button
                       onClick={() => {
                         setQuery(booleanResult.talentops_query)
                         setBooleanModalOpen(false)
                       }}
-                      style={{ padding: '4px 10px', borderRadius: 6, background: '#10b981', color: '#fff', border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                      style={{ padding: '4px 10px', borderRadius: 6, background: '#ffffff', color: '#fff', border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
                     >
                       Run Search Now
                     </button>

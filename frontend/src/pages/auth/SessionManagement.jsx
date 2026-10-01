@@ -61,8 +61,8 @@ const SessionManagement = () => {
                 {session.is_current && (
                   <span style={{ 
                     display: 'inline-block', 
-                    background: 'rgba(34, 197, 94, 0.1)', 
-                    color: '#22c55e', 
+                    background: 'rgba(255, 255, 255, 0.08)', 
+                    color: '#ffffff', 
                     padding: '4px 8px', 
                     borderRadius: '4px', 
                     fontSize: '12px', 

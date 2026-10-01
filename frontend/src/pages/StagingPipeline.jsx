@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import api from '../services/api'
 import ScoutNodesPanel from '../components/ScoutNodesPanel'
+import SourceProvenanceBadge from '../components/common/SourceProvenanceBadge'
 
 export default function StagingPipeline() {
   const [summary, setSummary] = useState(null)
@@ -148,7 +149,7 @@ export default function StagingPipeline() {
             <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, letterSpacing: '-0.02em' }}>
               Discovery Staging & Intelligence Pipeline
             </h1>
-            <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 12, background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', fontWeight: 600 }}>
+            <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 12, background: 'rgba(255, 255, 255, 0.08)', color: '#ffffff', fontWeight: 600 }}>
               MEDALLION ARCHITECTURE
             </span>
           </div>
@@ -207,15 +208,15 @@ export default function StagingPipeline() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, marginBottom: 28 }}>
         {/* Bronze: Raw Staging */}
         <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, padding: 20, position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: '#f59e0b' }} />
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: '#d4d4d8' }} />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
             <div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#d4d4d8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Bronze Layer
               </div>
               <div style={{ fontSize: 16, fontWeight: 600 }}>Raw Discovery Staging</div>
             </div>
-            <div style={{ padding: 6, background: 'rgba(245, 158, 11, 0.15)', borderRadius: 6, color: '#f59e0b' }}>
+            <div style={{ padding: 6, background: 'rgba(255, 255, 255, 0.05)', borderRadius: 6, color: '#d4d4d8' }}>
               <Database size={18} />
             </div>
           </div>
@@ -251,15 +252,15 @@ export default function StagingPipeline() {
 
         {/* Gold: Master Database */}
         <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, padding: 20, position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: '#10b981' }} />
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: '#ffffff' }} />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
             <div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Gold Layer
               </div>
               <div style={{ fontSize: 16, fontWeight: 600 }}>Committed Master Entities</div>
             </div>
-            <div style={{ padding: 6, background: 'rgba(16, 185, 129, 0.15)', borderRadius: 6, color: '#10b981' }}>
+            <div style={{ padding: 6, background: 'rgba(255, 255, 255, 0.08)', borderRadius: 6, color: '#ffffff' }}>
               <CheckCircle2 size={18} />
             </div>
           </div>
@@ -286,10 +287,10 @@ export default function StagingPipeline() {
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           {distribution.map((d) => {
             const colors = {
-              NEW: { bg: 'rgba(16, 185, 129, 0.15)', text: '#10b981' },
+              NEW: { bg: 'rgba(255, 255, 255, 0.08)', text: '#ffffff' },
               ENRICH: { bg: 'rgba(212, 212, 216, 0.15)', text: '#d4d4d8' },
               DUPLICATE: { bg: 'rgba(107, 114, 128, 0.15)', text: '#9ca3af' },
-              REVIEW: { bg: 'rgba(245, 158, 11, 0.15)', text: '#f59e0b' },
+              REVIEW: { bg: 'rgba(255, 255, 255, 0.05)', text: '#d4d4d8' },
               CONFLICT: { bg: 'rgba(239, 68, 68, 0.15)', text: '#ef4444' },
               IGNORE: { bg: 'rgba(156, 163, 175, 0.15)', text: '#6b7280' },
             }
@@ -343,9 +344,9 @@ export default function StagingPipeline() {
             padding: '10px 18px',
             border: 'none',
             background: 'none',
-            color: activeTab === 'graph' ? '#10b981' : 'var(--text-secondary)',
+            color: activeTab === 'graph' ? '#ffffff' : 'var(--text-secondary)',
             fontWeight: activeTab === 'graph' ? 600 : 500,
-            borderBottom: activeTab === 'graph' ? '2px solid #10b981' : '2px solid transparent',
+            borderBottom: activeTab === 'graph' ? '2px solid #ffffff' : '2px solid transparent',
             cursor: 'pointer',
             fontSize: 14,
             display: 'flex',
@@ -383,9 +384,9 @@ export default function StagingPipeline() {
             padding: '10px 18px',
             border: 'none',
             background: 'none',
-            color: activeTab === 'review' ? '#f59e0b' : 'var(--text-secondary)',
+            color: activeTab === 'review' ? '#d4d4d8' : 'var(--text-secondary)',
             fontWeight: activeTab === 'review' ? 600 : 500,
-            borderBottom: activeTab === 'review' ? '2px solid #f59e0b' : '2px solid transparent',
+            borderBottom: activeTab === 'review' ? '2px solid #d4d4d8' : '2px solid transparent',
             cursor: 'pointer',
             fontSize: 14,
             display: 'flex',
@@ -397,7 +398,7 @@ export default function StagingPipeline() {
           {reviewQueue.length > 0 && (
             <span
               style={{
-                background: '#f59e0b',
+                background: '#d4d4d8',
                 color: '#000',
                 padding: '1px 6px',
                 borderRadius: 10,
@@ -472,17 +473,17 @@ export default function StagingPipeline() {
                           textTransform: 'uppercase',
                           background:
                             r.processing_status === 'committed'
-                              ? 'rgba(16, 185, 129, 0.15)'
+                              ? 'rgba(255, 255, 255, 0.08)'
                               : r.processing_status === 'review'
-                              ? 'rgba(245, 158, 11, 0.15)'
+                              ? 'rgba(255, 255, 255, 0.05)'
                               : r.processing_status === 'pending'
                               ? 'rgba(212, 212, 216, 0.15)'
                               : 'rgba(107, 114, 128, 0.15)',
                           color:
                             r.processing_status === 'committed'
-                              ? '#10b981'
+                              ? '#ffffff'
                               : r.processing_status === 'review'
-                              ? '#f59e0b'
+                              ? '#d4d4d8'
                               : r.processing_status === 'pending'
                               ? '#d4d4d8'
                               : '#9ca3af',
@@ -492,7 +493,10 @@ export default function StagingPipeline() {
                       </span>
                     </td>
                     <td style={{ padding: '12px 16px', fontWeight: 600 }}>
-                      {r.raw_name || 'Anonymous Recruiter'}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <span>{r.raw_name || 'Anonymous Recruiter'}</span>
+                        <SourceProvenanceBadge source={r.extraction_source || 'scout'} size="xs" />
+                      </div>
                     </td>
                     <td style={{ padding: '12px 16px' }}>{r.raw_company || '—'}</td>
                     <td style={{ padding: '12px 16px', color: 'var(--text-secondary)' }}>{r.raw_title || '—'}</td>
@@ -529,7 +533,7 @@ export default function StagingPipeline() {
             </div>
             <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 10, padding: '16px 20px' }}>
               <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>RELATIONSHIPS</div>
-              <div style={{ fontSize: 24, fontWeight: 700, color: '#10b981' }}>{knowledgeStats?.total_relationships || 0}</div>
+              <div style={{ fontSize: 24, fontWeight: 700, color: '#ffffff' }}>{knowledgeStats?.total_relationships || 0}</div>
               <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>Employed By, Posted By, Attended</div>
             </div>
             <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 10, padding: '16px 20px' }}>
@@ -539,7 +543,7 @@ export default function StagingPipeline() {
             </div>
             <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 10, padding: '16px 20px' }}>
               <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>EXTENSIBLE OBSERVATIONS</div>
-              <div style={{ fontSize: 24, fontWeight: 700, color: '#f59e0b' }}>{knowledgeStats?.total_observations || knowledgeObservations.length}</div>
+              <div style={{ fontSize: 24, fontWeight: 700, color: '#d4d4d8' }}>{knowledgeStats?.total_observations || knowledgeObservations.length}</div>
               <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>Zero-Loss Typed Observation Triples</div>
             </div>
           </div>
@@ -573,18 +577,18 @@ export default function StagingPipeline() {
                             e.entity_type === 'PERSON'
                               ? 'rgba(212, 212, 216, 0.15)'
                               : e.entity_type === 'COMPANY'
-                              ? 'rgba(16, 185, 129, 0.15)'
+                              ? 'rgba(255, 255, 255, 0.08)'
                               : e.entity_type === 'JOB'
                               ? 'rgba(161, 161, 170, 0.15)'
-                              : 'rgba(245, 158, 11, 0.15)',
+                              : 'rgba(255, 255, 255, 0.05)',
                           color:
                             e.entity_type === 'PERSON'
                               ? '#d4d4d8'
                               : e.entity_type === 'COMPANY'
-                              ? '#10b981'
+                              ? '#ffffff'
                               : e.entity_type === 'JOB'
                               ? '#a1a1aa'
-                              : '#f59e0b',
+                              : '#d4d4d8',
                         }}
                       >
                         {e.entity_type}
@@ -634,7 +638,7 @@ export default function StagingPipeline() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {reviewQueue.length === 0 ? (
             <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, padding: 36, textAlign: 'center', color: 'var(--text-secondary)' }}>
-              <CheckCircle2 size={32} color="#10b981" style={{ marginBottom: 12 }} />
+              <CheckCircle2 size={32} color="#ffffff" style={{ marginBottom: 12 }} />
               <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>
                 Review Queue is Clean
               </div>
@@ -722,7 +726,7 @@ export default function StagingPipeline() {
                         padding: '6px 14px',
                         borderRadius: 6,
                         border: 'none',
-                        background: '#10b981',
+                        background: '#ffffff',
                         color: '#fff',
                         cursor: 'pointer',
                         fontSize: 12,
@@ -736,7 +740,7 @@ export default function StagingPipeline() {
 
                 {/* Why Was This Held? Forensic Panel */}
                 <div style={{ background: 'rgba(234, 179, 8, 0.06)', border: '1px solid rgba(234, 179, 8, 0.25)', borderRadius: 8, padding: '10px 14px' }}>
-                  <div style={{ fontSize: 11, fontWeight: 800, color: '#eab308', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span>🛡️ WHY WAS THIS HELD?</span>
                   </div>
                   <div style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500 }}>

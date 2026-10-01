@@ -44,9 +44,9 @@ export default function KnowledgeGraphView() {
       case 'COMPANY':
         return '#a1a1aa' // purple
       case 'SKILL':
-        return '#10b981' // green
+        return '#ffffff' // green
       case 'LOCATION':
-        return '#f59e0b' // amber
+        return '#d4d4d8' // amber
       default:
         return '#a1a1aa'
     }
@@ -83,8 +83,8 @@ export default function KnowledgeGraphView() {
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '11px' }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-primary)' }}>● Candidate</span>
           <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-secondary)' }}>● Company</span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#10b981' }}>● Skill</span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#f59e0b' }}>● Location</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#ffffff' }}>● Skill</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#d4d4d8' }}>● Location</span>
         </div>
       </div>
 

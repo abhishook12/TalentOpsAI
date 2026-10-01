@@ -26,6 +26,9 @@ from scout_desktop.extractor.patterns import (
     classify_semantic_entity,
     SECTION_HEADERS,
     WORKPLACE_TYPES_SET,
+    BROWSER_CHROME_NOISE,
+    QUALIFICATION_AND_REQUIREMENT_WORDS,
+    CHECKMARK_AND_STATUS_SYMBOLS,
 )
 
 
@@ -100,7 +103,15 @@ class FieldClassifier:
         if not text:
             return True
         t_low = text.strip().lower()
-        if t_low in cls.UI_ACTION_WORDS or t_low in SECTION_HEADERS or t_low in WORKPLACE_TYPES_SET:
+        if (
+            t_low in cls.UI_ACTION_WORDS
+            or t_low in SECTION_HEADERS
+            or t_low in WORKPLACE_TYPES_SET
+            or t_low in BROWSER_CHROME_NOISE
+            or t_low in QUALIFICATION_AND_REQUIREMENT_WORDS
+            or any(c in CHECKMARK_AND_STATUS_SYMBOLS for c in text)
+            or re.match(r"^(?:all|every|other|another|any)\s+(?:bookmarks?|tabs?|windows?|files?|profiles?|candidates?|pages?|apps?|tools?|items?|results?|shortcuts?|folders?)$", t_low)
+        ):
             return True
         if any(w == t_low for w in ["overview", "connect", "message", "more", "save", "active window"]):
             return True
@@ -159,14 +170,23 @@ class FieldClassifier:
                 continue
 
             t, c = clean_title_and_company(line)
-            if t and is_plausible_title(t):
-                best_title = t
-                title_conf = 0.95
-            if c and is_valid_company_name(c):
-                se = classify_semantic_entity(c)
-                if se.get("entity_type") == "COMPANY":
-                    best_company = c
-                    comp_conf = 0.90
+            if t:
+                if not is_plausible_title(t):
+                    from .neural_lexicon_repair import lexicon_repair
+                    rep_t, rep_score = lexicon_repair.repair_title(t)
+                    if rep_score >= 0.78 and is_plausible_title(rep_t):
+                        t = rep_t
+                if is_plausible_title(t):
+                    best_title = t
+                    title_conf = 0.95
+            if c:
+                from .neural_lexicon_repair import lexicon_repair
+                c, _ = lexicon_repair.repair_company_name(c)
+                if is_valid_company_name(c) and not cls.is_ui_noise(c):
+                    se = classify_semantic_entity(c)
+                    if se.get("entity_type") == "COMPANY":
+                        best_company = c
+                        comp_conf = 0.90
             if best_title and best_company:
                 return best_title, title_conf, best_company, comp_conf
 
@@ -179,13 +199,21 @@ class FieldClassifier:
                 # Check inline Title at Company
                 if not best_title or not best_company:
                     t_inline, c_inline = clean_title_and_company(line)
+                    if t_inline and not is_plausible_title(t_inline):
+                        from .neural_lexicon_repair import lexicon_repair
+                        rep_ti, rep_si = lexicon_repair.repair_title(t_inline)
+                        if rep_si >= 0.78 and is_plausible_title(rep_ti):
+                            t_inline = rep_ti
                     if not best_title and t_inline and is_plausible_title(t_inline):
                         best_title = t_inline
                         title_conf = 0.90
-                    if not best_company and c_inline and is_valid_company_name(c_inline):
-                        if classify_semantic_entity(c_inline).get("entity_type") == "COMPANY":
-                            best_company = c_inline
-                            comp_conf = 0.88
+                    if c_inline:
+                        from .neural_lexicon_repair import lexicon_repair
+                        c_inline, _ = lexicon_repair.repair_company_name(c_inline)
+                        if not best_company and is_valid_company_name(c_inline) and not cls.is_ui_noise(c_inline):
+                            if classify_semantic_entity(c_inline).get("entity_type") == "COMPANY":
+                                best_company = c_inline
+                                comp_conf = 0.88
                     if best_title and best_company:
                         break
 
@@ -202,7 +230,7 @@ class FieldClassifier:
                                 if cls.is_ui_noise(nxt):
                                     continue
                                 cl_nxt = clean_company_name(nxt)
-                                if cl_nxt and is_valid_company_name(cl_nxt) and not is_plausible_title(cl_nxt):
+                                if cl_nxt and is_valid_company_name(cl_nxt) and not is_plausible_title(cl_nxt) and not cls.is_ui_noise(cl_nxt):
                                     if classify_semantic_entity(cl_nxt).get("entity_type") == "COMPANY":
                                         best_company = cl_nxt
                                         comp_conf = 0.85
@@ -229,8 +257,19 @@ class FieldClassifier:
                                             best_title = cand_t
                                             title_conf = 0.88
                                             break
-                            if best_title and best_company:
-                                break
+        # Pass 3: Inspect Header lines for company (e.g. right-side company card on LinkedIn header)
+        # Handles cases where headline is title-only (e.g. "Staffing Advisor") and user has not scrolled to Experience yet
+        if not best_company and header_lines:
+            for line in header_lines:
+                if cls.is_ui_noise(line):
+                    continue
+                cl_h = clean_company_name(line)
+                if cl_h and is_valid_company_name(cl_h) and not is_plausible_title(cl_h) and not cls.is_ui_noise(cl_h):
+                    se = classify_semantic_entity(cl_h)
+                    if se.get("entity_type") == "COMPANY":
+                        best_company = cl_h
+                        comp_conf = 0.88
+                        break
 
         return best_title, title_conf, best_company, comp_conf
 

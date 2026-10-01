@@ -191,6 +191,8 @@ _MX_CACHE_TTL_SEC = 86400  # 24 hours
 
 
 class EmailIntelligenceService:
+    SEEDED_COMPANY_PATTERNS = SEEDED_COMPANY_PATTERNS
+
     @staticmethod
     def clean_name_tokens(full_name: str) -> Optional[Dict[str, str]]:
         """
@@ -445,9 +447,12 @@ class EmailIntelligenceService:
             candidates.append({"pattern": "f_last", "email": f"{f_init}{last}@{domain}", "base_weight": 0.65})
             candidates.append({"pattern": "first", "email": f"{first}@{domain}", "base_weight": 0.60})
             candidates.append({"pattern": "first_last", "email": f"{first}{last}@{domain}", "base_weight": 0.50})
+            candidates.append({"pattern": "first_underscore_last", "email": f"{first}_{last}@{domain}", "base_weight": 0.48})
             candidates.append({"pattern": "f.last", "email": f"{f_init}.{last}@{domain}", "base_weight": 0.45})
             candidates.append({"pattern": "first_l", "email": f"{first}{l_init}@{domain}", "base_weight": 0.40})
             candidates.append({"pattern": "last.first", "email": f"{last}.{first}@{domain}", "base_weight": 0.35})
+            candidates.append({"pattern": "last_f", "email": f"{last}{f_init}@{domain}", "base_weight": 0.30})
+            candidates.append({"pattern": "last.f", "email": f"{last}.{f_init}@{domain}", "base_weight": 0.25})
         else:
             candidates.append({"pattern": "first", "email": f"{first}@{domain}", "base_weight": 0.85})
 
@@ -503,12 +508,20 @@ class EmailIntelligenceService:
             deduced_pattern = "first"
         elif last and local_part == f"{first}{last}":
             deduced_pattern = "first_last"
+        elif last and local_part == f"{first}_{last}":
+            deduced_pattern = "first_underscore_last"
         elif last and local_part == f"{f_init}.{last}":
             deduced_pattern = "f.last"
         elif last and local_part == f"{first}{l_init}":
             deduced_pattern = "first_l"
         elif last and local_part == f"{last}.{first}":
             deduced_pattern = "last.first"
+        elif last and local_part == f"{last}{f_init}":
+            deduced_pattern = "last_f"
+        elif last and local_part == f"{last}.{f_init}":
+            deduced_pattern = "last.f"
+        elif last and local_part == last:
+            deduced_pattern = "last"
 
         if not deduced_pattern:
             return None

@@ -23,7 +23,7 @@ const SCOUT_PLATFORM_CATEGORIES = [
     id: "linkedin",
     name: "LinkedIn Suite",
     icon: Laptop,
-    color: "#0a66c2",
+    color: "#ffffff",
     badge: "Primary Engine",
     description: "Deep OCR & DOM extraction across LinkedIn candidate cards, projects & network profiles.",
     targets: [
@@ -37,7 +37,7 @@ const SCOUT_PLATFORM_CATEGORIES = [
     id: "b2b_intel",
     name: "B2B Intelligence",
     icon: Sparkles,
-    color: "#0284c7",
+    color: "#e4e4e7",
     badge: "Target 7",
     description: "Direct business phone numbers, verified corporate emails & organizational hierarchy.",
     targets: [
@@ -51,7 +51,7 @@ const SCOUT_PLATFORM_CATEGORIES = [
     id: "dev_talent",
     name: "Developer & Tech",
     icon: FileCode,
-    color: "#10b981",
+    color: "#ffffff",
     badge: "Target 5",
     description: "Engineering profiles, open-source repositories, competition rankings & tech resumes.",
     targets: [
@@ -66,7 +66,7 @@ const SCOUT_PLATFORM_CATEGORIES = [
     id: "ats",
     name: "Applicant Tracking Systems",
     icon: Database,
-    color: "#8b5cf6",
+    color: "#d4d4d8",
     badge: "Target 6 (ATS)",
     description: "Automatic synchronization with your existing company applicant tracking systems.",
     targets: [
@@ -82,7 +82,7 @@ const SCOUT_PLATFORM_CATEGORIES = [
     id: "job_boards",
     name: "Job Portals & Sourcing",
     icon: Briefcase,
-    color: "#f59e0b",
+    color: "#a1a1aa",
     badge: "Target 8",
     description: "Public job boards, resume search indexes & algorithmic talent matching portals.",
     targets: [
@@ -97,7 +97,7 @@ const SCOUT_PLATFORM_CATEGORIES = [
     id: "communication",
     name: "Collaboration & Inboxes",
     icon: MessageSquare,
-    color: "#06b6d4",
+    color: "#ffffff",
     badge: "Target 1 & 2",
     description: "Detects candidate resume shares and referral conversations in enterprise chat apps.",
     targets: [
@@ -126,7 +126,7 @@ const SCOUT_PLATFORM_CATEGORIES = [
     id: "staffing",
     name: "Staffing & Search Portals",
     icon: Users,
-    color: "#6366f1",
+    color: "#d4d4d8",
     badge: "Target 9",
     description: "Retained search, executive recruitment & specialized staffing agency talent rosters.",
     targets: [
@@ -154,25 +154,25 @@ const TRUST_PILLARS = [
   {
     title: "No Passwords Stored on Device",
     icon: Lock,
-    color: "#34d399",
+    color: "#e4e4e7",
     desc: "Scout never accesses password managers, authentication sessions, or personal browsing data. Only candidate cards on approved recruiting platforms are processed."
   },
   {
     title: "Offline SQLite Resilience",
     icon: Database,
-    color: "#60a5fa",
+    color: "#d4d4d8",
     desc: "Built-in local SQLite buffer queue (local_queue.db) holds captured candidates safely on your hard drive if internet disconnects, auto-syncing when back online."
   },
   {
     title: "Zero Admin Rights Needed",
     icon: ShieldCheck,
-    color: "#a78bfa",
+    color: "#d4d4d8",
     desc: "Installs cleanly into %LOCALAPPDATA%\\Programs\\TalentOpsScout in under 5 seconds with standard user privileges. No IT administrator prompt required."
   },
   {
     title: "Strict Privacy DLP Gating",
     icon: EyeOff,
-    color: "#f59e0b",
+    color: "#a1a1aa",
     desc: "Personal email, banking, social media, shopping, and entertainment windows are permanently blacklisted and automatically discarded without inspection."
   }
 ];
@@ -222,10 +222,10 @@ export default function DownloadScout() {
   });
   const provisionableUsers = provUsersData || [];
 
-  // Dynamic Release Info from Authoritative DB Registry (Defaults match exact v2.9.4 build)
+  // Dynamic Release Info from Authoritative DB Registry (Defaults match exact v2.11.0 build)
   const [releaseInfo, setReleaseInfo] = useState({
-    version: '2.9.4',
-    extractor_version: '4.6.3',
+    version: '2.11.0',
+    extractor_version: '4.8.0',
     download_url: 'https://qpetzpxmuofuepvrqedk.supabase.co/storage/v1/object/public/data-assets/TalentOpsScoutSetup.exe',
     size_bytes: 50084798,
     sha256: 'f060e23435a40fc369206b25d97e139295fe39da737361cd30d06e52f32f6cc7',
@@ -525,16 +525,16 @@ export default function DownloadScout() {
     switch (st) {
       case 'CONTRIBUTING':
       case 'CONTRIBUTING_OFFLINE':
-        return { bg: 'rgba(16, 185, 129, 0.2)', text: '#34d399', border: 'rgba(16, 185, 129, 0.4)', icon: Sparkles };
+        return { bg: 'rgba(255, 255, 255, 0.1)', text: '#e4e4e7', border: 'rgba(255, 255, 255, 0.2)', icon: Sparkles };
       case 'ACTIVE':
-        return { bg: 'rgba(34, 197, 94, 0.2)', text: '#4ade80', border: 'rgba(34, 197, 94, 0.4)', icon: Activity };
+        return { bg: 'rgba(255, 255, 255, 0.12)', text: '#ffffff', border: 'rgba(255, 255, 255, 0.12)', icon: Activity };
       case 'PAIRED':
       case 'PAIRED_IDLE':
         return { bg: 'rgba(228, 228, 231, 0.15)', text: '#e4e4e7', border: 'rgba(228, 228, 231, 0.35)', icon: Zap };
       case 'INSTALLED':
         return { bg: 'rgba(161, 161, 170, 0.15)', text: '#a1a1aa', border: 'rgba(161, 161, 170, 0.35)', icon: Laptop };
       case 'DOWNLOAD_ONLY':
-        return { bg: 'rgba(234, 179, 8, 0.15)', text: '#facc15', border: 'rgba(234, 179, 8, 0.35)', icon: Clock };
+        return { bg: 'rgba(234, 179, 8, 0.15)', text: '#d4d4d8', border: 'rgba(234, 179, 8, 0.35)', icon: Clock };
       case 'REGISTERED':
         return { bg: 'rgba(148, 163, 184, 0.15)', text: '#a1a1aa', border: 'rgba(148, 163, 184, 0.3)', icon: UserCheck };
       case 'REVOKED':
@@ -552,14 +552,14 @@ export default function DownloadScout() {
       color = '#a1a1aa';
       bg = 'rgba(161, 161, 170, 0.2)';
     } else if (t === 'HIGH') {
-      color = '#10b981';
-      bg = 'rgba(16, 185, 129, 0.2)';
+      color = '#ffffff';
+      bg = 'rgba(255, 255, 255, 0.1)';
     } else if (t === 'MEDIUM' || t === 'MODERATE') {
       color = '#e4e4e7';
       bg = 'rgba(228, 228, 231, 0.2)';
     } else if (t === 'LOW' || t === 'DEVELOPING') {
-      color = '#f59e0b';
-      bg = 'rgba(245, 158, 11, 0.2)';
+      color = '#d4d4d8';
+      bg = 'rgba(255, 255, 255, 0.05)';
     }
     return (
       <span style={{
@@ -585,7 +585,7 @@ export default function DownloadScout() {
   const avgQualScore = summary.avg_quality_score ?? summary.average_quality_score ?? 0;
   const latestProdVer = contribData?.latest_production_version || releaseInfo?.version || '';
 
-  const displayVersion = releaseInfo.version ? `v${releaseInfo.version}` : (latestProdVer ? `v${latestProdVer}` : 'v2.9.4');
+  const displayVersion = releaseInfo.version ? `v${releaseInfo.version}` : (latestProdVer ? `v${latestProdVer}` : 'v2.11.0');
   const displaySize = releaseInfo.size_bytes
     ? `${(releaseInfo.size_bytes / (1024 * 1024)).toFixed(1)} MB`
     : '51.6 MB';
@@ -602,10 +602,10 @@ export default function DownloadScout() {
           <div>
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
-              background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)',
-              color: '#34d399', padding: '4px 12px', borderRadius: 20, fontSize: 11, fontWeight: 700, marginBottom: 8
+              background: 'rgba(255, 255, 255, 0.06)', border: '1px solid rgba(255, 255, 255, 0.15)',
+              color: '#e4e4e7', padding: '4px 12px', borderRadius: 20, fontSize: 11, fontWeight: 700, marginBottom: 8
             }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }} />
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ffffff' }} />
               {!user
                 ? 'OFFICIAL DESKTOP INSTALLER • WIN32 COMPANION'
                 : (isAdmin ? 'OFFICIAL DESKTOP CLIENT • FLEET GOVERNANCE' : 'DESKTOP SOURCING CLIENT • WORKSPACE PIPELINE')}
@@ -710,14 +710,14 @@ export default function DownloadScout() {
           {/* Companion Welcome & Status Banner */}
           {!user ? (
             <div style={{
-              background: 'linear-gradient(135deg, rgba(228, 228, 231, 0.08) 0%, rgba(16, 185, 129, 0.08) 100%)',
+              background: 'linear-gradient(135deg, rgba(228, 228, 231, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)',
               border: '1px solid rgba(228, 228, 231, 0.25)', borderRadius: 14, padding: '24px 28px',
               marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 20
             }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
                   <span style={{
-                    background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.35)',
+                    background: 'rgba(255, 255, 255, 0.08)', color: '#e4e4e7', border: '1px solid rgba(255, 255, 255, 0.18)',
                     padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, letterSpacing: 0.5, display: 'inline-flex', alignItems: 'center', gap: 6
                   }}>
                     <Laptop size={12} />
@@ -739,23 +739,23 @@ export default function DownloadScout() {
                 background: 'var(--panel-bg, #0b0b0c)', border: '1px solid var(--card-border, #232326)', borderRadius: 10, padding: '14px 20px',
                 display: 'flex', alignItems: 'center', gap: 14
               }}>
-                <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 10px #10b981' }} />
+                <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#ffffff', boxShadow: '0 0 10px #ffffff' }} />
                 <div>
                   <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted, #a1a1aa)', textTransform: 'uppercase' }}>Current Release</div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: '#34d399' }}>{displayVersion} • Production Stable</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: '#e4e4e7' }}>{displayVersion} • Production Stable</div>
                 </div>
               </div>
             </div>
           ) : (
             <div style={{
-              background: 'linear-gradient(135deg, rgba(228, 228, 231, 0.08) 0%, rgba(16, 185, 129, 0.08) 100%)',
+              background: 'linear-gradient(135deg, rgba(228, 228, 231, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)',
               border: '1px solid rgba(228, 228, 231, 0.25)', borderRadius: 14, padding: '24px 28px',
               marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 20
             }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
                   <span style={{
-                    background: 'rgba(16, 185, 129, 0.12)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)',
+                    background: 'rgba(255, 255, 255, 0.06)', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.15)',
                     padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, letterSpacing: 0.5, display: 'inline-flex', alignItems: 'center', gap: 6
                   }}>
                     <Laptop size={12} />
@@ -780,12 +780,12 @@ export default function DownloadScout() {
               }}>
                 <div style={{
                   width: 10, height: 10, borderRadius: '50%',
-                  background: myDeviceData?.devices?.some(d => d.is_online) ? '#10b981' : '#71717a',
-                  boxShadow: myDeviceData?.devices?.some(d => d.is_online) ? '0 0 10px #10b981' : 'none'
+                  background: myDeviceData?.devices?.some(d => d.is_online) ? '#ffffff' : '#71717a',
+                  boxShadow: myDeviceData?.devices?.some(d => d.is_online) ? '0 0 10px #ffffff' : 'none'
                 }} />
                 <div>
                   <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted, #a1a1aa)', textTransform: 'uppercase' }}>Companion Status</div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: myDeviceData?.devices?.some(d => d.is_online) ? '#34d399' : 'var(--text-primary, #fafafa)' }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: myDeviceData?.devices?.some(d => d.is_online) ? '#e4e4e7' : 'var(--text-primary, #fafafa)' }}>
                     {myDeviceData?.devices?.some(d => d.is_online)
                       ? 'Active & Streaming'
                       : (myDeviceData?.devices?.length > 0 ? 'Device Paired (Standby)' : 'Not Connected')}
@@ -805,13 +805,13 @@ export default function DownloadScout() {
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
                   <div style={{
-                    width: 44, height: 44, borderRadius: 10, background: 'rgba(16, 185, 129, 0.15)',
-                    border: '1px solid rgba(16, 185, 129, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981'
+                    width: 44, height: 44, borderRadius: 10, background: 'rgba(255, 255, 255, 0.08)',
+                    border: '1px solid rgba(255, 255, 255, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff'
                   }}>
                     <Download size={22} />
                   </div>
                   <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#10b981', letterSpacing: 0.5 }}>STEP 1: GET DESKTOP COMPANION</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#ffffff', letterSpacing: 0.5 }}>STEP 1: GET DESKTOP COMPANION</div>
                     <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary, #fafafa)' }}>TalentOps Scout Setup</div>
                   </div>
                 </div>
@@ -824,7 +824,7 @@ export default function DownloadScout() {
                   <span style={{ padding: '3px 8px', borderRadius: 6, background: 'var(--panel-bg, #232326)', border: '1px solid var(--card-border, transparent)', color: 'var(--text-secondary, #a1a1aa)', fontSize: 11, fontWeight: 600 }}>
                     Windows 10/11 64-bit
                   </span>
-                  <span style={{ padding: '3px 8px', borderRadius: 6, background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', fontSize: 11, fontWeight: 700 }}>
+                  <span style={{ padding: '3px 8px', borderRadius: 6, background: 'rgba(255, 255, 255, 0.08)', color: '#e4e4e7', fontSize: 11, fontWeight: 700 }}>
                     {displayVersion} Production
                   </span>
                   <span style={{ padding: '3px 8px', borderRadius: 6, background: 'var(--panel-bg, #232326)', border: '1px solid var(--card-border, transparent)', color: 'var(--text-secondary, #a1a1aa)', fontSize: 11, fontWeight: 600 }}>
@@ -833,7 +833,7 @@ export default function DownloadScout() {
                   <span style={{ padding: '3px 8px', borderRadius: 6, background: 'var(--panel-bg, #232326)', border: '1px solid var(--card-border, transparent)', color: 'var(--text-secondary, #a1a1aa)', fontSize: 11, fontWeight: 600 }}>
                     Extractor {releaseInfo.extractor_version ? `v${releaseInfo.extractor_version}` : 'v4.6.2'}
                   </span>
-                  <span style={{ padding: '3px 8px', borderRadius: 6, background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', fontSize: 11, fontWeight: 600 }}>
+                  <span style={{ padding: '3px 8px', borderRadius: 6, background: 'rgba(255, 255, 255, 0.06)', color: '#d4d4d8', fontSize: 11, fontWeight: 600 }}>
                     SQLite Queue Buffer
                   </span>
                 </div>
@@ -872,10 +872,10 @@ export default function DownloadScout() {
                   onClick={handleDownload}
                   disabled={downloading}
                   style={{
-                    width: '100%', padding: '13px 20px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    width: '100%', padding: '13px 20px', background: 'linear-gradient(135deg, #ffffff 0%, #d4d4d8 100%)',
                     color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                    boxShadow: '0 4px 15px rgba(16, 185, 129, 0.35)', transition: 'all 0.15s ease'
+                    boxShadow: '0 4px 15px rgba(255, 255, 255, 0.18)', transition: 'all 0.15s ease'
                   }}
                 >
                   <Download size={18} />
@@ -894,7 +894,7 @@ export default function DownloadScout() {
                     }}
                     title="Download as a ZIP archive if Chrome blocks the raw .exe file"
                   >
-                    <Download size={12} color="#10b981" />
+                    <Download size={12} color="#ffffff" />
                     <span>Download .ZIP</span>
                   </button>
 
@@ -913,7 +913,7 @@ export default function DownloadScout() {
                     }}
                     title="Copy 1-line PowerShell install command (unblocks files and completely bypasses browser download warnings)"
                   >
-                    <Terminal size={12} color="#60a5fa" />
+                    <Terminal size={12} color="#d4d4d8" />
                     <span>PowerShell Install</span>
                   </button>
                 </div>
@@ -993,7 +993,7 @@ export default function DownloadScout() {
                       background: '#09090b',
                       border: '1px solid #27272a',
                       borderRadius: 8,
-                      color: '#34d399',
+                      color: '#e4e4e7',
                       fontSize: 22,
                       fontWeight: 800,
                       letterSpacing: 4,
@@ -1055,20 +1055,20 @@ export default function DownloadScout() {
                   {/* Personal Dedicated Activation Code (if assigned) */}
                   {myDeviceData?.active_activation_code && (
                     <div style={{
-                      background: 'rgba(59, 130, 246, 0.1)',
-                      border: '1px solid rgba(59, 130, 246, 0.35)',
+                      background: 'rgba(255, 255, 255, 0.06)',
+                      border: '1px solid rgba(255, 255, 255, 0.06)',
                       borderRadius: 10,
                       padding: '14px 16px',
                       marginBottom: 16
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <Key size={14} color="#60a5fa" />
-                          <span style={{ fontSize: 11, fontWeight: 700, color: '#93c5fd', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                          <Key size={14} color="#d4d4d8" />
+                          <span style={{ fontSize: 11, fontWeight: 700, color: '#ffffff', textTransform: 'uppercase', letterSpacing: 0.5 }}>
                             Your Dedicated Activation Code
                           </span>
                         </div>
-                        <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: 'rgba(59, 130, 246, 0.2)', color: '#3b82f6', fontWeight: 700 }}>
+                        <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: 'rgba(255, 255, 255, 0.06)', color: '#e4e4e7', fontWeight: 700 }}>
                           {myDeviceData.active_activation_label || 'Permanent'}
                         </span>
                       </div>
@@ -1078,9 +1078,9 @@ export default function DownloadScout() {
                           flex: 1,
                           padding: '10px 14px',
                           background: 'var(--bg-base, #09090b)',
-                          border: '1px dashed rgba(59, 130, 246, 0.6)',
+                          border: '1px dashed rgba(255, 255, 255, 0.06)',
                           borderRadius: 8,
-                          color: '#60a5fa',
+                          color: '#d4d4d8',
                           fontSize: 16,
                           fontWeight: 800,
                           letterSpacing: 2,
@@ -1097,7 +1097,7 @@ export default function DownloadScout() {
                           }}
                           style={{
                             padding: '10px 14px',
-                            background: '#2563eb',
+                            background: '#e4e4e7',
                             color: '#fff',
                             border: 'none',
                             borderRadius: 8,
@@ -1172,8 +1172,8 @@ export default function DownloadScout() {
 
                   {pairingSuccess && (
                     <div style={{
-                      background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.35)',
-                      borderRadius: 8, padding: '10px 14px', color: '#34d399', fontSize: 12, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12
+                      background: 'rgba(255, 255, 255, 0.06)', border: '1px solid rgba(255, 255, 255, 0.18)',
+                      borderRadius: 8, padding: '10px 14px', color: '#e4e4e7', fontSize: 12, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12
                     }}>
                       <CheckCircle2 size={15} flexShrink={0} />
                       <span>{pairingSuccess}</span>
@@ -1182,7 +1182,7 @@ export default function DownloadScout() {
                 </div>
 
                 <div style={{ fontSize: 11, color: '#71717a', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <ShieldCheck size={14} color="#10b981" />
+                  <ShieldCheck size={14} color="#ffffff" />
                   <span>Encrypted end-to-end device token bound strictly to your user profile.</span>
                 </div>
               </div>
@@ -1231,7 +1231,7 @@ export default function DownloadScout() {
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                             <div style={{
                               width: 36, height: 36, borderRadius: 8, background: 'var(--panel-bg, #232326)',
-                              display: 'flex', alignItems: 'center', justifyContent: 'center', color: dev.is_online ? '#34d399' : 'var(--text-muted, #a1a1aa)'
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', color: dev.is_online ? '#e4e4e7' : 'var(--text-muted, #a1a1aa)'
                             }}>
                               <Laptop size={18} />
                             </div>
@@ -1247,14 +1247,14 @@ export default function DownloadScout() {
 
                           <span style={{
                             padding: '3px 8px', borderRadius: 12, fontSize: 10, fontWeight: 700,
-                            background: dev.is_online ? 'rgba(16, 185, 129, 0.15)' : 'rgba(100, 116, 139, 0.15)',
-                            color: dev.is_online ? '#34d399' : 'var(--text-muted, #a1a1aa)',
-                            border: `1px solid ${dev.is_online ? 'rgba(16, 185, 129, 0.3)' : 'rgba(100, 116, 139, 0.3)'}`,
+                            background: dev.is_online ? 'rgba(255, 255, 255, 0.08)' : 'rgba(100, 116, 139, 0.15)',
+                            color: dev.is_online ? '#e4e4e7' : 'var(--text-muted, #a1a1aa)',
+                            border: `1px solid ${dev.is_online ? 'rgba(255, 255, 255, 0.15)' : 'rgba(100, 116, 139, 0.3)'}`,
                             display: 'flex', alignItems: 'center', gap: 5
                           }}>
                             <span style={{
                               width: 6, height: 6, borderRadius: '50%',
-                              background: dev.is_online ? '#10b981' : 'var(--text-muted, #71717a)'
+                              background: dev.is_online ? '#ffffff' : 'var(--text-muted, #71717a)'
                             }} />
                             {dev.is_online ? 'ONLINE & STREAMING' : 'STANDBY'}
                           </span>
@@ -1278,7 +1278,7 @@ export default function DownloadScout() {
                           </div>
                           <div>
                             <div style={{ fontSize: 10, color: 'var(--text-muted, #71717a)', textTransform: 'uppercase' }}>Candidates Added</div>
-                            <div style={{ fontSize: 12, fontWeight: 700, color: '#34d399' }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: '#e4e4e7' }}>
                               {dev.total_accepted || 0}
                             </div>
                           </div>
@@ -1330,7 +1330,7 @@ export default function DownloadScout() {
                     <button
                       onClick={handleDownload}
                       style={{
-                        padding: '8px 16px', background: '#10b981', color: '#fff', border: 'none',
+                        padding: '8px 16px', background: '#ffffff', color: '#fff', border: 'none',
                         borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6
                       }}
                     >
@@ -1349,7 +1349,7 @@ export default function DownloadScout() {
           <div style={{ marginBottom: 36 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14, marginBottom: 16 }}>
               <div>
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#34d399', fontSize: 11, fontWeight: 700, letterSpacing: 0.5, marginBottom: 4 }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#e4e4e7', fontSize: 11, fontWeight: 700, letterSpacing: 0.5, marginBottom: 4 }}>
                   <Globe size={13} />
                   <span>NATIVE BROWSER &amp; WINDOW MONITORING ALLOWLIST</span>
                 </div>
@@ -1467,7 +1467,7 @@ export default function DownloadScout() {
           {/* ========================================================================= */}
           <div style={{ marginBottom: 36 }}>
             <div style={{ marginBottom: 16 }}>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#60a5fa', fontSize: 11, fontWeight: 700, letterSpacing: 0.5, marginBottom: 4 }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#d4d4d8', fontSize: 11, fontWeight: 700, letterSpacing: 0.5, marginBottom: 4 }}>
                 <Monitor size={13} />
                 <span>NATIVE OBSIDIAN WORKSPACE &amp; ENGINE ARCHITECTURE</span>
               </div>
@@ -1516,7 +1516,7 @@ export default function DownloadScout() {
           {/* ========================================================================= */}
           <div style={{ marginBottom: 36 }}>
             <div style={{ marginBottom: 16 }}>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#10b981', fontSize: 11, fontWeight: 700, letterSpacing: 0.5, marginBottom: 4 }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#ffffff', fontSize: 11, fontWeight: 700, letterSpacing: 0.5, marginBottom: 4 }}>
                 <ShieldCheck size={13} />
                 <span>ENTERPRISE PRIVACY &amp; SECURITY GUARANTEES</span>
               </div>
@@ -1579,8 +1579,8 @@ export default function DownloadScout() {
             <button
               onClick={() => setShowSecurityNotice(!showSecurityNotice)}
               style={{
-                padding: '9px 14px', background: 'var(--panel-bg, #0b0b0c)', color: '#f59e0b',
-                border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                padding: '9px 14px', background: 'var(--panel-bg, #0b0b0c)', color: '#d4d4d8',
+                border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: 8, fontSize: 12, fontWeight: 600,
                 cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6
               }}
             >
@@ -1601,7 +1601,7 @@ export default function DownloadScout() {
                 </div>
               </div>
               <div style={{ background: 'var(--panel-bg, #0b0b0c)', border: '1px solid var(--card-border, #232326)', borderRadius: 8, padding: 14 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#10b981', marginBottom: 4 }}>2. Note the Pairing Code</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#ffffff', marginBottom: 4 }}>2. Note the Pairing Code</div>
                 <div style={{ fontSize: 12, color: 'var(--text-secondary, #a1a1aa)', lineHeight: 1.5 }}>
                   Scout Desktop launches and displays a bold code (e.g. <code>TOS-8492</code>). Enter that code into the box above to link to your account.
                 </div>
@@ -1617,10 +1617,10 @@ export default function DownloadScout() {
 
           {showSecurityNotice && (
             <div style={{
-              marginBottom: 20, background: 'rgba(245, 158, 11, 0.05)', border: '1px solid rgba(245, 158, 11, 0.25)',
+              marginBottom: 20, background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.05)',
               borderRadius: 10, padding: 16
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, color: '#f59e0b', fontSize: 13, fontWeight: 700 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, color: '#d4d4d8', fontSize: 13, fontWeight: 700 }}>
                 <ShieldAlert size={16} />
                 <span>Browser Security &amp; Windows SmartScreen Notice</span>
               </div>
@@ -1631,7 +1631,7 @@ export default function DownloadScout() {
                 <p style={{ margin: '0 0 8px 0' }}>
                   Newly published enterprise software undergoes a <b>reputation ramp-up period</b> with Google Safe Browsing and Microsoft SmartScreen.
                   This is standard for internal tooling and does <b>not</b> mean the file contains malware. TalentOps Scout has been scanned
-                  by Windows Defender with <span style={{ color: '#10b981', fontWeight: 600 }}>zero threats detected</span>.
+                  by Windows Defender with <span style={{ color: '#ffffff', fontWeight: 600 }}>zero threats detected</span>.
                 </p>
 
                 <div style={{
@@ -1652,7 +1652,7 @@ export default function DownloadScout() {
                 <div style={{
                   background: 'var(--card-bg, #0b0b0c)', border: '1px solid var(--card-border, #232326)', borderRadius: 8, padding: 12, marginBottom: 10
                 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#3b82f6', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#e4e4e7', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
                     <Shield size={13} />
                     Microsoft Edge — "This file isn't commonly downloaded"
                   </div>
@@ -1665,7 +1665,7 @@ export default function DownloadScout() {
                 <div style={{
                   background: 'var(--card-bg, #0b0b0c)', border: '1px solid var(--card-border, #232326)', borderRadius: 8, padding: 12, marginBottom: 10
                 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#f59e0b', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#d4d4d8', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
                     <ShieldCheck size={13} />
                     Windows SmartScreen — "Windows protected your PC"
                   </div>
@@ -1680,10 +1680,10 @@ export default function DownloadScout() {
 
                 {releaseInfo?.sha256 && (
                   <div style={{
-                    background: 'rgba(16, 185, 129, 0.06)', border: '1px solid rgba(16, 185, 129, 0.2)',
+                    background: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(255, 255, 255, 0.1)',
                     borderRadius: 8, padding: 10, marginTop: 4
                   }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#10b981', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#ffffff', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
                       <CheckCircle2 size={13} />
                       File Integrity — SHA-256 Checksum
                     </div>
@@ -1720,16 +1720,16 @@ export default function DownloadScout() {
         <div>
           {/* Quick Companion Pairing Strip for Admins */}
           <div style={{
-            background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(228, 228, 231, 0.05) 100%)',
-            border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: 12, padding: '16px 20px',
+            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(228, 228, 231, 0.05) 100%)',
+            border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: 12, padding: '16px 20px',
             marginBottom: 20, boxShadow: '0 4px 20px rgba(0,0,0,0.18)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                 <div style={{
                   width: 44, height: 44, borderRadius: 10,
-                  background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981', flexShrink: 0
+                  background: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(255, 255, 255, 0.15)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff', flexShrink: 0
                 }}>
                   <Laptop size={22} />
                 </div>
@@ -1739,8 +1739,8 @@ export default function DownloadScout() {
                       TalentOps Scout Desktop
                     </span>
                     <span style={{
-                      background: 'rgba(16, 185, 129, 0.2)', color: '#34d399',
-                      border: '1px solid rgba(16, 185, 129, 0.35)', padding: '2px 7px',
+                      background: 'rgba(255, 255, 255, 0.1)', color: '#e4e4e7',
+                      border: '1px solid rgba(255, 255, 255, 0.18)', padding: '2px 7px',
                       borderRadius: 5, fontSize: 11, fontWeight: 700, fontFamily: 'monospace'
                     }}>
                       {displayVersion} Production
@@ -1758,10 +1758,10 @@ export default function DownloadScout() {
                   onClick={handleDownload}
                   disabled={downloading}
                   style={{
-                    padding: '9px 18px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    padding: '9px 18px', background: 'linear-gradient(135deg, #ffffff 0%, #d4d4d8 100%)',
                     color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700,
                     cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
-                    boxShadow: '0 2px 10px rgba(16, 185, 129, 0.35)',
+                    boxShadow: '0 2px 10px rgba(255, 255, 255, 0.18)',
                     opacity: downloading ? 0.7 : 1
                   }}
                 >
@@ -1832,8 +1832,8 @@ export default function DownloadScout() {
                 )}
                 {pairingSuccess && (
                   <div style={{
-                    background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.4)',
-                    borderRadius: 8, padding: '8px 14px', color: '#34d399', fontSize: 12, display: 'flex', alignItems: 'center', gap: 8
+                    background: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(255, 255, 255, 0.2)',
+                    borderRadius: 8, padding: '8px 14px', color: '#e4e4e7', fontSize: 12, display: 'flex', alignItems: 'center', gap: 8
                   }}>
                     <CheckCircle2 size={15} flexShrink={0} />
                     <span>{pairingSuccess}</span>
@@ -1940,7 +1940,7 @@ export default function DownloadScout() {
                   </button>
                 </div>
                 {!targetUserEmail && (
-                  <div style={{ fontSize: 11, color: '#f59e0b', marginTop: 8 }}>
+                  <div style={{ fontSize: 11, color: '#d4d4d8', marginTop: 8 }}>
                     ⚠️ Select a target team member in the dropdown above to enable force-pairing.
                   </div>
                 )}
@@ -1948,7 +1948,7 @@ export default function DownloadScout() {
 
               {/* Option B: Generate Dedicated Activation Code */}
               <div style={{ background: 'var(--card-bg, #0b0b0c)', border: '1px solid var(--card-border, #232326)', borderRadius: 10, padding: '16px 20px', boxShadow: 'var(--shadow)' }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#10b981', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#ffffff', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
                   <Sparkles size={15} />
                   <span>Option 2: Generate Dedicated User Code (Permanent • Never Expires)</span>
                 </div>
@@ -1960,7 +1960,7 @@ export default function DownloadScout() {
                     onClick={handleAdminGenerateCode}
                     disabled={generatingCode || !targetUserEmail}
                     style={{
-                      padding: '9px 18px', background: targetUserEmail ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : '#27272a',
+                      padding: '9px 18px', background: targetUserEmail ? 'linear-gradient(135deg, #ffffff 0%, #d4d4d8 100%)' : '#27272a',
                       color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700,
                       cursor: (generatingCode || !targetUserEmail) ? 'not-allowed' : 'pointer',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, whiteSpace: 'nowrap'
@@ -1973,9 +1973,9 @@ export default function DownloadScout() {
                   {adminGeneratedCode && (
                     <div style={{
                       flex: 1, minWidth: 200, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      background: 'var(--panel-bg, #020617)', border: '1px solid #10b981', borderRadius: 8, padding: '7px 12px'
+                      background: 'var(--panel-bg, #020617)', border: '1px solid #ffffff', borderRadius: 8, padding: '7px 12px'
                     }}>
-                      <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#34d399', fontSize: 15, letterSpacing: 1 }}>
+                      <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#e4e4e7', fontSize: 15, letterSpacing: 1 }}>
                         {adminGeneratedCode.code}
                       </span>
                       <button
@@ -1986,7 +1986,7 @@ export default function DownloadScout() {
                           setTimeout(() => setAdminCodeCopied(false), 2000);
                         }}
                         style={{
-                          background: adminCodeCopied ? '#10b981' : 'var(--card-bg, #232326)', border: 'none',
+                          background: adminCodeCopied ? '#ffffff' : 'var(--card-bg, #232326)', border: 'none',
                           borderRadius: 6, color: '#fff', fontSize: 11, fontWeight: 700, padding: '4px 10px', cursor: 'pointer'
                         }}
                       >
@@ -1996,7 +1996,7 @@ export default function DownloadScout() {
                   )}
                 </div>
                 {adminGeneratedCode && (
-                  <div style={{ fontSize: 11, color: '#34d399', marginTop: 8 }}>
+                  <div style={{ fontSize: 11, color: '#e4e4e7', marginTop: 8 }}>
                     ✓ Pre-bound to {adminGeneratedCode.target_user_name || adminGeneratedCode.owner_email}. Permanent (Never Expires • Unlimited Uses).
                   </div>
                 )}
@@ -2057,19 +2057,19 @@ export default function DownloadScout() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 14, marginBottom: 20 }}>
             {[
               { label: 'TOTAL SCOUT USERS', value: totalUsersCount, icon: Users, color: '#e4e4e7', sub: 'Registered & active' },
-              { label: 'ACTIVE USERS', value: activeUsersCount, icon: Activity, color: '#4ade80', sub: 'Seen last 24h' },
+              { label: 'ACTIVE USERS', value: activeUsersCount, icon: Activity, color: '#ffffff', sub: 'Seen last 24h' },
               {
                 label: 'ACTIVE DEVICES',
                 value: activeDevicesCount,
                 icon: Laptop,
-                color: '#22c55e',
+                color: '#ffffff',
                 sub: `${totalDevicesCount} nodes (Click to view fleet)`,
                 clickable: true,
                 onClick: () => setAdminView('fleet_nodes')
               },
               { label: 'CONTRIBUTING USERS', value: contributingUsersCount, icon: Sparkles, color: '#a1a1aa', sub: 'Added / enriched data' },
               { label: 'OFFLINE USERS', value: offlineUsersCount, icon: Clock, color: '#a1a1aa', sub: 'No signal > 7d' },
-              { label: 'UPDATE REQUIRED', value: updateReqCount, icon: AlertTriangle, color: '#f59e0b', sub: `Prod is v${latestProdVer}` },
+              { label: 'UPDATE REQUIRED', value: updateReqCount, icon: AlertTriangle, color: '#d4d4d8', sub: `Prod is v${latestProdVer}` },
               { label: 'REVOKED', value: revokedCount, icon: ShieldAlert, color: '#f43f5e', sub: 'Blocked or quarantined' },
             ].map((card, idx) => {
               const Icon = card.icon;
@@ -2078,7 +2078,7 @@ export default function DownloadScout() {
                   key={idx}
                   onClick={card.onClick}
                   style={{
-                    background: 'var(--card-bg, #121214)', border: card.clickable ? '1px solid rgba(34, 197, 94, 0.4)' : '1px solid var(--card-border, #232326)',
+                    background: 'var(--card-bg, #121214)', border: card.clickable ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid var(--card-border, #232326)',
                     borderRadius: 12, padding: '16px 18px',
                     display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden',
                     cursor: card.clickable ? 'pointer' : 'default',
@@ -2093,7 +2093,7 @@ export default function DownloadScout() {
                   <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary, #fafafa)', lineHeight: 1.1, marginBottom: 4 }}>
                     {card.value.toLocaleString()}
                   </div>
-                  <div style={{ fontSize: 11, color: card.clickable ? '#4ade80' : 'var(--text-muted, #71717a)', fontWeight: card.clickable ? 600 : 400 }}>
+                  <div style={{ fontSize: 11, color: card.clickable ? '#ffffff' : 'var(--text-muted, #71717a)', fontWeight: card.clickable ? 600 : 400 }}>
                     {card.sub}
                   </div>
                 </div>
@@ -2103,14 +2103,14 @@ export default function DownloadScout() {
 
           {/* Pipeline Impact Ribbon & Version Distribution */}
           <div style={{
-            background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(228, 228, 231, 0.05) 100%)',
-            border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: 12, padding: '16px 20px',
+            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(228, 228, 231, 0.05) 100%)',
+            border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: 12, padding: '16px 20px',
             display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 24, marginBottom: 20, alignItems: 'center'
           }}>
             {/* Left: Canonical Enrichment Stats */}
             <div style={{ display: 'flex', gap: 24, alignItems: 'center', flexWrap: 'wrap' }}>
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#10b981', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#ffffff', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
                   Pipeline Ingestion Impact
                 </div>
                 <div style={{ fontSize: 13, color: 'var(--text-secondary, #a1a1aa)' }}>
@@ -2121,7 +2121,7 @@ export default function DownloadScout() {
               <div style={{ display: 'flex', gap: 16 }}>
                 <div style={{ background: 'var(--panel-bg, #0b0b0c)', border: '1px solid var(--card-border, #232326)', borderRadius: 8, padding: '8px 14px' }}>
                   <div style={{ fontSize: 11, color: 'var(--text-muted, #a1a1aa)' }}>People Added</div>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: '#34d399' }}>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: '#e4e4e7' }}>
                     {canonicalCreated.toLocaleString()}
                   </div>
                 </div>
@@ -2156,9 +2156,9 @@ export default function DownloadScout() {
                     return (
                       <span key={ver} style={{
                         padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
-                        background: isLatest ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-                        color: isLatest ? '#34d399' : '#f59e0b',
-                        border: `1px solid ${isLatest ? 'rgba(16, 185, 129, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`
+                        background: isLatest ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.05)',
+                        color: isLatest ? '#e4e4e7' : '#d4d4d8',
+                        border: `1px solid ${isLatest ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.05)'}`
                       }}>
                         v{ver}: <b>{count}</b> {isLatest ? '✓ current' : '⚠ outdated'}
                       </span>
@@ -2333,13 +2333,13 @@ export default function DownloadScout() {
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                               <span style={{
                                 fontFamily: 'monospace', fontSize: 12,
-                                color: isOutdated ? '#f59e0b' : '#34d399', fontWeight: 600
+                                color: isOutdated ? '#d4d4d8' : '#e4e4e7', fontWeight: 600
                               }}>
                                 v{versionStr}
                               </span>
                               {isOutdated && (
                                 <span title={`Latest production release is v${latestProdVer}`}>
-                                  <AlertTriangle size={13} color="#f59e0b" />
+                                  <AlertTriangle size={13} color="#d4d4d8" />
                                 </span>
                               )}
                             </div>
@@ -2363,7 +2363,7 @@ export default function DownloadScout() {
                             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                               <span style={{
                                 padding: '2px 6px', borderRadius: 4, fontSize: 11,
-                                background: 'rgba(52, 211, 153, 0.15)', color: '#34d399', fontWeight: 600
+                                background: 'rgba(52, 211, 153, 0.15)', color: '#e4e4e7', fontWeight: 600
                               }}>
                                 +{newPeople} new
                               </span>

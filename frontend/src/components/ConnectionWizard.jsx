@@ -110,7 +110,7 @@ export default function ConnectionWizard({ onClose, onSuccess }) {
               name="Microsoft Outlook" 
               icon={<Mail size={20} />} 
               bgColor="rgba(0, 120, 212, 0.1)" 
-              textColor="#0078d4" 
+              textColor="#ffffff" 
               onClick={() => handleOAuthConnect('microsoft')} 
             />
             <ProviderCard 
@@ -124,7 +124,7 @@ export default function ConnectionWizard({ onClose, onSuccess }) {
               name="Yahoo Mail" 
               icon={<Mail size={20} />} 
               bgColor="rgba(96, 1, 210, 0.1)" 
-              textColor="#6001d2" 
+              textColor="#e4e4e7" 
               onClick={() => {
                 setProvider('yahoo');
                 setSmtpData(prev => ({ ...prev, smtp_host: 'smtp.mail.yahoo.com' }));

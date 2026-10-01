@@ -26,7 +26,7 @@ export default function ResetPassword() {
   };
 
   const strength = getPasswordStrength();
-  const strengthColors = ['#ef4444', '#ef4444', '#f59e0b', '#22c55e', '#22c55e'];
+  const strengthColors = ['#ef4444', '#ef4444', '#d4d4d8', '#ffffff', '#ffffff'];
   const strengthLabels = ['Weak', 'Weak', 'Fair', 'Good', 'Strong'];
 
   const handleSubmit = async (e) => {
@@ -108,19 +108,19 @@ export default function ResetPassword() {
           </div>
 
           <div className="mt-2 text-[12px] flex flex-col gap-1 text-[#888]">
-            <div style={{ color: password.length >= 8 ? '#22c55e' : '#888' }}>
+            <div style={{ color: password.length >= 8 ? '#ffffff' : '#888' }}>
               <i className={`ti ${password.length >= 8 ? 'ti-check' : 'ti-circle'} mr-1.5`} />
               At least 8 characters
             </div>
-            <div style={{ color: /[A-Z]/.test(password) ? '#22c55e' : '#888' }}>
+            <div style={{ color: /[A-Z]/.test(password) ? '#ffffff' : '#888' }}>
               <i className={`ti ${/[A-Z]/.test(password) ? 'ti-check' : 'ti-circle'} mr-1.5`} />
               At least 1 uppercase letter
             </div>
-            <div style={{ color: /[0-9]/.test(password) ? '#22c55e' : '#888' }}>
+            <div style={{ color: /[0-9]/.test(password) ? '#ffffff' : '#888' }}>
               <i className={`ti ${/[0-9]/.test(password) ? 'ti-check' : 'ti-circle'} mr-1.5`} />
               At least 1 number
             </div>
-            <div style={{ color: /[^A-Za-z0-9]/.test(password) ? '#22c55e' : '#888' }}>
+            <div style={{ color: /[^A-Za-z0-9]/.test(password) ? '#ffffff' : '#888' }}>
               <i className={`ti ${/[^A-Za-z0-9]/.test(password) ? 'ti-check' : 'ti-circle'} mr-1.5`} />
               At least 1 special character
             </div>

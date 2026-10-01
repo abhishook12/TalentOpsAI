@@ -21,12 +21,12 @@
   --ai-accent-subtle-glow: rgba(228, 228, 231, 0.12);
 
   /* Semantic Data Provenance Status */
-  --ai-status-verified: #10b981;
+  --ai-status-verified: #ffffff;
   --ai-status-observed: #d4d4d8;
-  --ai-status-inferred: #f59e0b;
-  --ai-status-derived: #d4d4d8;
-  --ai-status-predicted: #ec4899;
-  --ai-status-unknown: #a1a1aa;
+  --ai-status-inferred: #a1a1aa;
+  --ai-status-derived: #71717a;
+  --ai-status-predicted: #e4e4e7;
+  --ai-status-unknown: #52525b;
   --ai-status-danger: #ef4444;
 
   /* Typography */
@@ -47,9 +47,11 @@
   --ai-accent-indigo: #3f3f46;
   --ai-accent-gradient: linear-gradient(135deg, #18181b 0%, #3f3f46 50%, #71717a 100%);
   --ai-accent-subtle-glow: rgba(0, 0, 0, 0.05);
-  --ai-status-observed: #71717a;
-  --ai-status-derived: #71717a;
-  --ai-status-unknown: #a1a1aa;
+  --ai-status-verified: #09090b;
+  --ai-status-observed: #27272a;
+  --ai-status-derived: #52525b;
+  --ai-status-unknown: #71717a;
+  --ai-status-danger: #dc2626;
 }
 
 /* Subtle AI Ambient Glow */
@@ -91,75 +93,88 @@
 }
 
 .ai-badge-verified {
-  background: rgba(16, 185, 129, 0.12);
-  color: #34d399;
-  border-color: rgba(16, 185, 129, 0.28);
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.22);
 }
 
 .ai-badge-observed {
-  background: rgba(212, 212, 216, 0.12);
+  background: rgba(255, 255, 255, 0.06);
   color: #e4e4e7;
-  border-color: rgba(212, 212, 216, 0.28);
+  border-color: rgba(255, 255, 255, 0.14);
 }
 
 .ai-badge-inferred {
-  background: rgba(245, 158, 11, 0.12);
-  color: #fbbf24;
-  border-color: rgba(245, 158, 11, 0.28);
+  background: rgba(255, 255, 255, 0.05);
+  color: #d4d4d8;
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
 .ai-badge-derived {
-  background: rgba(161, 161, 170, 0.12);
+  background: rgba(255, 255, 255, 0.04);
   color: #a1a1aa;
-  border-color: rgba(161, 161, 170, 0.28);
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 .ai-badge-predicted {
-  background: rgba(236, 72, 153, 0.12);
-  color: #f472b6;
-  border-color: rgba(236, 72, 153, 0.28);
+  background: rgba(255, 255, 255, 0.08);
+  color: #f4f4f5;
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
 .ai-badge-unknown {
-  background: rgba(148, 163, 184, 0.12);
-  color: #a1a1aa;
-  border-color: rgba(148, 163, 184, 0.28);
+  background: rgba(255, 255, 255, 0.03);
+  color: #71717a;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.ai-badge-danger {
+  background: rgba(239, 68, 68, 0.14);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.32);
 }
 
 /* Light Mode Overrides for Crisp Typography on Light Backgrounds */
 [data-theme='light'] .ai-badge-verified,
 html[data-theme='light'] .ai-badge-verified {
-  background: rgba(16, 185, 129, 0.12);
-  color: #047857;
-  border-color: rgba(16, 185, 129, 0.3);
+  background: rgba(0, 0, 0, 0.08);
+  color: #09090b;
+  border-color: rgba(0, 0, 0, 0.2);
 }
 
 [data-theme='light'] .ai-badge-observed,
 html[data-theme='light'] .ai-badge-observed {
-  background: rgba(100, 116, 139, 0.1);
-  color: #334155;
-  border-color: rgba(100, 116, 139, 0.25);
+  background: rgba(0, 0, 0, 0.05);
+  color: #27272a;
+  border-color: rgba(0, 0, 0, 0.14);
 }
 
 [data-theme='light'] .ai-badge-inferred,
 html[data-theme='light'] .ai-badge-inferred {
-  background: rgba(245, 158, 11, 0.12);
-  color: #b45309;
-  border-color: rgba(245, 158, 11, 0.3);
+  background: rgba(0, 0, 0, 0.04);
+  color: #52525b;
+  border-color: rgba(0, 0, 0, 0.12);
 }
 
 [data-theme='light'] .ai-badge-derived,
 html[data-theme='light'] .ai-badge-derived {
-  background: rgba(99, 102, 241, 0.12);
-  color: #4338ca;
-  border-color: rgba(99, 102, 241, 0.28);
+  background: rgba(0, 0, 0, 0.04);
+  color: #71717a;
+  border-color: rgba(0, 0, 0, 0.1);
 }
 
 [data-theme='light'] .ai-badge-unknown,
 html[data-theme='light'] .ai-badge-unknown {
-  background: rgba(148, 163, 184, 0.15);
-  color: #475569;
-  border-color: rgba(148, 163, 184, 0.3);
+  background: rgba(0, 0, 0, 0.03);
+  color: #71717a;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme='light'] .ai-badge-danger,
+html[data-theme='light'] .ai-badge-danger {
+  background: rgba(220, 38, 38, 0.12);
+  color: #dc2626;
+  border-color: rgba(220, 38, 38, 0.3);
 }
 
 /* Subtle Animated Processing Indicator */

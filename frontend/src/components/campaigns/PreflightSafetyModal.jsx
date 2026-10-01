@@ -188,7 +188,7 @@ export default function PreflightSafetyModal({
                     className="h-full rounded-full transition-all duration-500"
                     style={{
                       width: `${deliverability_rate}%`,
-                      background: deliverability_rate >= 80 ? 'linear-gradient(90deg, #10b981, #34d399)' : deliverability_rate >= 50 ? 'linear-gradient(90deg, #f59e0b, #fbbf24)' : 'linear-gradient(90deg, #ef4444, #f87171)'
+                      background: deliverability_rate >= 80 ? 'linear-gradient(90deg, #ffffff, #d4d4d8)' : deliverability_rate >= 50 ? 'linear-gradient(90deg, #d4d4d8, #d4d4d8)' : 'linear-gradient(90deg, #ef4444, #f87171)'
                     }}
                   />
                 </div>

@@ -55,8 +55,8 @@ export default function AIActionPreviewModal({
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--border, #232326)', paddingBottom: '14px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-              <span style={{ fontSize: '12px', color: '#f59e0b' }}>⚠</span>
-              <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: '#f59e0b', letterSpacing: '0.08em' }}>
+              <span style={{ fontSize: '12px', color: '#d4d4d8' }}>⚠</span>
+              <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: '#d4d4d8', letterSpacing: '0.08em' }}>
                 AI Autonomy Safety Gate (Level 3 Required)
               </span>
               <EvidenceBadge status="INFERRED" confidence={0.95} size="sm" />
@@ -76,8 +76,8 @@ export default function AIActionPreviewModal({
         {/* Warning Banner */}
         <div
           style={{
-            backgroundColor: 'rgba(245, 158, 11, 0.08)',
-            border: '1px solid rgba(245, 158, 11, 0.25)',
+            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+            border: '1px solid rgba(255, 255, 255, 0.05)',
             borderRadius: '8px',
             padding: '12px 16px',
             fontSize: '12px',
@@ -93,7 +93,7 @@ export default function AIActionPreviewModal({
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
           <div style={{ background: 'var(--bg-base, #0b0b0c)', border: '1px solid var(--border, #232326)', borderRadius: '6px', padding: '10px', textAlign: 'center' }}>
             <div style={{ fontSize: '10px', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Records Added</div>
-            <div style={{ fontSize: '18px', fontWeight: 900, color: '#10b981', marginTop: '2px' }}>{summaryMetrics.added || 0}</div>
+            <div style={{ fontSize: '18px', fontWeight: 900, color: '#ffffff', marginTop: '2px' }}>{summaryMetrics.added || 0}</div>
           </div>
           <div style={{ background: 'var(--bg-base, #0b0b0c)', border: '1px solid var(--border, #232326)', borderRadius: '6px', padding: '10px', textAlign: 'center' }}>
             <div style={{ fontSize: '10px', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Updated</div>
@@ -160,7 +160,7 @@ export default function AIActionPreviewModal({
           <button
             onClick={onConfirm}
             style={{
-              background: 'linear-gradient(135deg, #10b981, #e4e4e7)',
+              background: 'linear-gradient(135deg, #ffffff, #d4d4d8)',
               border: 'none',
               borderRadius: '6px',
               padding: '8px 20px',
@@ -168,7 +168,7 @@ export default function AIActionPreviewModal({
               fontWeight: 700,
               color: '#fff',
               cursor: 'pointer',
-              boxShadow: '0 2px 10px rgba(16, 185, 129, 0.3)'
+              boxShadow: '0 2px 10px rgba(255, 255, 255, 0.08)'
             }}
           >
             ✓ Sign Off & Execute

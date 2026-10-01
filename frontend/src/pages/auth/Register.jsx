@@ -32,7 +32,7 @@ export default function Register() {
   }
 
   const strength = getPasswordStrength()
-  const strengthColors = ['#ef4444', '#ef4444', '#f59e0b', '#22c55e', '#22c55e']
+  const strengthColors = ['#ef4444', '#ef4444', '#d4d4d8', '#ffffff', '#ffffff']
   const strengthLabels = ['Weak', 'Weak', 'Fair', 'Good', 'Strong']
 
   const handleSubmit = async (e) => {
@@ -174,19 +174,19 @@ export default function Register() {
           ) : null}
 
           <div className="grid gap-1 mt-1 text-[13px]">
-            <div style={{ color: password.length >= 8 ? '#67e8a8' : 'rgba(255,255,255,0.46)' }}>
+            <div style={{ color: password.length >= 8 ? '#ffffff' : 'rgba(255,255,255,0.46)' }}>
               <i className={`ti ${password.length >= 8 ? 'ti-check' : 'ti-circle'}`} style={{ marginRight: 6 }} />
               At least 8 characters
             </div>
-            <div style={{ color: /[A-Z]/.test(password) ? '#67e8a8' : 'rgba(255,255,255,0.46)' }}>
+            <div style={{ color: /[A-Z]/.test(password) ? '#ffffff' : 'rgba(255,255,255,0.46)' }}>
               <i className={`ti ${/[A-Z]/.test(password) ? 'ti-check' : 'ti-circle'}`} style={{ marginRight: 6 }} />
               At least 1 uppercase letter
             </div>
-            <div style={{ color: /[0-9]/.test(password) ? '#67e8a8' : 'rgba(255,255,255,0.46)' }}>
+            <div style={{ color: /[0-9]/.test(password) ? '#ffffff' : 'rgba(255,255,255,0.46)' }}>
               <i className={`ti ${/[0-9]/.test(password) ? 'ti-check' : 'ti-circle'}`} style={{ marginRight: 6 }} />
               At least 1 number
             </div>
-            <div style={{ color: /[^A-Za-z0-9]/.test(password) ? '#67e8a8' : 'rgba(255,255,255,0.46)' }}>
+            <div style={{ color: /[^A-Za-z0-9]/.test(password) ? '#ffffff' : 'rgba(255,255,255,0.46)' }}>
               <i className={`ti ${/[^A-Za-z0-9]/.test(password) ? 'ti-check' : 'ti-circle'}`} style={{ marginRight: 6 }} />
               At least 1 special character
             </div>

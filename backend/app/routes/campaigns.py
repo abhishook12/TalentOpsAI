@@ -570,6 +570,23 @@ def api_cancel_campaign(campaign_id: int, db: Session = Depends(get_db), current
     cancel_campaign(campaign_id)
     return {"status": "cancelled", "campaign_id": campaign_id}
 
+@router.post("/{campaign_id}/toggle-auto-enroll")
+def api_toggle_auto_enroll(campaign_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    campaign = db.query(Campaign).filter(Campaign.user_id == current_user.id, Campaign.campaign_id == campaign_id).first()
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    meta = {}
+    if campaign.metadata_json:
+        try:
+            meta = json.loads(campaign.metadata_json)
+        except Exception:
+            meta = {}
+    current_state = meta.get("auto_enroll", False)
+    meta["auto_enroll"] = not current_state
+    campaign.metadata_json = json.dumps(meta)
+    db.commit()
+    return {"status": "success", "campaign_id": campaign_id, "auto_enroll": meta["auto_enroll"]}
+
 class PreviewRequest(BaseModel):
     recruiter_id: Optional[int] = None
     fallback_email: Optional[str] = None

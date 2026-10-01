@@ -223,8 +223,8 @@ export default function Dashboard() {
       {isAdmin && (
         <div
           style={{
-            background: 'linear-gradient(135deg, rgba(20, 184, 166, 0.08) 0%, rgba(13, 148, 136, 0.03) 100%)',
-            border: '1px solid rgba(20, 184, 166, 0.25)',
+            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)',
+            border: '1px solid rgba(255, 255, 255, 0.15)',
             borderRadius: 8,
             padding: '12px 18px',
             display: 'flex',
@@ -243,10 +243,10 @@ export default function Dashboard() {
                 </span>
                 <span style={{
                   fontSize: 10, fontWeight: 700,
-                  background: 'rgba(34, 197, 94, 0.15)',
-                  color: '#4ade80',
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  color: '#ffffff',
                   padding: '2px 8px', borderRadius: 12,
-                  border: '1px solid rgba(34, 197, 94, 0.3)'
+                  border: '1px solid rgba(255, 255, 255, 0.2)'
                 }}>
                   ● 24/7 ADMIN BACKGROUND JOB ACTIVE
                 </span>
@@ -259,12 +259,12 @@ export default function Dashboard() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Engine Status</div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#14b8a6' }}>Autonomous Background Crawl</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>Autonomous Background Crawl</div>
             </div>
             <button style={{
-              background: 'rgba(20, 184, 166, 0.15)',
-              border: '1px solid rgba(20, 184, 166, 0.3)',
-              color: '#14b8a6',
+              background: 'rgba(255, 255, 255, 0.08)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              color: '#ffffff',
               borderRadius: 6,
               padding: '6px 12px',
               fontSize: 11,

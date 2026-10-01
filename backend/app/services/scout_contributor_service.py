@@ -221,7 +221,7 @@ def get_all_scout_users_intelligence(
             lambda: db.query(ScoutRelease).filter(ScoutRelease.status == "ACTIVE").order_by(ScoutRelease.id.desc()).first(),
             None
         )
-        latest_ver = latest_rel.version if latest_rel else "2.8.3"
+        latest_ver = latest_rel.version if latest_rel else "2.12.0"
 
         # Subqueries for aggregation
         events_sq = db.query(
@@ -566,7 +566,7 @@ def get_detailed_scout_user_profile(db: Session, user_id: int) -> Dict[str, Any]
             "device_name": d.user_agent or "Windows Scout Workstation",
             "os": getattr(inst, "os_info", "Windows 11 64-bit"),
             "os_version": getattr(inst, "os_version", "Build 22631"),
-            "scout_version": d.extension_version or "2.7.0",
+            "scout_version": d.extension_version or "2.12.0",
             "channel": getattr(inst, "channel", "stable"),
             "health": health,
             "is_active": d.is_active,

@@ -69,8 +69,8 @@ export default function CompanyModal({ company, onClose, onSave }) {
       <div className="glass-panel modal-enter" style={{ width: '100%', maxWidth: 500, padding: '24px 32px', display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 8, background: '#185FA518', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <i className="ti ti-building-community" style={{ fontSize: 18, color: '#185FA5' }} />
+            <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255, 255, 255, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <i className="ti ti-building-community" style={{ fontSize: 18, color: 'var(--text-primary)' }} />
             </div>
             <div>
               <h2 style={{ fontSize: 16, fontWeight: 600 }}>{company ? 'Edit Company' : 'Add Company'}</h2>

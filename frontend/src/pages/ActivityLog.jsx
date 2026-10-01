@@ -138,7 +138,7 @@ export default function ActivityLog() {
                 <i className="ti ti-refresh text-[16px] text-on-surface-variant" />
               </button>
               <div className="flex items-center gap-1.5 rounded-full border border-outline-variant bg-surface-container-low px-2 py-1">
-                <span className="h-2 w-2 animate-pulse rounded-full bg-[#00eefc]"></span>
+                <span className="h-2 w-2 animate-pulse rounded-full bg-[#ffffff]"></span>
                 <span className="text-[10px] font-mono tracking-widest text-on-surface-variant">LIVE FEED</span>
               </div>
             </div>
@@ -279,7 +279,7 @@ export default function ActivityLog() {
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-2">
-                      <span className={`h-2 w-2 rounded-full ${v.session_id ? 'bg-[#00eefc]' : 'bg-outline-variant'}`} />
+                      <span className={`h-2 w-2 rounded-full ${v.session_id ? 'bg-[#ffffff]' : 'bg-outline-variant'}`} />
                       <span className="text-[11px] font-mono text-on-surface-variant tracking-wider uppercase">
                         SESSION {v.session_id ? v.session_id.slice(0,8) : 'ANON'}
                       </span>

@@ -113,7 +113,7 @@ export default function EnricherControlPanel() {
         <GhostButton 
           disabled={loading || actionLoading || state?.status === 'running'} 
           onClick={() => handleControl('start')}
-          style={{ borderColor: 'rgba(34, 197, 94, 0.3)', color: 'var(--success)' }}
+          style={{ borderColor: 'rgba(255, 255, 255, 0.08)', color: 'var(--success)' }}
         >
           <i className="ti ti-player-play" /> Start
         </GhostButton>
@@ -164,9 +164,9 @@ export default function EnricherControlPanel() {
               fontSize: 11,
               fontWeight: 700,
               cursor: 'pointer',
-              background: schedule.enabled ? 'rgba(239, 68, 68, 0.15)' : 'rgba(34, 197, 94, 0.15)',
+              background: schedule.enabled ? 'rgba(239, 68, 68, 0.15)' : 'rgba(255, 255, 255, 0.08)',
               color: schedule.enabled ? 'var(--danger)' : 'var(--success)',
-              border: `1px solid ${schedule.enabled ? 'rgba(239, 68, 68, 0.3)' : 'rgba(34, 197, 94, 0.3)'}`
+              border: `1px solid ${schedule.enabled ? 'rgba(239, 68, 68, 0.3)' : 'rgba(255, 255, 255, 0.08)'}`
             }}
           >
             {schedule.enabled ? 'Disable' : 'Enable'}

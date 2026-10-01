@@ -9,6 +9,7 @@ import {
   SectionHeader,
   ShellCard
 } from '../components/CommandCenter'
+import SourceProvenanceBadge from '../components/common/SourceProvenanceBadge'
 
 export default function ReviewQueue() {
   const queryClient = useQueryClient()
@@ -148,6 +149,7 @@ export default function ReviewQueue() {
                         )}
                       </span>
                       <Badge tone="danger">Flagged</Badge>
+                      <SourceProvenanceBadge source={r.data_source} size="xs" />
                     </div>
                     <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
                       {r.company_name || 'No Company'} • {r.state || 'Unknown State'}

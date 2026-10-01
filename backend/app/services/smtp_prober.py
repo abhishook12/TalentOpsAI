@@ -64,6 +64,11 @@ class SmtpProbeResult:
     probed_at: str
     mx_host: str
 
+    @property
+    def is_catch_all(self) -> bool:
+        """Alias for is_catchall attribute to ensure backward compatibility."""
+        return bool(getattr(self, "is_catchall", False))
+
 
 class SmtpProber:
     """

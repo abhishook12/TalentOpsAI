@@ -220,8 +220,8 @@ export default function UserManagement() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20, marginBottom: 32 }}>
         {[
           { label: 'Total Users', value: analytics?.total || 0, color: '#d4d4d8' },
-          { label: 'Active Users', value: analytics?.active || 0, color: '#10b981' },
-          { label: 'Inactive Users', value: analytics?.inactive || 0, color: '#f59e0b' },
+          { label: 'Active Users', value: analytics?.active || 0, color: '#ffffff' },
+          { label: 'Inactive Users', value: analytics?.inactive || 0, color: '#d4d4d8' },
           { label: 'New This Week', value: analytics?.new_last_7_days || 0, color: 'var(--brand)' }
         ].map((stat, i) => (
           <div key={i} style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 6, padding: 20, position: 'relative', overflow: 'hidden' }}>
@@ -267,8 +267,8 @@ export default function UserManagement() {
         {selectedUsers.length > 0 && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(212, 212, 216, 0.1)', padding: '0 16px', borderRadius: 8, border: '1px solid rgba(212, 212, 216, 0.3)' }}>
             <span style={{ fontSize: 13, fontWeight: 600, color: '#f4f4f5' }}>{selectedUsers.length} selected</span>
-            <button onClick={() => executeBulkAction('status', 'Active')} style={{ background: 'transparent', border: 'none', color: '#10b981', cursor: 'pointer', fontWeight: 600 }}>Activate</button>
-            <button onClick={() => executeBulkAction('status', 'Inactive')} style={{ background: 'transparent', border: 'none', color: '#f59e0b', cursor: 'pointer', fontWeight: 600 }}>Deactivate</button>
+            <button onClick={() => executeBulkAction('status', 'Active')} style={{ background: 'transparent', border: 'none', color: '#ffffff', cursor: 'pointer', fontWeight: 600 }}>Activate</button>
+            <button onClick={() => executeBulkAction('status', 'Inactive')} style={{ background: 'transparent', border: 'none', color: '#d4d4d8', cursor: 'pointer', fontWeight: 600 }}>Deactivate</button>
             <button onClick={() => executeBulkAction('delete')} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: 600 }}>Delete</button>
           </div>
         )}
@@ -312,7 +312,7 @@ export default function UserManagement() {
                         ) : (
                           <div style={{
                             width: 34, height: 34, borderRadius: '50%',
-                            background: 'linear-gradient(135deg, #d4d4d8, var(--brand, #10b981))',
+                            background: 'linear-gradient(135deg, #d4d4d8, var(--brand, #ffffff))',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             fontWeight: 700, fontSize: 13, color: '#000', flexShrink: 0
                           }}>
@@ -341,8 +341,8 @@ export default function UserManagement() {
                     <td style={{ padding: '16px' }}>
                       <span style={{ 
                         padding: '4px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600,
-                        background: user.status === 'Active' ? 'rgba(16, 185, 129, 0.1)' : user.status === 'Inactive' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                        color: user.status === 'Active' ? '#10b981' : user.status === 'Inactive' ? '#f59e0b' : '#ef4444'
+                        background: user.status === 'Active' ? 'rgba(255, 255, 255, 0.08)' : user.status === 'Inactive' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(239, 68, 68, 0.1)',
+                        color: user.status === 'Active' ? '#ffffff' : user.status === 'Inactive' ? '#d4d4d8' : '#ef4444'
                       }}>
                         {user.status || 'Unknown'}
                       </span>
@@ -392,7 +392,7 @@ export default function UserManagement() {
                   ) : (
                     <div style={{
                       width: 84, height: 84, borderRadius: '50%',
-                      background: 'linear-gradient(135deg, #d4d4d8, var(--brand, #10b981))',
+                      background: 'linear-gradient(135deg, #d4d4d8, var(--brand, #ffffff))',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontSize: 30, fontWeight: 800, color: '#000',
                       border: '2px solid var(--card-border, #3f3f46)'
@@ -476,7 +476,7 @@ export default function UserManagement() {
               <div style={{ marginBottom: 24 }}>
                 <h4 style={{ margin: '0 0 12px', fontSize: 12, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: 0.5 }}>Active Sessions ({userSessions.filter(s => s.is_active).length})</h4>
                 {userSessions.length > 0 ? userSessions.filter(s => s.is_active).map(session => (
-                  <div key={session.id} style={{ background: 'var(--bg-surface)', borderRadius: 8, padding: 12, fontSize: 12, marginBottom: 8, borderLeft: '3px solid #10b981' }}>
+                  <div key={session.id} style={{ background: 'var(--bg-surface)', borderRadius: 8, padding: 12, fontSize: 12, marginBottom: 8, borderLeft: '3px solid #ffffff' }}>
                     <div style={{ fontWeight: 600, marginBottom: 4 }}>{session.device || 'Unknown Device'} - {session.browser}</div>
                     <div style={{ color: 'var(--text-muted)' }}>IP: {session.ip_address}</div>
                   </div>
@@ -487,7 +487,7 @@ export default function UserManagement() {
                 <h4 style={{ margin: '0 0 12px', fontSize: 12, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: 0.5 }}>Recent Logins</h4>
                 {userHistory.length > 0 ? userHistory.slice(0, 5).map(hist => (
                   <div key={hist.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--card-border)', fontSize: 12 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: hist.status === 'success' ? '#10b981' : '#ef4444' }} />
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: hist.status === 'success' ? '#ffffff' : '#ef4444' }} />
                     <div style={{ flex: 1 }}>
                       <div>{hist.ip_address} ({hist.os})</div>
                       <div style={{ color: 'var(--text-muted)', fontSize: 11 }}>{new Date(hist.timestamp).toLocaleString()}</div>

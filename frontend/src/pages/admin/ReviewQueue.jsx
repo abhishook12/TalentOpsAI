@@ -83,7 +83,7 @@ export default function ReviewQueue({ setToast }) {
                 ) : (
                   <div style={{ color: 'var(--text-muted)' }}>None suggested</div>
                 )}
-                <div style={{ color: '#ffb020', fontSize: '0.85rem', marginTop: '0.5rem' }}>
+                <div style={{ color: '#d4d4d8', fontSize: '0.85rem', marginTop: '0.5rem' }}>
                   {item.review_reason}
                 </div>
               </div>
@@ -98,7 +98,7 @@ export default function ReviewQueue({ setToast }) {
                 </button>
                 <button 
                   className="btn-primary" 
-                  style={{ background: '#00ff66', color: '#000' }}
+                  style={{ background: '#ffffff', color: '#000' }}
                   onClick={() => handleAction(item.recruiter_id, 'approve')}
                 >
                   Approve

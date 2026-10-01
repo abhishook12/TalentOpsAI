@@ -134,8 +134,8 @@ const ConnectOutlookModal = ({ isOpen, onClose, onSuccess }) => {
           
           {status === 'idle' && (
             <>
-              <div className="w-16 h-16 bg-[#0078D4]/10 border border-[#0078D4]/30 rounded-full flex items-center justify-center mb-4">
-                <i className="ti ti-brand-windows text-3xl text-[#0078D4]"></i>
+              <div className="w-16 h-16 bg-[#ffffff]/10 border border-[#ffffff]/30 rounded-full flex items-center justify-center mb-4">
+                <i className="ti ti-brand-windows text-3xl text-[#ffffff]"></i>
               </div>
               <h3 className="text-lg font-medium text-[var(--text-primary)] mb-2">
                 Authorize TalentOps
@@ -147,7 +147,7 @@ const ConnectOutlookModal = ({ isOpen, onClose, onSuccess }) => {
               <button 
                 id="modal-connect-btn"
                 onClick={handleConnect}
-                className="w-full bg-[#0078D4] hover:bg-[#006cbd] text-[var(--text-primary)] px-4 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                className="w-full bg-[#ffffff] hover:bg-zinc-200 text-black px-4 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
               >
                 <i className="ti ti-brand-windows"></i>
                 Connect Outlook Account
@@ -157,7 +157,7 @@ const ConnectOutlookModal = ({ isOpen, onClose, onSuccess }) => {
 
           {status === 'verifying' && (
             <div className="py-8 flex flex-col items-center">
-              <div className="w-16 h-16 border-4 border-[var(--outline)] border-t-[#0078D4] rounded-full animate-spin mb-6"></div>
+              <div className="w-16 h-16 border-4 border-[var(--outline)] border-t-[#ffffff] rounded-full animate-spin mb-6"></div>
               <h3 className="text-lg font-medium text-[var(--text-primary)] mb-2">
                 Authenticating...
               </h3>

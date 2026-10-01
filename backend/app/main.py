@@ -458,6 +458,8 @@ from .routes import scout_install
 app.include_router(scout_install.router)
 from .routes import scout_learning
 app.include_router(scout_learning.router)
+from .routes import api_keys
+app.include_router(api_keys.router)
 
 
 
@@ -708,6 +710,39 @@ async def startup_event():
         except Exception as harvest_err:
             logger.warning("WebHarvest engine initialization warning: %s", harvest_err)
 
+        # Launch Offline Harvest Buffer + Render Watchdog
+        # Buffers all discoveries locally when Render is suspended (HTTP 503).
+        # The moment Render comes back online, auto-flushes everything to production.
+        try:
+            from .services.offline_buffer import offline_buffer
+            offline_buffer.start_watchdog()
+            pending = offline_buffer.get_pending_count()
+            if pending > 0:
+                logger.info(
+                    "Offline Harvest Buffer: %d profiles pending flush from previous session — "
+                    "watchdog will auto-flush when Render is confirmed online.", pending
+                )
+            else:
+                logger.info("Offline Harvest Buffer + Render Watchdog started (zero-data-loss mode active).")
+        except Exception as offline_err:
+            logger.warning("Offline Harvest Buffer initialization warning: %s", offline_err)
+
+        # Launch Sequence Scheduler (Multi-Touch Email Sequence Step Advancement)
+        try:
+            from .services.sequence_scheduler import sequence_scheduler
+            await sequence_scheduler.start()
+            logger.info("Sequence Scheduler started (multi-touch step advancement every 60s).")
+        except Exception as seq_err:
+            logger.warning("Sequence Scheduler initialization warning: %s", seq_err)
+
+        # Launch Perpetual Engine Immunity Sentinel (24/7 Auto-Revival & Anti-Starvation Guard)
+        try:
+            from .services.engine_immunity_sentinel import engine_immunity_sentinel
+            engine_immunity_sentinel.start()
+            logger.info("Perpetual Engine Immunity Sentinel active (24/7 self-healing and anti-stagnation).")
+        except Exception as sentinel_err:
+            logger.warning("Engine Immunity Sentinel initialization warning: %s", sentinel_err)
+
         logger.info("Background tasks initialized successfully.")
 
     asyncio.create_task(_async_background_init())
@@ -740,6 +775,11 @@ async def shutdown_event():
     except Exception:
         pass
     try:
+        from .services.offline_buffer import offline_buffer
+        offline_buffer.stop_watchdog()
+    except Exception:
+        pass
+    try:
         from .services.email_verification_engine import verification_engine
         verification_engine.stop()
     except Exception:
@@ -752,6 +792,12 @@ async def shutdown_event():
     try:
         from .services.enrichment_service import enrichment_engine
         enrichment_engine.stop()
+    except Exception:
+        pass
+    try:
+        from .services.sequence_scheduler import sequence_scheduler
+        import asyncio
+        asyncio.get_event_loop().run_until_complete(sequence_scheduler.stop())
     except Exception:
         pass
     

@@ -130,91 +130,100 @@ class DynamicScraperWorker:
                     ]
                 )
 
-                context = browser.new_context(
-                    user_agent=(
-                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                        "AppleWebKit/537.36 (KHTML, like Gecko) "
-                        "Chrome/126.0.0.0 Safari/537.36"
-                    ),
-                    viewport={"width": 1920, "height": 1080},
-                    locale="en-US",
-                    timezone_id="America/New_York",
-                    has_touch=False,
-                    is_mobile=False,
-                )
-
-                # Stealth initialization script: defeat bot detection heuristics
-                stealth_script = """
-                // 1. Mask navigator.webdriver
-                Object.defineProperty(navigator, 'webdriver', {
-                    get: () => undefined
-                });
-
-                // 2. Realistic window.chrome object
-                window.chrome = {
-                    app: { isInstalled: false },
-                    webstore: { onInstallStageChanged: {}, onDownloadProgress: {} },
-                    runtime: {
-                        PlatformOs: { MAC: 'mac', WIN: 'win', ANDROID: 'android', CROS: 'cros', LINUX: 'linux', OPENBSD: 'openbsd' },
-                        PlatformArch: { ARM: 'arm', X86_32: 'x86-32', X86_64: 'x86-64' },
-                        PlatformNaclArch: { ARM: 'arm', X86_32: 'x86-32', X86_64: 'x86-64' },
-                        RequestUpdateCheckStatus: { THROTTLED: 'throttled', NO_UPDATE: 'no_update', UPDATE_AVAILABLE: 'update_available' },
-                        OnInstalledReason: { INSTALL: 'install', UPDATE: 'update', CHROME_UPDATE: 'chrome_update', SHARED_MODULE_UPDATE: 'shared_module_update' },
-                        OnRestartRequiredReason: { APP_UPDATE: 'app_update', OS_UPDATE: 'os_update', PERIODIC: 'periodic' }
-                    }
-                };
-
-                // 3. Realistic permissions query
-                const originalQuery = window.navigator.permissions.query;
-                window.navigator.permissions.query = (parameters) => (
-                    parameters.name === 'notifications' ?
-                        Promise.resolve({ state: Notification.permission }) :
-                        originalQuery(parameters)
-                );
-
-                // 4. Realistic languages
-                Object.defineProperty(navigator, 'languages', {
-                    get: () => ['en-US', 'en']
-                });
-                """
-                context.add_init_script(stealth_script)
-
-                page = context.new_page()
-
-                # Speed optimization: block heavy images, fonts, media
-                def handle_route(route):
-                    req = route.request
-                    if req.resource_type in BLOCKED_RESOURCE_TYPES or any(
-                        req.url.lower().endswith(ext) for ext in BLOCKED_EXTENSIONS
-                    ):
-                        route.abort()
-                    else:
-                        route.continue_()
-
-                page.route("**/*", handle_route)
-
-                # Navigate and wait for DOM hydration
-                wait_state = "networkidle" if wait_network_idle else "domcontentloaded"
                 try:
-                    page.goto(url, wait_until=wait_state, timeout=timeout_ms)
-                except Exception:
-                    # Fallback to domcontentloaded if networkidle times out
+                    context = browser.new_context(
+                        user_agent=(
+                            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                            "AppleWebKit/537.36 (KHTML, like Gecko) "
+                            "Chrome/126.0.0.0 Safari/537.36"
+                        ),
+                        viewport={"width": 1920, "height": 1080},
+                        locale="en-US",
+                        timezone_id="America/New_York",
+                        has_touch=False,
+                        is_mobile=False,
+                    )
                     try:
-                        page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms // 2)
-                    except Exception as nav_err:
-                        logger.debug("[DYNAMIC_SCRAPER] Goto failed for %s: %s", url, nav_err)
+                        # Stealth initialization script: defeat bot detection heuristics
+                        stealth_script = """
+                        // 1. Mask navigator.webdriver
+                        Object.defineProperty(navigator, 'webdriver', {
+                            get: () => undefined
+                        });
 
-                # Brief settling delay for client JS event loops
-                page.wait_for_timeout(1000)
+                        // 2. Realistic window.chrome object
+                        window.chrome = {
+                            app: { isInstalled: false },
+                            webstore: { onInstallStageChanged: {}, onDownloadProgress: {} },
+                            runtime: {
+                                PlatformOs: { MAC: 'mac', WIN: 'win', ANDROID: 'android', CROS: 'cros', LINUX: 'linux', OPENBSD: 'openbsd' },
+                                PlatformArch: { ARM: 'arm', X86_32: 'x86-32', X86_64: 'x86-64' },
+                                PlatformNaclArch: { ARM: 'arm', X86_32: 'x86-32', X86_64: 'x86-64' },
+                                RequestUpdateCheckStatus: { THROTTLED: 'throttled', NO_UPDATE: 'no_update', UPDATE_AVAILABLE: 'update_available' },
+                                OnInstalledReason: { INSTALL: 'install', UPDATE: 'update', CHROME_UPDATE: 'chrome_update', SHARED_MODULE_UPDATE: 'shared_module_update' },
+                                OnRestartRequiredReason: { APP_UPDATE: 'app_update', OS_UPDATE: 'os_update', PERIODIC: 'periodic' }
+                            }
+                        };
 
-                rendered_content = page.content()
-                browser.close()
+                        // 3. Realistic permissions query
+                        const originalQuery = window.navigator.permissions.query;
+                        window.navigator.permissions.query = (parameters) => (
+                            parameters.name === 'notifications' ?
+                                Promise.resolve({ state: Notification.permission }) :
+                                originalQuery(parameters)
+                        );
 
-                logger.debug(
-                    "[DYNAMIC_SCRAPER] Headless render complete for %s (length=%d)",
-                    url, len(rendered_content)
-                )
-                return rendered_content
+                        // 4. Realistic languages
+                        Object.defineProperty(navigator, 'languages', {
+                            get: () => ['en-US', 'en']
+                        });
+                        """
+                        context.add_init_script(stealth_script)
+
+                        page = context.new_page()
+
+                        # Speed optimization: block heavy images, fonts, media
+                        def handle_route(route):
+                            req = route.request
+                            if req.resource_type in BLOCKED_RESOURCE_TYPES or any(
+                                req.url.lower().endswith(ext) for ext in BLOCKED_EXTENSIONS
+                            ):
+                                route.abort()
+                            else:
+                                route.continue_()
+
+                        page.route("**/*", handle_route)
+
+                        # Navigate and wait for DOM hydration
+                        wait_state = "networkidle" if wait_network_idle else "domcontentloaded"
+                        try:
+                            page.goto(url, wait_until=wait_state, timeout=timeout_ms)
+                        except Exception:
+                            # Fallback to domcontentloaded if networkidle times out
+                            try:
+                                page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms // 2)
+                            except Exception as nav_err:
+                                logger.debug("[DYNAMIC_SCRAPER] Goto failed for %s: %s", url, nav_err)
+
+                        # Brief settling delay for client JS event loops
+                        page.wait_for_timeout(1000)
+
+                        rendered_content = page.content()
+                        logger.debug(
+                            "[DYNAMIC_SCRAPER] Headless render complete for %s (length=%d)",
+                            url, len(rendered_content)
+                        )
+                        return rendered_content
+                    finally:
+                        try:
+                            context.close()
+                        except Exception:
+                            pass
+                finally:
+                    try:
+                        browser.close()
+                    except Exception:
+                        pass
 
         except Exception as e:
             logger.warning("[DYNAMIC_SCRAPER] Headless browser execution error for %s: %s", url, e)

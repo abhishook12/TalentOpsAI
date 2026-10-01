@@ -54,7 +54,7 @@ export default function DevicesTab() {
 
       <div className="glass-card" style={{ padding: 24, borderRadius: 6 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-          <div style={{ background: 'rgba(251, 146, 60, 0.1)', color: '#fb923c', padding: 8, borderRadius: 8 }}>
+          <div style={{ background: 'rgba(255, 255, 255, 0.05)', color: '#d4d4d8', padding: 8, borderRadius: 8 }}>
             <Smartphone size={20} />
           </div>
           <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--text-primary)' }}>Operating Systems</h2>

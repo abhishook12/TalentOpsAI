@@ -657,6 +657,60 @@ def create_candidate_if_valid(
     if has_verified_contact:
         quality_score += 20
 
+    # Dynamic Calibrated Field Confidences (Real Evidence Grounding)
+    # 1. Name Confidence
+    if cleaned_name:
+        if cleaned_name.lower() in wt_lower:
+            field_conf["name"] = 0.98
+        elif has_strong_profile and is_url_slug_compatible_with_name(canonical_url, cleaned_name):
+            field_conf["name"] = 0.95
+        elif has_employment:
+            field_conf["name"] = 0.88
+        elif has_partial_employment:
+            field_conf["name"] = 0.80
+        else:
+            field_conf["name"] = 0.65
+    else:
+        field_conf["name"] = 0.0
+
+    # 2. Company Confidence
+    if valid_company:
+        from scout_desktop.extractor.patterns import KNOWN_STANDALONE_CORPS
+        c_low = valid_company.lower()
+        if c_low in KNOWN_STANDALONE_CORPS or any(d in c_low for d in ["inc", "llc", "ltd", "corp", "corporation", "technologies", "solutions", "group", "partners", "consulting"]):
+            field_conf["company"] = 0.95
+        elif valid_email and c_low in valid_email.lower():
+            field_conf["company"] = 0.90
+        elif valid_title and (" at " in str(observation.get("raw_title", "")).lower() or " @ " in str(observation.get("raw_title", "")).lower()):
+            field_conf["company"] = 0.85
+        else:
+            field_conf["company"] = 0.65
+    else:
+        field_conf["company"] = 0.0
+
+    # 3. Title Confidence
+    if valid_title:
+        from scout_desktop.extractor.title_normalizer import classify_title
+        t_intel = classify_title(valid_title)
+        if t_intel and t_intel.get("canonical_title"):
+            field_conf["title"] = 0.92
+        elif any(p in valid_title.lower() for p in ["senior", "lead", "principal", "director", "head of", "vp", "chief", "manager", "staff", "associate"]):
+            field_conf["title"] = 0.88
+        else:
+            field_conf["title"] = 0.75
+    else:
+        field_conf["title"] = 0.0
+
+    # 4. Location Confidence
+    if valid_loc:
+        from scout_desktop.extractor.patterns import US_STATE_POSTAL_REGEX, NA_CITIES_SET
+        if US_STATE_POSTAL_REGEX.match(valid_loc) or any(c in valid_loc.lower() for c in NA_CITIES_SET):
+            field_conf["location"] = 0.95
+        else:
+            field_conf["location"] = 0.80
+    else:
+        field_conf["location"] = 0.0
+
     quality_score = min(100, quality_score)
 
     identity_conf = (
@@ -682,7 +736,7 @@ def create_candidate_if_valid(
         decisive_reasons.append("EMPLOYMENT_CORROBORATED: Professional title and company verified")
 
     # If the observation contained raw company text that had to be stripped as OCR noise/garbage,
-    # do NOT auto-promote to VERIFIED — route to REVIEW_REQUIRED for human inspection.
+    # do NOT auto-promote to VERIFIED — route to REVIEW_REQUIRED for human inspection if strong profile/employment exists.
     had_corrupted_company = bool(raw_comp and not valid_company)
 
     has_professional_signal = bool(has_partial_employment or has_verified_contact)
@@ -708,7 +762,7 @@ def create_candidate_if_valid(
         status = "VERIFIED"
         is_valid = True
         reasons.extend(decisive_reasons)
-    elif had_corrupted_company:
+    elif had_corrupted_company and (has_strong_profile or has_employment):
         decision = "REVIEW_REQUIRED"
         status = "REVIEW_REQUIRED"
         is_valid = False
@@ -720,7 +774,7 @@ def create_candidate_if_valid(
         is_valid = False
         reasons.append("TITLE_COMPANY_ONLY: Corroborated title & company found, but held in Review Queue awaiting stable profile URL or verified contact")
         reasons.append("MISSING_STABLE_ANCHOR: No canonical profile URL, verified email, or verified phone found")
-    elif quality_score >= 40 and (has_partial_employment or canonical_url or has_platform_context):
+    elif has_strong_profile and has_partial_employment:
         decision = "REVIEW_REQUIRED"
         status = "REVIEW_REQUIRED"
         is_valid = False

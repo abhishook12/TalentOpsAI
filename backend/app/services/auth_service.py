@@ -103,10 +103,57 @@ def get_current_user_from_request(request: Request, db: Session = Depends(get_db
     Extracts, decodes, and validates the JWT access token from the request.
     It checks cookies, the Authorization header, and query parameters.
     """
+    # === API Key Authentication (for external/headless access) ===
+    api_key_header = request.headers.get("X-API-Key") or request.headers.get("x-api-key")
+    if api_key_header:
+        import hashlib
+        from ..models.auth_models import APIKey
+        key_hash = hashlib.sha256(api_key_header.encode()).hexdigest()
+        # Check cache first
+        cached = _AUTH_CACHE.get(f"apikey:{key_hash}")
+        if cached and time.time() - cached[1] < _AUTH_CACHE_TTL:
+            try:
+                return db.merge(cached[0], load=False)
+            except Exception:
+                return cached[0]
+        api_key_record = db.query(APIKey).filter(
+            APIKey.key_hash == key_hash,
+            APIKey.is_active == True
+        ).first()
+        if api_key_record:
+            user = db.query(User).options(joinedload(User.role)).filter(User.id == api_key_record.user_id).first()
+            if user and user.status == "Active":
+                _AUTH_CACHE[f"apikey:{key_hash}"] = (user, time.time(), user.id)
+                return user
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid API key",
+            headers={"WWW-Authenticate": "ApiKey"},
+        )
+
     # 1. Check authorization header
     auth_header = request.headers.get("Authorization")
     if auth_header and auth_header.startswith("Bearer "):
         token = auth_header.split(" ")[1]
+        
+        # Check if Bearer token is actually an API key (starts with top_)
+        if token and token.startswith("top_"):
+            import hashlib
+            from ..models.auth_models import APIKey
+            key_hash = hashlib.sha256(token.encode()).hexdigest()
+            cached = _AUTH_CACHE.get(f"apikey:{key_hash}")
+            if cached and time.time() - cached[1] < _AUTH_CACHE_TTL:
+                try:
+                    return db.merge(cached[0], load=False)
+                except Exception:
+                    return cached[0]
+            api_key_record = db.query(APIKey).filter(APIKey.key_hash == key_hash, APIKey.is_active == True).first()
+            if api_key_record:
+                user = db.query(User).options(joinedload(User.role)).filter(User.id == api_key_record.user_id).first()
+                if user and user.status == "Active":
+                    _AUTH_CACHE[f"apikey:{key_hash}"] = (user, time.time(), user.id)
+                    return user
+            raise HTTPException(status_code=401, detail="Invalid API key")
     else:
         # 2. Check query parameter (often used in OAuth popups from frontend)
         token = request.query_params.get("token")

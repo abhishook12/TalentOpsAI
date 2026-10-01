@@ -7,6 +7,7 @@ import { CompanyIdentity } from '../components/CompanyIdentity'
 import { OutlookComposeOverlay } from '../components/OutlookComposeOverlay'
 import { useSessionState } from '../hooks/useSessionState'
 import SaveToTalentPoolModal from '../components/talent_pools/SaveToTalentPoolModal'
+import SourceProvenanceBadge from '../components/common/SourceProvenanceBadge'
 
 const STATES = [
   { abbr: 'AL', name: 'Alabama' }, { abbr: 'AK', name: 'Alaska' },
@@ -112,7 +113,12 @@ const RecruiterRow = memo(function RecruiterRow({ recruiter, isSelected, toggleS
           onChange={(e) => toggleSelection(recruiter, e.target.checked)}
         />
       </td>
-      <td style={{ padding: '10px 12px', fontWeight: 900, color: 'var(--text-primary)' }}>{recruiter.recruiter_name || ''}</td>
+      <td style={{ padding: '10px 12px', fontWeight: 900, color: 'var(--text-primary)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span>{recruiter.recruiter_name || ''}</span>
+          <SourceProvenanceBadge source={recruiter.data_source} size="xs" />
+        </div>
+      </td>
       <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>
         <EditableEmail 
           recruiter={recruiter} 
@@ -562,13 +568,13 @@ export default function Directory() {
                               rel="noopener noreferrer"
                               onClick={(e) => e.stopPropagation()}
                               title="LinkedIn Profile"
-                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, background: '#0a66c2', color: '#fff', borderRadius: 5, textDecoration: 'none', flexShrink: 0 }}
+                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, background: '#ffffff', color: '#fff', borderRadius: 5, textDecoration: 'none', flexShrink: 0 }}
                             >
                               <i className="ti ti-brand-linkedin" style={{ fontSize: 13 }} />
                             </a>
                           )}
                           {company.notes && (
-                            <div title="Has internal notes" style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 6px', background: 'rgba(245, 158, 11, 0.1)', color: '#fbbf24', borderRadius: 4, fontSize: 10, fontWeight: 600 }}>
+                            <div title="Has internal notes" style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 6px', background: 'rgba(255, 255, 255, 0.05)', color: '#d4d4d8', borderRadius: 4, fontSize: 10, fontWeight: 600 }}>
                               <i className="ti ti-file-description" /> Notes
                             </div>
                           )}
@@ -597,7 +603,7 @@ export default function Directory() {
                         } else if (count >= 50) {
                           return <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: 'rgba(212, 212, 216,0.15)', color: '#f4f4f5', border: '1px solid rgba(212, 212, 216,0.3)', whiteSpace: 'nowrap' }}>Mid-Market</span>;
                         } else {
-                          return <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: 'rgba(245,158,11,0.15)', color: '#fbbf24', border: '1px solid rgba(245,158,11,0.3)', whiteSpace: 'nowrap' }}>Boutique</span>;
+                          return <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: 'rgba(255, 255, 255, 0.05)', color: '#d4d4d8', border: '1px solid rgba(255, 255, 255, 0.05)', whiteSpace: 'nowrap' }}>Boutique</span>;
                         }
                       })()}
                     </div>
@@ -839,7 +845,7 @@ export default function Directory() {
           <button 
             onClick={() => setIsPoolModalOpen(true)}
             style={{
-              backgroundColor: '#f59e0b', color: '#000', border: 'none', padding: '6px 14px',
+              backgroundColor: '#d4d4d8', color: '#000', border: 'none', padding: '6px 14px',
               borderRadius: '6px', fontSize: '12px', fontWeight: 700, cursor: 'pointer'
             }}
           >
@@ -848,7 +854,7 @@ export default function Directory() {
           <button 
             onClick={() => setIsComposeOpen(true)}
             style={{
-              backgroundColor: '#0078d4', color: 'white', border: 'none', padding: '6px 14px',
+              backgroundColor: '#ffffff', color: 'white', border: 'none', padding: '6px 14px',
               borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer'
             }}
           >

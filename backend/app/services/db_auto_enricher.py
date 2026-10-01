@@ -233,6 +233,47 @@ class DatabaseAutoEnricher:
             except Exception as pq_err:
                 logger.warning("[DB_AUTO_ENRICHER] Parquet dual-sync warning: %s", pq_err)
 
+        # Pillar 5: Closed-Loop Autonomous Flywheel
+        # Auto-enroll newly promoted verified candidates into active auto-enroll campaigns
+        if results["promoted_new"] > 0:
+            try:
+                from .sequence_scheduler import auto_enroll_recruiter
+                auto_enrolled_total = 0
+                for rec_item in promoted_records_for_parquet:
+                    r_id = rec_item.get("recruiter_id")
+                    r_email = rec_item.get("email")
+                    r_name = rec_item.get("recruiter_name", "")
+                    r_title = rec_item.get("title", "")
+                    r_conf = rec_item.get("email_confidence", 0)
+                    if r_id and r_email and r_conf >= 70:
+                        enrolled = auto_enroll_recruiter(
+                            db=db,
+                            recruiter_id=r_id,
+                            email=r_email,
+                            name=r_name,
+                            title=r_title,
+                            confidence=r_conf,
+                            source="db_auto_enricher",
+                        )
+                        if enrolled:
+                            auto_enrolled_total += len(enrolled)
+                if auto_enrolled_total > 0:
+                    db.commit()
+                    logger.info("[DB_AUTO_ENRICHER] Flywheel Auto-Enrollment: Enrolled %d newly promoted recruiters into campaigns", auto_enrolled_total)
+            except Exception as auto_enroll_err:
+                logger.warning("[DB_AUTO_ENRICHER] Flywheel auto-enrollment warning: %s", auto_enroll_err)
+
+        # Frontier 2: Zero-Cost Multi-Surface Waterfall OSINT Enrichment
+        if results["promoted_new"] > 0:
+            try:
+                from .waterfall_osint_engine import waterfall_osint_engine
+                for rec_item in promoted_records_for_parquet:
+                    r_id = rec_item.get("recruiter_id")
+                    if r_id:
+                        waterfall_osint_engine.enrich_recruiter(db=db, recruiter_id=r_id)
+            except Exception as osint_err:
+                logger.debug("[DB_AUTO_ENRICHER] Waterfall OSINT hook notice: %s", osint_err)
+
         logger.info("[DB_AUTO_ENRICHER] Reconciled batch: %d processed, %d enriched, %d promoted",
                     results["processed_count"], results["enriched_existing"], results["promoted_new"])
         return results

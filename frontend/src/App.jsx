@@ -10,6 +10,7 @@ import { AnalyticsProvider } from './context/AnalyticsProvider'
 import { ThemeProvider, useTheme } from './context/ThemeContext'
 import { Toaster } from 'react-hot-toast'
 import NotificationCenter from './components/NotificationCenter'
+import { Bot, Settings, Sun, Moon, User as UserIcon } from 'lucide-react'
 
 const CommandPalette = lazy(() => import('./components/CommandPalette'))
 const AISidePanel = lazy(() => import('./components/ai/AISidePanel'))
@@ -28,7 +29,7 @@ function ThemeSwitcher() {
       title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
       aria-label="Toggle theme"
     >
-      <i className={`ti ${theme === 'dark' ? 'ti-sun' : 'ti-moon'}`} />
+      {theme === 'dark' ? <Sun size={19} /> : <Moon size={19} />}
     </button>
   )
 }
@@ -262,9 +263,9 @@ function AppShell() {
                   gap: 6,
                   padding: '3px 10px',
                   borderRadius: 999,
-                  background: 'rgba(16, 185, 129, 0.08)',
-                  border: '1px solid rgba(16, 185, 129, 0.22)',
-                  color: '#10b981',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.14)',
+                  color: '#ffffff',
                   fontSize: 11,
                   fontWeight: 600,
                   cursor: 'pointer',
@@ -275,11 +276,11 @@ function AppShell() {
                   width: 6,
                   height: 6,
                   borderRadius: '50%',
-                  background: '#10b981',
-                  boxShadow: '0 0 6px #10b981'
+                  background: '#ffffff',
+                  boxShadow: '0 0 6px rgba(255, 255, 255, 0.8)'
                 }} />
                 <span>System Online</span>
-                <span style={{ opacity: 0.5 }}>•</span>
+                <span style={{ opacity: 0.4 }}>•</span>
                 <span style={{ color: 'var(--text-secondary, #a1a1aa)', fontWeight: 500 }}>Telemetry</span>
               </button>
             </div>
@@ -289,20 +290,30 @@ function AppShell() {
                 className="cc-icon-button"
                 title="TalentOps Copilot"
                 aria-label="TalentOps Copilot"
-                style={{ padding: '8px', color: aiPanelOpen ? '#e4e4e7' : '#a1a1aa' }}
+                style={{ color: aiPanelOpen ? '#ffffff' : 'var(--text-secondary, #a1a1aa)' }}
                 onClick={() => setAiPanelOpen(!aiPanelOpen)}
               >
-                <i className="ti ti-bot" style={{ fontSize: '20px' }} />
+                <Bot size={19} />
               </button>
-              <button className="cc-icon-button" title="Settings" aria-label="Settings" style={{ padding: '8px' }} onClick={() => navigate({ to: '/settings' })}>
-                <i className="ti ti-settings" style={{ fontSize: '20px' }} />
+              <button
+                className="cc-icon-button"
+                title="Settings"
+                aria-label="Settings"
+                onClick={() => navigate({ to: '/settings' })}
+              >
+                <Settings size={19} />
               </button>
               <NotificationCenter />
-              <button className="cc-icon-button" title="Account" aria-label="Account" onClick={() => navigate({ to: isAdmin ? '/admin' : '/profile' })} style={{ padding: '4px' }}>
+              <button
+                className="cc-icon-button"
+                title="Account"
+                aria-label="Account"
+                onClick={() => navigate({ to: isAdmin ? '/admin' : '/profile' })}
+              >
                 {user?.avatar_url ? (
                   <img src={user.avatar_url} alt="Profile" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }} />
                 ) : (
-                  <i className="ti ti-user-circle" style={{ fontSize: '24px' }} />
+                  <UserIcon size={19} />
                 )}
               </button>
               <ThemeSwitcher />
@@ -337,17 +348,17 @@ function AppShell() {
                   borderRadius: '9999px',
                   fontSize: '11px',
                   fontWeight: 500,
-                  backgroundColor: dbConnected ? 'rgba(34, 197, 94, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                  color: dbConnected ? '#4ade80' : '#f87171',
-                  border: dbConnected ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)'
+                  backgroundColor: dbConnected ? 'rgba(255, 255, 255, 0.06)' : 'rgba(239, 68, 68, 0.12)',
+                  color: dbConnected ? '#ffffff' : '#ef4444',
+                  border: dbConnected ? '1px solid rgba(255, 255, 255, 0.16)' : '1px solid rgba(239, 68, 68, 0.35)'
                 }}>
                   <span style={{
                     width: 6,
                     height: 6,
                     borderRadius: '50%',
-                    backgroundColor: dbConnected ? '#4ade80' : '#f87171',
+                    backgroundColor: dbConnected ? '#ffffff' : '#ef4444',
                     display: 'inline-block',
-                    boxShadow: dbConnected ? '0 0 6px rgba(74, 222, 128, 0.6)' : 'none'
+                    boxShadow: dbConnected ? '0 0 6px rgba(255, 255, 255, 0.7)' : '0 0 6px rgba(239, 68, 68, 0.7)'
                   }} />
                   {dbConnected ? 'Database Connected' : 'Database Reconnecting...'}
                 </span>

@@ -189,11 +189,11 @@ export default function WebHarvestAdmin() {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
             <div style={{
-              background: 'linear-gradient(135deg, #14b8a6 0%, #0d9488 100%)',
+              background: 'linear-gradient(135deg, #ffffff 0%, #e4e4e7 100%)',
               width: 38, height: 38, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 4px 14px rgba(20, 184, 166, 0.35)'
+              boxShadow: '0 4px 14px rgba(255, 255, 255, 0.15)'
             }}>
-              <Globe size={22} color="#fff" />
+              <Globe size={22} color="#09090b" />
             </div>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -202,10 +202,10 @@ export default function WebHarvestAdmin() {
                 </h1>
                 <span style={{
                   fontSize: 10, fontWeight: 800,
-                  background: stats?.is_running ? 'rgba(34, 197, 94, 0.15)' : 'rgba(148, 163, 184, 0.15)',
-                  color: stats?.is_running ? '#4ade80' : '#94a3b8',
+                  background: stats?.is_running ? 'rgba(255, 255, 255, 0.1)' : 'rgba(148, 163, 184, 0.15)',
+                  color: stats?.is_running ? '#ffffff' : '#94a3b8',
                   padding: '3px 10px', borderRadius: 20,
-                  border: `1px solid ${stats?.is_running ? 'rgba(34, 197, 94, 0.3)' : 'rgba(148, 163, 184, 0.3)'}`
+                  border: `1px solid ${stats?.is_running ? 'rgba(255, 255, 255, 0.1)' : 'rgba(148, 163, 184, 0.3)'}`
                 }}>
                   {stats?.is_running ? '● FULLY AUTONOMOUS 24/7 BACKGROUND WORKER' : '○ IDLE'}
                 </span>
@@ -232,13 +232,13 @@ export default function WebHarvestAdmin() {
           </button>
 
           <div style={{
-            padding: '9px 16px', background: 'rgba(20, 184, 166, 0.12)',
-            border: '1px solid rgba(20, 184, 166, 0.3)', borderRadius: 8,
-            display: 'flex', alignItems: 'center', gap: 8, color: '#14b8a6', fontSize: 12, fontWeight: 700
+            padding: '9px 16px', background: 'rgba(255, 255, 255, 0.08)',
+            border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: 8,
+            display: 'flex', alignItems: 'center', gap: 8, color: '#ffffff', fontSize: 12, fontWeight: 700
           }}>
             <span style={{
-              width: 8, height: 8, borderRadius: '50%', background: '#14b8a6',
-              boxShadow: '0 0 8px #14b8a6', display: 'inline-block'
+              width: 8, height: 8, borderRadius: '50%', background: '#ffffff',
+              boxShadow: '0 0 8px #ffffff', display: 'inline-block'
             }} />
             <span>Autonomous Engine (Zero Manual Input)</span>
           </div>
@@ -246,10 +246,10 @@ export default function WebHarvestAdmin() {
       </header>
 
       {/* 1. Cycle health ticker */}
-      <div style={{ display: 'flex', gap: 20, padding: '10px 18px', background: 'rgba(20,184,166,0.06)', border: '1px solid rgba(20,184,166,0.15)', borderRadius: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 20, padding: '10px 18px', background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: stats?.is_running ? '#22c55e' : '#eab308', boxShadow: stats?.is_running ? '0 0 8px #22c55e' : 'none', display: 'inline-block' }} />
-          <span style={{ fontSize: 12, fontWeight: 700, color: stats?.is_running ? '#4ade80' : '#eab308' }}>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: stats?.is_running ? '#ffffff' : '#a1a1aa', boxShadow: stats?.is_running ? '0 0 8px #ffffff' : 'none', display: 'inline-block' }} />
+          <span style={{ fontSize: 12, fontWeight: 700, color: stats?.is_running ? '#ffffff' : '#a1a1aa' }}>
             {stats?.is_running ? 'ENGINE RUNNING' : 'ENGINE IDLE'}
           </span>
         </div>
@@ -260,10 +260,12 @@ export default function WebHarvestAdmin() {
         <span style={{ color: 'var(--card-border)', fontSize: 18 }}>|</span>
         <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
           Last cycle: <strong style={{ color: 'var(--text-primary)' }}>
-            {stats?.recent_actions?.[0]?.timestamp 
-              ? (() => { const diff = Math.floor((Date.now() - new Date(stats.recent_actions[0].timestamp)) / 1000); return diff < 60 ? `${diff}s ago` : `${Math.floor(diff / 60)}m ago`; })()
-              : 'Active'
-            }
+            {(() => {
+              const ts = stats?.stats?.last_cycle_at || stats?.recent_actions?.[0]?.timestamp;
+              if (!ts) return 'Active';
+              const diff = Math.max(0, Math.floor((Date.now() - new Date(ts)) / 1000));
+              return diff < 60 ? `${diff}s ago` : `${Math.floor(diff / 60)}m ago`;
+            })()}
           </strong>
         </span>
         <span style={{ color: 'var(--card-border)', fontSize: 18 }}>|</span>
@@ -271,7 +273,7 @@ export default function WebHarvestAdmin() {
           const disc = stats?.stats?.profiles_discovered ?? 0;
           const promoted = stats?.stats?.profiles_promoted ?? 0;
           const rate = disc > 0 ? Math.round((promoted / disc) * 100) : 0;
-          const color = rate >= 40 ? '#4ade80' : rate >= 20 ? '#f59e0b' : '#ef4444';
+          const color = rate >= 40 ? '#ffffff' : rate >= 20 ? '#d4d4d8' : '#ef4444';
           return (
             <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
               Promotion rate: <strong style={{ color }}>{rate}%</strong>
@@ -281,7 +283,7 @@ export default function WebHarvestAdmin() {
         })()}
         <span style={{ color: 'var(--card-border)', fontSize: 18 }}>|</span>
         <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-          Outreach ready: <strong style={{ color: '#4ade80' }}>
+          Outreach ready: <strong style={{ color: '#ffffff' }}>
             {reports.filter(r => r.smtp_verification?.smtp_status === 'DELIVERABLE').length}
           </strong>
         </span>
@@ -294,14 +296,14 @@ export default function WebHarvestAdmin() {
           <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)' }}>
             {stats?.stats?.harvest_cycles ?? 0}
           </div>
-          <span style={{ fontSize: 11, color: '#14b8a6', fontWeight: 600 }}>
+          <span style={{ fontSize: 11, color: '#ffffff', fontWeight: 600 }}>
             avg {Math.round((stats?.stats?.profiles_discovered ?? 0) / Math.max(stats?.stats?.harvest_cycles ?? 1, 1))} per cycle
           </span>
         </div>
 
         <div style={{ background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #232326)', borderRadius: 12, padding: '16px 14px' }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Profiles Discovered</div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: '#4ade80' }}>
+          <div style={{ fontSize: 24, fontWeight: 800, color: '#ffffff' }}>
             {stats?.stats?.profiles_discovered ?? 0}
           </div>
           <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
@@ -311,7 +313,7 @@ export default function WebHarvestAdmin() {
 
         <div style={{ background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #232326)', borderRadius: 12, padding: '16px 14px' }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Staged Intelligence</div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: '#2dd4bf' }}>
+          <div style={{ fontSize: 24, fontWeight: 800, color: '#d4d4d8' }}>
             {stats?.stats?.profiles_staged ?? 0}
           </div>
           <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
@@ -321,14 +323,14 @@ export default function WebHarvestAdmin() {
 
         <div style={{ background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #232326)', borderRadius: 12, padding: '16px 14px' }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Promoted to Catalog</div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: '#38bdf8' }}>
+          <div style={{ fontSize: 24, fontWeight: 800, color: '#e4e4e7' }}>
             {stats?.stats?.profiles_promoted ?? 0}
           </div>
           {(() => {
             const disc = stats?.stats?.profiles_discovered ?? 0;
             const promoted = stats?.stats?.profiles_promoted ?? 0;
             const rate = disc > 0 ? Math.round((promoted / disc) * 100) : 0;
-            const color = rate >= 40 ? '#4ade80' : rate >= 20 ? '#f59e0b' : '#ef4444';
+            const color = rate >= 40 ? '#ffffff' : rate >= 20 ? '#d4d4d8' : '#ef4444';
             return <span style={{ fontSize: 11, color, fontWeight: 600 }}>{rate}% promotion rate</span>;
           })()}
         </div>
@@ -353,7 +355,7 @@ export default function WebHarvestAdmin() {
             const disc = stats?.stats?.profiles_discovered ?? 0;
             const isLow = disc > 0 && (rejected / disc) < 0.05;
             return (
-              <span style={{ fontSize: 11, color: isLow ? '#f59e0b' : 'var(--text-muted)', fontWeight: isLow ? 600 : 400 }}>
+              <span style={{ fontSize: 11, color: isLow ? '#d4d4d8' : 'var(--text-muted)', fontWeight: isLow ? 600 : 400 }}>
                 {isLow ? '⚠ Low rejection rate' : 'Rejected at gate'}
               </span>
             );
@@ -376,21 +378,21 @@ export default function WebHarvestAdmin() {
             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 10 }}>Pipeline Funnel — Discovery → Staging → Catalog</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
               {/* Discovered bar */}
-              <div style={{ flex: disc, background: 'rgba(74,222,128,0.2)', border: '1px solid rgba(74,222,128,0.4)', borderRadius: '6px 0 0 6px', padding: '6px 10px', textAlign: 'center' }}>
-                <div style={{ fontSize: 13, fontWeight: 800, color: '#4ade80' }}>{disc}</div>
-                <div style={{ fontSize: 9, color: '#4ade80', fontWeight: 700 }}>DISCOVERED</div>
+              <div style={{ flex: disc, background: 'rgba(255, 255, 255, 0.1)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '6px 0 0 6px', padding: '6px 10px', textAlign: 'center' }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#ffffff' }}>{disc}</div>
+                <div style={{ fontSize: 9, color: '#ffffff', fontWeight: 700 }}>DISCOVERED</div>
               </div>
               <div style={{ fontSize: 10, color: 'var(--text-muted)', padding: '0 4px' }}>→</div>
               {/* Staged */}
-              <div style={{ flex: staged, background: 'rgba(45,212,191,0.2)', border: '1px solid rgba(45,212,191,0.4)', padding: '6px 10px', textAlign: 'center', minWidth: 60 }}>
-                <div style={{ fontSize: 13, fontWeight: 800, color: '#2dd4bf' }}>{staged}</div>
-                <div style={{ fontSize: 9, color: '#2dd4bf', fontWeight: 700 }}>STAGED ({stagedPct}%)</div>
+              <div style={{ flex: staged, background: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(255, 255, 255, 0.08)', padding: '6px 10px', textAlign: 'center', minWidth: 60 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#d4d4d8' }}>{staged}</div>
+                <div style={{ fontSize: 9, color: '#d4d4d8', fontWeight: 700 }}>STAGED ({stagedPct}%)</div>
               </div>
               <div style={{ fontSize: 10, color: 'var(--text-muted)', padding: '0 4px' }}>→</div>
               {/* Promoted */}
-              <div style={{ flex: promoted, background: 'rgba(56,189,248,0.2)', border: '1px solid rgba(56,189,248,0.4)', borderRadius: '0 6px 6px 0', padding: '6px 10px', textAlign: 'center', minWidth: 60 }}>
-                <div style={{ fontSize: 13, fontWeight: 800, color: '#38bdf8' }}>{promoted}</div>
-                <div style={{ fontSize: 9, color: '#38bdf8', fontWeight: 700 }}>PROMOTED ({promotedPct}%)</div>
+              <div style={{ flex: promoted, background: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '0 6px 6px 0', padding: '6px 10px', textAlign: 'center', minWidth: 60 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#e4e4e7' }}>{promoted}</div>
+                <div style={{ fontSize: 9, color: '#e4e4e7', fontWeight: 700 }}>PROMOTED ({promotedPct}%)</div>
               </div>
               {/* Drop-off reasons */}
               {(geoRejected + qualityRejected + dedupRejected) > 0 && (
@@ -426,16 +428,16 @@ export default function WebHarvestAdmin() {
         const pollLabel = (ob.current_poll_interval_sec ?? 30) >= 60
           ? `${Math.floor(ob.current_poll_interval_sec / 60)}m`
           : `${ob.current_poll_interval_sec ?? 30}s`;
-        const healthColor = isStable ? '#4ade80' : isWarming ? '#f59e0b' : '#ef4444';
-        const borderColor = isStable ? 'rgba(20,184,166,0.3)' : isWarming ? 'rgba(245,158,11,0.4)' : 'rgba(239,68,68,0.3)';
-        const bgColor = isStable ? 'rgba(20,184,166,0.05)' : isWarming ? 'rgba(245,158,11,0.06)' : 'rgba(239,68,68,0.07)';
+        const healthColor = isStable ? '#ffffff' : isWarming ? '#d4d4d8' : '#ef4444';
+        const borderColor = isStable ? 'rgba(255, 255, 255, 0.15)' : isWarming ? 'rgba(255, 255, 255, 0.06)' : 'rgba(239,68,68,0.3)';
+        const bgColor = isStable ? 'rgba(255, 255, 255, 0.06)' : isWarming ? 'rgba(255, 255, 255, 0.06)' : 'rgba(239,68,68,0.07)';
 
         return (
           <div style={{ background: bgColor, border: `1px solid ${borderColor}`, borderRadius: 14, padding: '14px 20px', marginBottom: 20 }}>
             {/* Header row */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                {isStable ? <CloudUpload size={18} color="#14b8a6" /> : isWarming ? <CloudUpload size={18} color="#f59e0b" /> : <CloudOff size={18} color="#ef4444" />}
+                {isStable ? <CloudUpload size={18} color="#ffffff" /> : isWarming ? <CloudUpload size={18} color="#d4d4d8" /> : <CloudOff size={18} color="#ef4444" />}
                 <div>
                   <div style={{ fontSize: 12, fontWeight: 800, color: healthColor }}>
                     {isStable
@@ -462,9 +464,9 @@ export default function WebHarvestAdmin() {
                   disabled={isFlushing || (ob.pending_buffered ?? 0) === 0}
                   style={{
                     padding: '7px 13px', borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                    background: (ob.pending_buffered ?? 0) === 0 ? 'rgba(148,163,184,0.08)' : 'rgba(20,184,166,0.15)',
-                    color: (ob.pending_buffered ?? 0) === 0 ? '#64748b' : '#14b8a6',
-                    border: `1px solid ${(ob.pending_buffered ?? 0) === 0 ? 'rgba(148,163,184,0.15)' : 'rgba(20,184,166,0.3)'}`,
+                    background: (ob.pending_buffered ?? 0) === 0 ? 'rgba(148,163,184,0.08)' : 'rgba(255, 255, 255, 0.1)',
+                    color: (ob.pending_buffered ?? 0) === 0 ? '#64748b' : '#ffffff',
+                    border: `1px solid ${(ob.pending_buffered ?? 0) === 0 ? 'rgba(148,163,184,0.15)' : 'rgba(255, 255, 255, 0.15)'}`,
                     display: 'flex', alignItems: 'center', gap: 5
                   }}
                 >
@@ -478,7 +480,7 @@ export default function WebHarvestAdmin() {
             <div style={{ display: 'flex', gap: 20, marginTop: 14, flexWrap: 'wrap', alignItems: 'flex-start' }}>
               {/* Pending */}
               <div style={{ textAlign: 'center', minWidth: 60 }}>
-                <div style={{ fontSize: 22, fontWeight: 800, color: (ob.pending_buffered ?? 0) > 0 ? '#f59e0b' : '#4ade80' }}>
+                <div style={{ fontSize: 22, fontWeight: 800, color: (ob.pending_buffered ?? 0) > 0 ? '#d4d4d8' : '#ffffff' }}>
                   {ob.pending_buffered ?? 0}
                 </div>
                 <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Pending</div>
@@ -486,7 +488,7 @@ export default function WebHarvestAdmin() {
 
               {/* In Retry Cooldown */}
               <div style={{ textAlign: 'center', minWidth: 60 }}>
-                <div style={{ fontSize: 22, fontWeight: 800, color: (ob.in_retry_cooldown ?? 0) > 0 ? '#a78bfa' : '#52525b' }}>
+                <div style={{ fontSize: 22, fontWeight: 800, color: (ob.in_retry_cooldown ?? 0) > 0 ? '#d4d4d8' : '#52525b' }}>
                   {ob.in_retry_cooldown ?? 0}
                 </div>
                 <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>In Backoff</div>
@@ -494,7 +496,7 @@ export default function WebHarvestAdmin() {
 
               {/* Flushed */}
               <div style={{ textAlign: 'center', minWidth: 60 }}>
-                <div style={{ fontSize: 22, fontWeight: 800, color: '#4ade80' }}>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#ffffff' }}>
                   {ob.total_flushed ?? 0}
                 </div>
                 <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Flushed</div>
@@ -518,7 +520,7 @@ export default function WebHarvestAdmin() {
 
               {/* Probe latency */}
               <div style={{ textAlign: 'center', minWidth: 60 }}>
-                <div style={{ fontSize: 14, fontWeight: 800, color: (ob.render_probe_ms ?? 0) > 2000 ? '#f59e0b' : '#94a3b8' }}>
+                <div style={{ fontSize: 14, fontWeight: 800, color: (ob.render_probe_ms ?? 0) > 2000 ? '#d4d4d8' : '#94a3b8' }}>
                   {ob.render_probe_ms > 0 ? `${ob.render_probe_ms}ms` : '—'}
                 </div>
                 <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Probe RT</div>
@@ -547,7 +549,7 @@ export default function WebHarvestAdmin() {
                 <>
                   <div style={{ width: 1, background: 'var(--card-border)', alignSelf: 'stretch' }} />
                   <div style={{ textAlign: 'center', minWidth: 80 }}>
-                    <div style={{ fontSize: 13, fontWeight: 800, color: '#f59e0b', fontVariantNumeric: 'tabular-nums' }}>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: '#d4d4d8', fontVariantNumeric: 'tabular-nums' }}>
                       {countdown}
                     </div>
                     <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>
@@ -565,9 +567,9 @@ export default function WebHarvestAdmin() {
                 {(ob.tier_breakdown ?? []).map(t => (
                   <span key={t.tier} style={{
                     fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20,
-                    background: t.tier === 1 ? 'rgba(251,191,36,0.15)' : t.tier === 2 ? 'rgba(56,189,248,0.12)' : 'rgba(148,163,184,0.1)',
-                    color: t.tier === 1 ? '#fbbf24' : t.tier === 2 ? '#38bdf8' : '#94a3b8',
-                    border: `1px solid ${t.tier === 1 ? 'rgba(251,191,36,0.3)' : t.tier === 2 ? 'rgba(56,189,248,0.2)' : 'rgba(148,163,184,0.15)'}`,
+                    background: t.tier === 1 ? 'rgba(251,191,36,0.15)' : t.tier === 2 ? 'rgba(255, 255, 255, 0.08)' : 'rgba(148,163,184,0.1)',
+                    color: t.tier === 1 ? '#d4d4d8' : t.tier === 2 ? '#e4e4e7' : '#94a3b8',
+                    border: `1px solid ${t.tier === 1 ? 'rgba(251,191,36,0.3)' : t.tier === 2 ? 'rgba(255, 255, 255, 0.08)' : 'rgba(148,163,184,0.15)'}`,
                   }}>
                     {t.tier === 1 ? '🔴 Tier 1 (Scout)' : t.tier === 2 ? '🟡 Tier 2 (X-Ray)' : '⚪ Tier 3 (Web)'}: {t.count}
                   </span>
@@ -577,7 +579,7 @@ export default function WebHarvestAdmin() {
 
             {/* Flush feedback */}
             {flushResult && (
-              <div style={{ fontSize: 11, fontWeight: 600, marginTop: 8, color: flushResult.success ? '#4ade80' : '#f87171' }}>
+              <div style={{ fontSize: 11, fontWeight: 600, marginTop: 8, color: flushResult.success ? '#ffffff' : '#f87171' }}>
                 {flushResult.message}
               </div>
             )}
@@ -588,17 +590,17 @@ export default function WebHarvestAdmin() {
       {/* Multi-Source Intelligence Ingestion Breakdown — upgraded */}
       <div style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 14, padding: '16px 20px', marginBottom: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-          <Layers size={16} color="#38bdf8" />
+          <Layers size={16} color="#e4e4e7" />
           <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Multi-Source Intelligence Breakdown</span>
           <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)' }}>Total Staged: <strong style={{ color: 'var(--text-primary)' }}>{multiSourceStats?.total_staged_observations ?? 0}</strong></span>
         </div>
         {(() => {
           const total = Math.max(multiSourceStats?.total_staged_observations ?? 1, 1);
           const sources = [
-            { label: 'Search X-Ray Dorking', key: 'search_xray', count: multiSourceStats?.source_breakdown?.search_xray ?? 0, color: '#38bdf8', icon: '🔍' },
-            { label: 'WebHarvest Spider', key: 'web_harvest', count: multiSourceStats?.source_breakdown?.web_harvest ?? 0, color: '#4ade80', icon: '🕷' },
-            { label: 'Email Signature Flywheel', key: 'email_signature', count: multiSourceStats?.source_breakdown?.email_signature_flywheel ?? 0, color: '#c084fc', icon: '✉️' },
-            { label: 'ATS Boards', key: 'ats_boards', count: multiSourceStats?.source_breakdown?.ats_job_board ?? 0, color: '#fbbf24', icon: '📋', warnIfZero: true },
+            { label: 'Search X-Ray Dorking', key: 'search_xray', count: multiSourceStats?.source_breakdown?.search_xray ?? 0, color: '#e4e4e7', icon: '🔍' },
+            { label: 'WebHarvest Spider', key: 'web_harvest', count: multiSourceStats?.source_breakdown?.web_harvest ?? 0, color: '#ffffff', icon: '🕷' },
+            { label: 'Email Signature Flywheel', key: 'email_signature', count: multiSourceStats?.source_breakdown?.email_signature_flywheel ?? 0, color: '#ffffff', icon: '✉️' },
+            { label: 'ATS Boards', key: 'ats_boards', count: multiSourceStats?.source_breakdown?.ats_job_board ?? 0, color: '#d4d4d8', icon: '📋', warnIfZero: true },
           ];
           return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -677,7 +679,7 @@ export default function WebHarvestAdmin() {
                 type="submit"
                 disabled={isQueueing || !priorityTargetInput.trim()}
                 style={{
-                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: '#fff',
+                  background: 'linear-gradient(135deg, #ffffff 0%, #e4e4e7 100%)', color: '#fff',
                   border: 'none', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 700,
                   cursor: (isQueueing || !priorityTargetInput.trim()) ? 'not-allowed' : 'pointer',
                   display: 'flex', alignItems: 'center', gap: 6
@@ -695,8 +697,8 @@ export default function WebHarvestAdmin() {
           {stats?.priority_targets?.length > 0 ? (
             stats.priority_targets.map((pt, i) => (
               <span key={i} style={{
-                background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)',
-                color: '#34d399', fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6,
+                background: 'rgba(255, 255, 255, 0.1)', border: '1px solid rgba(255, 255, 255, 0.1)',
+                color: '#e4e4e7', fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6,
                 display: 'inline-flex', alignItems: 'center', gap: 4
               }}>
                 <span>⚡ {pt.company_name}</span>
@@ -720,15 +722,15 @@ export default function WebHarvestAdmin() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{
               width: 8, height: 8, borderRadius: '50%',
-              background: stats?.is_running ? '#22c55e' : '#eab308',
-              boxShadow: stats?.is_running ? '0 0 10px #22c55e' : 'none'
+              background: stats?.is_running ? '#ffffff' : '#a1a1aa',
+              boxShadow: stats?.is_running ? '0 0 10px #ffffff' : 'none'
             }} />
             <h3 style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-primary)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Live Autonomous Crawler Radar & Telemetry Stream
             </h3>
             <span style={{
               fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 12,
-              background: 'rgba(20, 184, 166, 0.12)', color: '#14b8a6', border: '1px solid rgba(20, 184, 166, 0.25)'
+              background: 'rgba(255, 255, 255, 0.08)', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.12)'
             }}>
               {stats?.is_running ? '24/7 ACTIVE BACKGROUND WORKER' : 'INITIALIZING'}
             </span>
@@ -740,22 +742,22 @@ export default function WebHarvestAdmin() {
               const cycles = stats?.stats?.harvest_cycles ?? 1;
               const perCycle = cycles > 0 ? (discovered / cycles).toFixed(1) : 0;
               const healthScore = perCycle >= 10 ? 'EXCELLENT' : perCycle >= 5 ? 'GOOD' : perCycle >= 2 ? 'FAIR' : 'LOW';
-              const healthColor = perCycle >= 10 ? '#4ade80' : perCycle >= 5 ? '#2dd4bf' : perCycle >= 2 ? '#f59e0b' : '#ef4444';
+              const healthColor = perCycle >= 10 ? '#ffffff' : perCycle >= 5 ? '#d4d4d8' : perCycle >= 2 ? '#d4d4d8' : '#ef4444';
               return (
                 <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                   Yield: <strong style={{ color: healthColor }}>{perCycle}/cycle</strong>
-                  <span style={{ marginLeft: 6, fontSize: 10, padding: '1px 6px', borderRadius: 4, background: `rgba(${healthColor === '#4ade80' ? '74,222,128' : healthColor === '#2dd4bf' ? '45,212,191' : healthColor === '#f59e0b' ? '245,158,11' : '239,68,68'},0.12)`, color: healthColor }}>{healthScore}</span>
+                  <span style={{ marginLeft: 6, fontSize: 10, padding: '1px 6px', borderRadius: 4, background: `rgba(${healthColor === '#ffffff' ? '74,222,128' : healthColor === '#d4d4d8' ? '45,212,191' : healthColor === '#d4d4d8' ? '245,158,11' : '239,68,68'},0.12)`, color: healthColor }}>{healthScore}</span>
                 </div>
               );
             })()}
             <span style={{ color: 'var(--card-border)' }}>|</span>
             <div>
               <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Queued Targets:</span>{' '}
-              <strong style={{ color: '#38bdf8' }}>{stats?.stats?.domains_queued ?? 0}</strong>
+              <strong style={{ color: '#e4e4e7' }}>{stats?.stats?.domains_queued ?? 0}</strong>
             </div>
             <div>
               <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Active Crawled:</span>{' '}
-              <strong style={{ color: '#4ade80' }}>{stats?.stats?.domains_scraped ?? 0}</strong>
+              <strong style={{ color: '#ffffff' }}>{stats?.stats?.domains_scraped ?? 0}</strong>
             </div>
             <div>
               <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Cooldown:</span>{' '}
@@ -774,9 +776,9 @@ export default function WebHarvestAdmin() {
               {stats.recent_actions.slice(0, 10).map((act, idx) => {
                 const text = (act.action || '').toLowerCase();
                 let color = 'var(--text-secondary)';
-                if (text.includes('xray') || text.includes('dorking')) color = '#38bdf8';
-                else if (text.includes('spider')) color = '#4ade80';
-                else if (text.includes('completed')) color = '#2dd4bf';
+                if (text.includes('xray') || text.includes('dorking')) color = '#e4e4e7';
+                else if (text.includes('spider')) color = '#ffffff';
+                else if (text.includes('completed')) color = '#d4d4d8';
                 else if (text.includes('error') || text.includes('failed')) color = '#ef4444';
 
                 return (
@@ -796,7 +798,7 @@ export default function WebHarvestAdmin() {
             </div>
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)', fontSize: 12 }}>
-              <Clock size={14} color="#14b8a6" />
+              <Clock size={14} color="#ffffff" />
               <span>Autonomous engine active — background crawler is executing live scrapes and email permutation probes.</span>
             </div>
           )}
@@ -885,8 +887,8 @@ export default function WebHarvestAdmin() {
                 {filteredReports.map((row, idx) => {
                   const isCommitted = row.processing_status === 'committed';
                   const isPending = row.processing_status === 'pending';
-                  const badgeColor = isCommitted ? '#4ade80' : isPending ? '#38bdf8' : '#f59e0b';
-                  const badgeBg = isCommitted ? 'rgba(34, 197, 94, 0.15)' : isPending ? 'rgba(56, 189, 248, 0.15)' : 'rgba(245, 158, 11, 0.15)';
+                  const badgeColor = isCommitted ? '#ffffff' : isPending ? '#e4e4e7' : '#d4d4d8';
+                  const badgeBg = isCommitted ? 'rgba(255, 255, 255, 0.1)' : isPending ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.06)';
                   const geo = row.geo_region || 'NA';
 
                   return (
@@ -920,8 +922,8 @@ export default function WebHarvestAdmin() {
                         </div>
                         <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
                           <span style={{
-                            display: 'inline-block', fontSize: 10, background: 'rgba(20, 184, 166, 0.12)',
-                            color: '#14b8a6', padding: '1px 6px', borderRadius: 4
+                            display: 'inline-block', fontSize: 10, background: 'rgba(255, 255, 255, 0.08)',
+                            color: '#ffffff', padding: '1px 6px', borderRadius: 4
                           }}>
                             {row.source_domain}
                           </span>
@@ -942,22 +944,38 @@ export default function WebHarvestAdmin() {
                               <span>✉️</span>
                               <span>{row.email}</span>
                             </div>
-                            {row.smtp_verification?.smtp_status === 'DELIVERABLE' && (
+                            {(row.smtp_verification?.smtp_status === 'DELIVERABLE' || row.smtp_verification?.smtp_status === 'SMTP_VERIFIED') && (
                               <div style={{
                                 display: 'inline-flex', alignItems: 'center', gap: 4,
-                                fontSize: 9, fontWeight: 700, color: '#4ade80',
-                                background: 'rgba(34, 197, 94, 0.12)', border: '1px solid rgba(34, 197, 94, 0.25)',
+                                fontSize: 9, fontWeight: 700, color: '#34d399',
+                                background: 'rgba(52, 211, 153, 0.12)', border: '1px solid rgba(52, 211, 153, 0.25)',
                                 padding: '1px 6px', borderRadius: 4, marginTop: 3
                               }}>
-                                <ShieldCheck size={10} color="#4ade80" />
+                                <ShieldCheck size={10} color="#34d399" />
                                 <span>SMTP Handshake 250 OK (Mailbox Active)</span>
+                                {row.smtp_verification?.provider && row.smtp_verification.provider !== 'Unknown' && (
+                                  <span style={{ opacity: 0.75, fontSize: 8 }}>• {row.smtp_verification.provider}</span>
+                                )}
+                              </div>
+                            )}
+                            {row.smtp_verification?.smtp_status === 'PATTERN_MATCHED' && (
+                              <div style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 4,
+                                fontSize: 9, fontWeight: 700, color: '#67e8f9',
+                                background: 'rgba(6, 182, 212, 0.12)', border: '1px solid rgba(6, 182, 212, 0.25)',
+                                padding: '1px 6px', borderRadius: 4, marginTop: 3
+                              }}>
+                                <span>🎯 Verified Company Pattern ({row.smtp_verification?.pattern || 'corporate'})</span>
+                                {row.smtp_verification?.provider && row.smtp_verification.provider !== 'Unknown' && (
+                                  <span style={{ opacity: 0.75, fontSize: 8 }}>• {row.smtp_verification.provider}</span>
+                                )}
                               </div>
                             )}
                             {row.smtp_verification?.smtp_status === 'CATCH_ALL' && (
                               <div style={{
                                 display: 'inline-flex', alignItems: 'center', gap: 4,
-                                fontSize: 9, fontWeight: 700, color: '#f59e0b',
-                                background: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.25)',
+                                fontSize: 9, fontWeight: 700, color: '#fbbf24',
+                                background: 'rgba(251, 191, 36, 0.12)', border: '1px solid rgba(251, 191, 36, 0.25)',
                                 padding: '1px 6px', borderRadius: 4, marginTop: 3
                               }}>
                                 <span>● Catch-All Domain (MX Active)</span>
@@ -966,11 +984,31 @@ export default function WebHarvestAdmin() {
                             {row.smtp_verification?.smtp_status === 'MX_VERIFIED' && (
                               <div style={{
                                 display: 'inline-flex', alignItems: 'center', gap: 4,
-                                fontSize: 9, fontWeight: 700, color: '#38bdf8',
-                                background: 'rgba(56, 189, 248, 0.12)', border: '1px solid rgba(56, 189, 248, 0.25)',
+                                fontSize: 9, fontWeight: 700, color: '#e4e4e7',
+                                background: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(255, 255, 255, 0.08)',
                                 padding: '1px 6px', borderRadius: 4, marginTop: 3
                               }}>
                                 <span>● DNS MX Verified</span>
+                              </div>
+                            )}
+                            {(row.smtp_verification?.smtp_status === 'INFERRED_UNVERIFIED' || (!row.smtp_verification && row.email)) && (
+                              <div style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 4,
+                                fontSize: 9, fontWeight: 600, color: '#a1a1aa',
+                                background: 'rgba(255, 255, 255, 0.05)', border: '1px dashed rgba(255, 255, 255, 0.15)',
+                                padding: '1px 6px', borderRadius: 4, marginTop: 3
+                              }}>
+                                <span>⚠️ Inferred Pattern (Deliverability Unconfirmed)</span>
+                              </div>
+                            )}
+                            {row.smtp_verification?.smtp_status === 'MX_UNREACHABLE' && (
+                              <div style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 4,
+                                fontSize: 9, fontWeight: 600, color: '#f87171',
+                                background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.25)',
+                                padding: '1px 6px', borderRadius: 4, marginTop: 3
+                              }}>
+                                <span>❌ Domain Cannot Receive Mail</span>
                               </div>
                             )}
                           </>
@@ -987,7 +1025,7 @@ export default function WebHarvestAdmin() {
                             href={row.linkedin}
                             target="_blank"
                             rel="noreferrer"
-                            style={{ color: '#38bdf8', fontSize: 10, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 2, marginTop: 2 }}
+                            style={{ color: '#e4e4e7', fontSize: 10, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 2, marginTop: 2 }}
                           >
                             LinkedIn <ArrowUpRight size={10} />
                           </a>
@@ -1033,12 +1071,12 @@ export default function WebHarvestAdmin() {
                         <div style={{ marginTop: 6 }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
                             <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>Quality</span>
-                            <span style={{ fontSize: 10, fontWeight: 700, color: (row.quality_score ?? 0) >= 80 ? '#4ade80' : (row.quality_score ?? 0) >= 60 ? '#f59e0b' : '#ef4444' }}>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: (row.quality_score ?? 0) >= 80 ? '#ffffff' : (row.quality_score ?? 0) >= 60 ? '#d4d4d8' : '#ef4444' }}>
                               {row.quality_score ?? 0}%
                             </span>
                           </div>
                           <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 4, height: 3 }}>
-                            <div style={{ width: `${row.quality_score ?? 0}%`, height: '100%', background: (row.quality_score ?? 0) >= 80 ? '#4ade80' : (row.quality_score ?? 0) >= 60 ? '#f59e0b' : '#ef4444', borderRadius: 4 }} />
+                            <div style={{ width: `${row.quality_score ?? 0}%`, height: '100%', background: (row.quality_score ?? 0) >= 80 ? '#ffffff' : (row.quality_score ?? 0) >= 60 ? '#d4d4d8' : '#ef4444', borderRadius: 4 }} />
                           </div>
                         </div>
                       </td>
@@ -1058,7 +1096,7 @@ export default function WebHarvestAdmin() {
                             {row.smtp_verification?.smtp_status === 'DELIVERABLE' && (
                               <span style={{
                                 fontSize: 9, fontWeight: 800, padding: '2px 6px', borderRadius: 4,
-                                background: 'rgba(34, 197, 94, 0.15)', color: '#4ade80', border: '1px solid rgba(34, 197, 94, 0.3)',
+                                background: 'rgba(255, 255, 255, 0.1)', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.1)',
                                 textTransform: 'uppercase', letterSpacing: '0.04em'
                               }}>
                                 ⚡ OUTREACH READY
@@ -1068,7 +1106,7 @@ export default function WebHarvestAdmin() {
                               onClick={() => handleOpenCampaignModal(row)}
                               style={{
                                 padding: '5px 10px',
-                                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                background: 'linear-gradient(135deg, #ffffff 0%, #e4e4e7 100%)',
                                 color: '#ffffff',
                                 border: 'none',
                                 borderRadius: 6,
@@ -1078,7 +1116,7 @@ export default function WebHarvestAdmin() {
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 gap: 5,
-                                boxShadow: '0 2px 6px rgba(16, 185, 129, 0.25)',
+                                boxShadow: '0 2px 6px rgba(255, 255, 255, 0.1)',
                                 whiteSpace: 'nowrap'
                               }}
                             >
@@ -1145,7 +1183,7 @@ export default function WebHarvestAdmin() {
               <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
                 {selectedCandidate.title || 'Recruiting Specialist'} • {selectedCandidate.company || 'Direct Agency'}
               </div>
-              <div style={{ fontSize: 12, color: '#38bdf8', fontFamily: 'monospace', marginTop: 4 }}>
+              <div style={{ fontSize: 12, color: '#e4e4e7', fontFamily: 'monospace', marginTop: 4 }}>
                 ✉️ {selectedCandidate.email}
               </div>
             </div>
@@ -1176,7 +1214,7 @@ export default function WebHarvestAdmin() {
                   ))}
                 </select>
               ) : (
-                <div style={{ fontSize: 12, color: '#f59e0b', padding: '8px 0' }}>
+                <div style={{ fontSize: 12, color: '#d4d4d8', padding: '8px 0' }}>
                   ⚠️ No active campaigns found. Please create a campaign in Campaigns tab first.
                 </div>
               )}
@@ -1190,12 +1228,12 @@ export default function WebHarvestAdmin() {
                 fontWeight: 600,
                 marginBottom: 16,
                 background: campaignFeedback.includes('Success') || campaignFeedback.includes('enrolled')
-                  ? 'rgba(34, 197, 94, 0.15)'
+                  ? 'rgba(255, 255, 255, 0.1)'
                   : 'rgba(239, 68, 68, 0.15)',
                 color: campaignFeedback.includes('Success') || campaignFeedback.includes('enrolled')
-                  ? '#4ade80'
+                  ? '#ffffff'
                   : '#f87171',
-                border: `1px solid ${campaignFeedback.includes('Success') || campaignFeedback.includes('enrolled') ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`
+                border: `1px solid ${campaignFeedback.includes('Success') || campaignFeedback.includes('enrolled') ? 'rgba(255, 255, 255, 0.1)' : 'rgba(239, 68, 68, 0.3)'}`
               }}>
                 {campaignFeedback}
               </div>
@@ -1226,12 +1264,12 @@ export default function WebHarvestAdmin() {
                   padding: '8px 18px',
                   borderRadius: 8,
                   border: 'none',
-                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  background: 'linear-gradient(135deg, #ffffff 0%, #e4e4e7 100%)',
                   color: '#ffffff',
                   fontSize: 12,
                   fontWeight: 700,
                   cursor: isPushingCampaign || !selectedCampaignId ? 'not-allowed' : 'pointer',
-                  boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)',
+                  boxShadow: '0 2px 8px rgba(255, 255, 255, 0.1)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 6

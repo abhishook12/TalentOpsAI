@@ -22,7 +22,7 @@ from ..database import SessionLocal
 from ..models.staging_models import DiscoveryStaging
 from ..models.models import Company, Recruiter
 from ..models.auth_models import User
-from ..services.email_intelligence_service import email_intelligence
+from ..services.email_intelligence_service import email_intelligence, SEEDED_COMPANY_PATTERNS
 from ..services.smtp_prober import smtp_prober
 from ..services.geographic_classifier import geo_classifier, GeoClassification
 from ..services.geo_quota_tracker import GeoQuotaTracker
@@ -244,10 +244,10 @@ class SearchXRayHarvester:
         except Exception:
             pass
 
-        raw_title = parts[1].strip()
+        clean_title = parts[1].strip()
         # Remove trailing "at Company ..." or "..."
-        raw_title = re.sub(r"\s*\.{2,}.*", "", raw_title)
-        raw_title = re.sub(r"\s*\|\s*LinkedIn.*", "", raw_title, flags=re.I)
+        clean_title = re.sub(r"\s*\.{2,}.*", "", clean_title)
+        clean_title = re.sub(r"\s*\|\s*LinkedIn.*", "", clean_title, flags=re.I).strip()
         
         # Check for location cues in the rest of the text
         raw_location = None
@@ -255,10 +255,34 @@ class SearchXRayHarvester:
         if loc_match:
             raw_location = loc_match.group(1).strip()
 
+        # Extract genuine employer company from headline cues (e.g. "Recruiter at Google", "Talent Lead @ Meta")
+        extracted_company = None
+        comp_match = re.search(
+            r"(?:^|[\s,–—-])(?:at|@|with)\s+([A-Za-z0-9&.,' -]+?)(?:\s*\(|\s*\[|\s*–|\s*—|\s*\||\s*\.|$)",
+            clean_title,
+            re.IGNORECASE
+        )
+        if comp_match:
+            cand_comp = comp_match.group(1).strip(" .,-–—")
+            generic_words = {"startups", "scaleups", "home", "remote", "confidential", "stealth", "freelance", "contract"}
+            if cand_comp.lower() not in generic_words and len(cand_comp) > 1:
+                extracted_company = cand_comp
+                # Strip company part from title
+                clean_title = re.sub(
+                    r"\s*(?:at|@|with)\s+" + re.escape(cand_comp),
+                    "",
+                    clean_title,
+                    flags=re.IGNORECASE
+                ).strip(" .,-–—")
+
+        # Disambiguate company: prioritize extracted company if target_company was generic or doesn't match
+        final_company = extracted_company or target_company
+
         return {
             "name": raw_name,
-            "title": raw_title if raw_title else "Recruiter",
-            "company": target_company,
+            "title": clean_title if clean_title else "Recruiter",
+            "company": final_company,
+            "extracted_company": extracted_company,
             "profile_url": link,
             "location": raw_location,
             "snippet": clean[:250],
@@ -382,7 +406,7 @@ class SearchXRayHarvester:
             if name.lower() in seen_names:
                 continue
 
-            # Synthesize email permutations (skip partial initial surnames e.g. "William L.")
+            # Candidate name parsing (skip partial single-letter initials e.g. "William L.")
             tokens = name.split()
             first, last = tokens[0], tokens[-1]
             clean_last = re.sub(r"[^a-zA-Z]", "", last)
@@ -390,37 +414,117 @@ class SearchXRayHarvester:
                 continue
 
             seen_names.add(name.lower())
-            permutations = email_intelligence.generate_permutations(first=first, last=last, domain=clean_dom)
+
+            # Determine genuine employer and domain
+            cand_company = parsed.get("company") or company_name
+            effective_domain = None
+
+            # If snippet company differs from target_company, resolve its genuine domain
+            if parsed.get("extracted_company") and parsed["extracted_company"].lower() != company_name.lower():
+                effective_domain = email_intelligence.resolve_company_domain(cand_company, db=db)
+            else:
+                effective_domain = clean_dom
 
             verified_email = None
             smtp_status = "UNVERIFIED"
+            is_deliverable = False
+            used_pattern = None
+            confidence = 50
+            mx_provider = "Unknown"
 
-            # Probe the top 2 permutations with live Port 25 SMTP check
-            for p in permutations[:2]:
-                candidate_email = p["email"]
-                try:
-                    probe = smtp_prober.probe_mailbox(candidate_email)
-                    if probe.smtp_code == 250:
-                        verified_email = candidate_email
-                        smtp_status = "SMTP_VERIFIED"
-                        self.stats["emails_smtp_verified"] += 1
-                        break
-                    elif probe.smtp_code == 550:
-                        smtp_status = "SMTP_BOUNCED"
-                    elif probe.is_catch_all:
-                        verified_email = candidate_email
-                        smtp_status = "CATCH_ALL"
-                        break
-                except Exception as err:
-                    logger.debug("SMTP probe error on %s: %s", candidate_email, err)
+            if effective_domain:
+                # 1. DNS MX Check
+                mx_info = email_intelligence.verify_mx(effective_domain)
+                mx_provider = mx_info.get("provider", "Unknown")
 
-            # Fallback to highest confidence permutation if probe was inconclusive
-            if not verified_email and permutations:
-                verified_email = permutations[0]["email"]
+                if not mx_info["has_mx"]:
+                    smtp_status = "MX_UNREACHABLE"
+                    confidence = 10
+                else:
+                    # 2. Known empirical pattern lookup (DB first, then seeded ground truth)
+                    known_pattern = None
+                    if db:
+                        try:
+                            from ..models.models import CompanyEmailPattern
+                            db_pattern = db.query(CompanyEmailPattern).filter(
+                                CompanyEmailPattern.domain == effective_domain,
+                                CompanyEmailPattern.active == True
+                            ).order_by(
+                                CompanyEmailPattern.verified_example_count.desc(),
+                                CompanyEmailPattern.confidence_score.desc()
+                            ).first()
+                            if db_pattern and (db_pattern.verified_example_count or 0) >= 1:
+                                known_pattern = db_pattern.pattern
+                        except Exception as e:
+                            logger.debug("Error querying company email pattern: %s", e)
+
+                    if not known_pattern and effective_domain in SEEDED_COMPANY_PATTERNS:
+                        known_pattern = SEEDED_COMPANY_PATTERNS[effective_domain]["pattern"]
+
+                    permutations = email_intelligence.generate_permutations(
+                        first=first,
+                        last=clean_last,
+                        domain=effective_domain,
+                        known_pattern=known_pattern
+                    )
+
+                    # 3. Live Port 25 SMTP Probing (Top 2 variations)
+                    for p in permutations[:2]:
+                        candidate_email = p["email"]
+                        try:
+                            probe = smtp_prober.probe_mailbox(candidate_email)
+                            if probe.smtp_code == 250:
+                                verified_email = candidate_email
+                                smtp_status = "SMTP_VERIFIED"
+                                is_deliverable = True
+                                used_pattern = p.get("pattern")
+                                confidence = 95
+                                self.stats["emails_smtp_verified"] += 1
+                                break
+                            elif probe.smtp_code == 550:
+                                smtp_status = "SMTP_BOUNCED"
+                                continue
+                            elif getattr(probe, "is_catch_all", getattr(probe, "is_catchall", False)):
+                                verified_email = candidate_email
+                                smtp_status = "CATCH_ALL"
+                                is_deliverable = True
+                                used_pattern = p.get("pattern")
+                                confidence = 80
+                                break
+                        except Exception as err:
+                            logger.debug("SMTP probe error on %s: %s", candidate_email, err)
+
+                    # 4. Pattern Intelligence Fallback (when Port 25 SMTP is blocked/inconclusive)
+                    if not verified_email and permutations:
+                        best_candidate = permutations[0]
+                        verified_email = best_candidate["email"]
+                        used_pattern = best_candidate.get("pattern")
+                        if known_pattern:
+                            # Deliverability verified via learned empirical company pattern
+                            smtp_status = "PATTERN_MATCHED"
+                            is_deliverable = True
+                            confidence = 85
+                        else:
+                            # Port 25 blocked & pattern unverified: strictly an inferred statistical guess
+                            smtp_status = "INFERRED_UNVERIFIED"
+                            is_deliverable = False
+                            confidence = 45
+            else:
+                smtp_status = "DOMAIN_UNRESOLVED"
+                confidence = 0
+
+            smtp_meta = {
+                "smtp_status": smtp_status,
+                "is_deliverable": is_deliverable,
+                "provider": mx_provider,
+                "pattern": used_pattern,
+                "confidence": confidence,
+            }
 
             parsed["email"] = verified_email
             parsed["email_status"] = smtp_status
-            parsed["domain"] = clean_dom
+            parsed["domain"] = effective_domain
+            parsed["smtp_verification"] = smtp_meta
             discovered_candidates.append(parsed)
 
             self.stats["profiles_discovered"] += 1
@@ -475,12 +579,14 @@ class SearchXRayHarvester:
             if existing:
                 continue
 
-            # Build metadata with geo classification
+            # Build metadata with geo classification & structured deliverability verification
             metadata = {
                 "source": "search_xray",
+                "source_domain": cand.get("domain") or clean_dom,
                 "smtp_status": cand["email_status"],
-                "domain": clean_dom,
+                "domain": cand.get("domain") or clean_dom,
                 "geo_signals": geo_result.signals,
+                "smtp_verification": cand.get("smtp_verification"),
             }
 
             staged = DiscoveryStaging(
@@ -499,7 +605,7 @@ class SearchXRayHarvester:
                 extraction_source="search_xray",
                 dom_confidence=95,
                 processing_status="pending",
-                quality_score=85 if cand["email_status"] == "SMTP_VERIFIED" else 75,
+                quality_score=85 if cand.get("smtp_verification", {}).get("is_deliverable") else 60,
                 geo_region=geo_result.region,
                 geo_confidence=geo_result.confidence,
                 metadata_json=json.dumps(metadata),

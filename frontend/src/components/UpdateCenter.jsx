@@ -125,10 +125,10 @@ export default function UpdateCenter() {
   let icon = 'ti-info-circle';
   
   if (activeStatus.status === 'Verified & Operational' || activeStatus.status === 'Verified') {
-    color = '#22c55e'; // Green
+    color = '#ffffff'; // Green
     icon = 'ti-check';
   } else if (activeStatus.status === 'Pending Verification') {
-    color = '#fbbf24'; // Yellow
+    color = '#d4d4d8'; // Yellow
     icon = 'ti-alert-triangle';
   } else if (activeStatus.status === 'Failed Verification') {
     color = '#ef4444'; // Red
@@ -173,7 +173,7 @@ export default function UpdateCenter() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {currentLocalChanges.map((item) => (
                     <div key={item} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-secondary)' }}>
-                      <i className="ti ti-check" style={{ color: '#22c55e', flexShrink: 0 }} />
+                      <i className="ti ti-check" style={{ color: '#ffffff', flexShrink: 0 }} />
                       <span>{item}</span>
                     </div>
                   ))}
@@ -188,14 +188,14 @@ export default function UpdateCenter() {
                   Exact email and phone matches are merged into one canonical entry, while weaker matches stay flagged for review.
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 14 }}>
-                  <div style={{ padding: 12, borderRadius: 6, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.18)' }}>
+                  <div style={{ padding: 12, borderRadius: 6, background: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Auto-merge</div>
-                    <div style={{ fontSize: 20, fontWeight: 900, color: '#22c55e', marginTop: 4 }}>Exact</div>
+                    <div style={{ fontSize: 20, fontWeight: 900, color: '#ffffff', marginTop: 4 }}>Exact</div>
                     <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>Same email or same phone</div>
                   </div>
                   <div style={{ padding: 12, borderRadius: 6, background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.18)' }}>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Review</div>
-                    <div style={{ fontSize: 20, fontWeight: 900, color: '#fbbf24', marginTop: 4 }}>Safe</div>
+                    <div style={{ fontSize: 20, fontWeight: 900, color: '#d4d4d8', marginTop: 4 }}>Safe</div>
                     <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>Same name + company, inspect first</div>
                   </div>
                 </div>
@@ -256,7 +256,7 @@ export default function UpdateCenter() {
                           <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{update.title} <span style={{ color: 'var(--text-muted)', fontWeight: 500, fontSize: 12, marginLeft: 8 }}>{update.version}</span></div>
                           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{new Date(update.date).toLocaleDateString()} · By {update.developer}</div>
                         </div>
-                        <div style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 99, background: update.status.includes('Verified') ? 'rgba(34,197,94,0.1)' : update.status.includes('Failed') ? 'rgba(239,68,68,0.1)' : 'rgba(251,191,36,0.1)', color: update.status.includes('Verified') ? '#22c55e' : update.status.includes('Failed') ? '#ef4444' : '#fbbf24' }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 99, background: update.status.includes('Verified') ? 'rgba(255, 255, 255, 0.08)' : update.status.includes('Failed') ? 'rgba(239,68,68,0.1)' : 'rgba(251,191,36,0.1)', color: update.status.includes('Verified') ? '#ffffff' : update.status.includes('Failed') ? '#ef4444' : '#d4d4d8' }}>
                           {update.status.toUpperCase()}
                         </div>
                       </div>
@@ -265,9 +265,9 @@ export default function UpdateCenter() {
                         <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
                           {update.features.map(f => (
                             <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-secondary)' }}>
-                              {f.status.includes('Verified') ? <i className="ti ti-check" style={{ color: '#22c55e' }} /> : 
+                              {f.status.includes('Verified') ? <i className="ti ti-check" style={{ color: '#ffffff' }} /> : 
                                f.status.includes('Failed') ? <i className="ti ti-x" style={{ color: '#ef4444' }} /> :
-                               <i className="ti ti-alert-circle" style={{ color: '#fbbf24' }} />}
+                               <i className="ti ti-alert-circle" style={{ color: '#d4d4d8' }} />}
                               {f.name}
                             </div>
                           ))}
@@ -284,7 +284,7 @@ export default function UpdateCenter() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {(latestUpdate?.features?.length ? latestUpdate.features.slice(0, 4).map((f) => String(f?.name || '').replace(/\bindexing\b/gi, 'search speed').replace(/\boptimization\b/gi, 'speed').replace(/\bpagination\b/gi, 'loading')) : ['Local duplicate review preview is available.']).map((item, index) => (
                     <div key={`${index}-${item}`} style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-secondary)', fontSize: 13 }}>
-                      <i className="ti ti-check" style={{ color: '#22c55e', flexShrink: 0 }} />
+                      <i className="ti ti-check" style={{ color: '#ffffff', flexShrink: 0 }} />
                       <span>{item || 'A small change was made.'}</span>
                     </div>
                   ))}

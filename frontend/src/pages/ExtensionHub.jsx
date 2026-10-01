@@ -144,7 +144,7 @@ export default function ExtensionHub() {
           <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary, #fafafa)' }}>
             {summary?.total_recruiters ? summary.total_recruiters.toLocaleString() : '87,419'}
           </div>
-          <span style={{ fontSize: 11, color: '#4ade80', fontWeight: 600 }}>● Network verified</span>
+          <span style={{ fontSize: 11, color: '#ffffff', fontWeight: 600 }}>● Network verified</span>
         </div>
 
         <div style={{ background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #232326)', borderRadius: 12, padding: '16px 20px' }}>
@@ -161,9 +161,9 @@ export default function ExtensionHub() {
         <div style={{ background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #232326)', borderRadius: 12, padding: '16px 20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
             <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted, #a1a1aa)', textTransform: 'uppercase' }}>Active Scout Nodes</span>
-            <Wifi size={16} color="#4ade80" />
+            <Wifi size={16} color="#ffffff" />
           </div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: '#4ade80' }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: '#ffffff' }}>
             {summary?.active_scouts ? summary.active_scouts : '16'} Connected
           </div>
           <span style={{ fontSize: 11, color: 'var(--text-muted, #a1a1aa)' }}>Real-time telemetry</span>
@@ -172,10 +172,10 @@ export default function ExtensionHub() {
         <div style={{ background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #232326)', borderRadius: 12, padding: '16px 20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
             <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted, #a1a1aa)', textTransform: 'uppercase' }}>Live Database Sync</span>
-            <Activity size={16} color="#f59e0b" />
+            <Activity size={16} color="#d4d4d8" />
           </div>
           <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary, #e4e4e7)', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ffffff', display: 'inline-block' }} />
             Active Sync
           </div>
           <span style={{ fontSize: 11, color: 'var(--text-muted, #71717a)' }}>Pre-configured & Bound</span>
@@ -190,10 +190,10 @@ export default function ExtensionHub() {
       }}>
         <div>
           <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(34, 197, 94, 0.15)',
-            color: '#4ade80', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, marginBottom: 12
+            display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(255, 255, 255, 0.08)',
+            color: '#ffffff', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, marginBottom: 12
           }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e' }} />
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ffffff' }} />
             Zero-Touch Instant Auto-Binding
           </div>
           <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 8px' }}>
@@ -216,7 +216,7 @@ export default function ExtensionHub() {
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 8, padding: '8px 12px', marginTop: 6
           }}>
-            <span style={{ fontFamily: 'monospace', fontSize: 15, fontWeight: 700, color: '#10b981', letterSpacing: 1 }}>
+            <span style={{ fontFamily: 'monospace', fontSize: 15, fontWeight: 700, color: '#ffffff', letterSpacing: 1 }}>
               {activeCode}
             </span>
             <button
@@ -227,7 +227,7 @@ export default function ExtensionHub() {
                 setTimeout(() => setCopiedCode(false), 2000);
               }}
               style={{
-                padding: '6px 12px', background: copiedCode ? '#22c55e' : 'var(--text-primary)', color: 'var(--main-bg)',
+                padding: '6px 12px', background: copiedCode ? '#ffffff' : 'var(--text-primary)', color: 'var(--main-bg)',
                 border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer',
                 display: 'flex', alignItems: 'center', gap: 5
               }}
@@ -259,7 +259,7 @@ export default function ExtensionHub() {
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 8px #22c55e' }} />
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ffffff', boxShadow: '0 0 8px #ffffff' }} />
             <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
               Live Traceable Discovery Stream
             </h3>
@@ -279,8 +279,8 @@ export default function ExtensionHub() {
               const isNew = item.db_action === 'NEW_DISCOVERY' || !item.db_action;
               const isEnriched = item.db_action === 'ENRICHED';
               const tagLabel = isNew ? 'NEW DISCOVERY' : isEnriched ? 'ENRICHED' : 'PREVIOUSLY KNOWN';
-              const tagColor = isNew ? '#4ade80' : isEnriched ? '#e4e4e7' : '#a1a1aa';
-              const tagBg = isNew ? 'rgba(34, 197, 94, 0.15)' : isEnriched ? 'rgba(228, 228, 231, 0.15)' : 'rgba(148, 163, 184, 0.15)';
+              const tagColor = isNew ? '#ffffff' : isEnriched ? '#e4e4e7' : '#a1a1aa';
+              const tagBg = isNew ? 'rgba(255, 255, 255, 0.08)' : isEnriched ? 'rgba(228, 228, 231, 0.15)' : 'rgba(148, 163, 184, 0.15)';
 
               return (
                 <div key={idx} style={{
@@ -329,7 +329,7 @@ export default function ExtensionHub() {
           <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
             🚀 Instant 1-Click Setup
           </h3>
-          <span style={{ fontSize: 12, color: '#4ade80', fontWeight: 600 }}>
+          <span style={{ fontSize: 12, color: '#ffffff', fontWeight: 600 }}>
             Includes 1-Click Windows Auto-Installer (.bat)
           </span>
         </div>
@@ -348,7 +348,7 @@ export default function ExtensionHub() {
             </div>
           </div>
           <div style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 12, padding: 16 }}>
-            <div style={{ color: '#4ade80', fontWeight: 800, fontSize: 13, marginBottom: 4 }}>3. Load Unpacked</div>
+            <div style={{ color: '#ffffff', fontWeight: 800, fontSize: 13, marginBottom: 4 }}>3. Load Unpacked</div>
             <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
               Click <b>Load unpacked</b> and select the unzipped folder. It immediately connects with zero codes needed!
             </div>

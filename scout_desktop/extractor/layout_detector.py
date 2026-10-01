@@ -20,6 +20,12 @@ import re
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, field
 
+from .patterns import (
+    BROWSER_CHROME_NOISE,
+    QUALIFICATION_AND_REQUIREMENT_WORDS,
+    CHECKMARK_AND_STATUS_SYMBOLS,
+)
+
 
 REGION_PROFILE_HEADER = "PROFILE_HEADER"
 REGION_ABOUT = "ABOUT_REGION"
@@ -94,10 +100,30 @@ class LayoutDetector:
                 zones[REGION_UI_ACTIONS].append(line)
                 continue
 
-            # Check for inline UI action buttons
-            if line.lower() in cls.UI_ACTION_WORDS:
+            # Check for inline UI action buttons, browser chrome, bookmarks, and qualification items
+            line_low = line.lower()
+
+            # Pre-clean: Strip trailing "· Contact info" / bullet separators from lines before
+            # checking for CHECKMARK_AND_STATUS_SYMBOLS, so location lines like
+            # "New York, United States · Contact info" aren't killed by the middle dot.
+            line_for_check = re.sub(r"\s*[·•\u00B7\u2022\u2219\u25E6\u2013\u2014|]+\s*[Cc]ontact\s*[Ii]nfo.*$", "", line).strip()
+            line_for_check = re.sub(r"\s*Contact\s*info.*$", "", line_for_check, flags=re.IGNORECASE).strip()
+            # Strip trailing degree badges (· 2nd, • 1st, · 3rd+) which also contain middle dots
+            line_for_check = re.sub(r"\s*[·•\u00B7\u2022\u2219\u25E6\u2013\u2014|]+\s*(?:1st|2nd|3rd\+?).*$", "", line_for_check, flags=re.IGNORECASE).strip()
+
+            if (
+                line_low in cls.UI_ACTION_WORDS
+                or line_low in BROWSER_CHROME_NOISE
+                or line_low in QUALIFICATION_AND_REQUIREMENT_WORDS
+                or any(c in CHECKMARK_AND_STATUS_SYMBOLS for c in line_for_check)
+                or re.match(r"^(?:all|every|other|another|any)\s+(?:bookmarks?|tabs?|windows?|files?|profiles?|candidates?|pages?|apps?|tools?|items?|results?|shortcuts?|folders?)$", line_low)
+            ):
                 zones[REGION_UI_ACTIONS].append(line)
                 continue
+
+            # If the line was cleaned (Contact info / degree badge stripped), use the cleaned version
+            if line_for_check and line_for_check != line:
+                line = line_for_check
 
             zones[current_region].append(line)
 
@@ -130,16 +156,36 @@ class LayoutDetector:
         for idx, line in enumerate(header):
             t_low = line.lower()
 
-            # Skip UI actions and notifications
-            if any(btn in t_low for btn in ["connect", "message", "follow", "share", "more", "save", "contact info"]):
+            # Skip UI actions and notifications — but NOT "contact info" since it appears
+            # as a suffix on LinkedIn location lines (e.g. "New York, United States · Contact info").
+            # Instead, strip "Contact info" and bullet separators from the line and continue processing.
+            if any(btn in t_low for btn in ["connect", "message", "follow", "share", "more", "save"]):
+                continue
+
+            # Strip trailing "· Contact info" / "Contact info" from the line so the location part is preserved
+            import re as _re
+            line = _re.sub(r"\s*[·•\u00B7\u2022\u2219\u25E6\u2013\u2014|]+\s*[Cc]ontact\s*[Ii]nfo.*$", "", line).strip()
+            line = _re.sub(r"\s*Contact\s*info.*$", "", line, flags=_re.IGNORECASE).strip()
+            t_low = line.lower()
+            if not line:
+                continue
+
+            # Skip educational institutions and school lines (even if they contain a state name like "University of California")
+            if re.search(r"\b(?:university|college|school|institute|academy|polytechnic)\b", line, re.IGNORECASE):
+                continue
+
+            # Skip lines with person certification suffixes (e.g. "Emily Watson, SHRM-CP", "John Doe, PMP")
+            if re.search(r"\b(?:shrm(?:-cp|-scp)?|pmp|cpa|mba|phd|md|jd|sphr|phr|cipd|gphr)\b", line, re.IGNORECASE):
                 continue
 
             # Location indicators: city, state, country, 'greater ... area'
             is_loc = bool(re.search(
                 r"\b(?:area|greater|united\s+states|india|canada|united\s+kingdom|germany|france|australia|"
                 r"california|texas|new\s+york|florida|washington|ohio|illinois|georgia|north\s+carolina|"
-                r"london|berlin|paris|sydney|singapore|bangalore|delhi|mumbai|hyderabad|pune)\b|"
-                r",[A-Z\s]{2,}\b|[A-Za-z\s]+,\s*[A-Z]{2}\b",
+                r"massachusetts|pennsylvania|colorado|virginia|michigan|arizona|new\s+jersey|"
+                r"london|berlin|paris|sydney|singapore|bangalore|delhi|mumbai|hyderabad|pune|"
+                r"san\s+francisco|seattle|austin|chicago|boston|new\s+york\s+city)\b|"
+                r"[A-Za-z\s]+,\s*[A-Z]{2}\b|[A-Za-z\s]+,\s*[A-Za-z\s]+$",
                 line,
                 re.IGNORECASE,
             ))

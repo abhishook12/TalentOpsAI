@@ -170,7 +170,7 @@ export default function CampaignProgress({ campaignId, onStatusChange }) {
             style={{
               width: `${Math.max(2, percent)}%`,
               background: isCompleted
-                ? 'linear-gradient(90deg, #10b981, #34d399)'
+                ? 'linear-gradient(90deg, #ffffff, #d4d4d8)'
                 : 'linear-gradient(90deg, #d4d4d8, #d4d4d8)'
             }}
           />

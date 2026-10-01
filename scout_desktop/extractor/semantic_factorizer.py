@@ -38,6 +38,9 @@ from scout_desktop.extractor.patterns import (
     EMAIL_REGEX,
     PHONE_REGEX,
     classify_location_region,
+    BROWSER_CHROME_NOISE,
+    QUALIFICATION_AND_REQUIREMENT_WORDS,
+    CHECKMARK_AND_STATUS_SYMBOLS,
 )
 from scout_desktop.extractor.title_normalizer import classify_title
 
@@ -254,6 +257,22 @@ class ProfileJudge:
                     confidence=0.95,
                     rejection_reason="Chat stream contains no candidate contact or resume signals",
                 )
+
+        # Reject frames consisting solely of browser chrome, bookmarks, or job requirements/checkboxes
+        top_meaningful = [l for l in clean_lines[:15] if len(l) > 2]
+        if top_meaningful and all(
+            l.lower() in BROWSER_CHROME_NOISE
+            or l.lower() in QUALIFICATION_AND_REQUIREMENT_WORDS
+            or any(c in CHECKMARK_AND_STATUS_SYMBOLS for c in l)
+            or re.match(r"^(?:all|every|other|another|any)\s+(?:bookmarks?|tabs?|windows?|files?|profiles?|candidates?)", l.lower())
+            for l in top_meaningful
+        ):
+            return JudgmentResult(
+                category="SYSTEM_NOISE",
+                is_candidate_profile=False,
+                confidence=0.99,
+                rejection_reason="Frame contains exclusively browser chrome or qualification checkbox noise",
+            )
 
         combined_context = (window_title + " " + " ".join(clean_lines[:12])).lower()
 

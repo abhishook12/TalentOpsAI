@@ -52,6 +52,12 @@ US_STATE_POSTAL_REGEX = re.compile(
 UI_ACTIONS = re.compile(
     r"^(?:message|connect|follow|more|save|share|view|endorse|view profile|"
     r"open to work|hiring|verified|contact info|"
+    r"all bookmarks|bookmarks|bookmarks bar|reading list|search tabs|tab groups|new tab|close tab|"
+    r"extensions|manage extensions|chrome web store|add shortcut|ask gemini|side panel|"
+    r"driver's license|drivers license|driver license|driving license|valid driver's license|"
+    r"travel|traveling|willing to travel|travel required|travel yes|travel no|"
+    r"security clearance|clearance|work authorization|authorized to work|us citizen|green card|"
+    r"background check|drug test|drug screen|relocation|willing to relocate|"
     r"export|suggest update|reveal|contact profile|contact details|"
     r"contact management|similar companies|overview|employees|premium features|"
     r"scheduled emails|web visits|crm integrations|zoominfo lite|zoominfo|homepage|quick search|"
@@ -166,6 +172,14 @@ COMMON_TECH_SKILLS = frozenset({
     "microservices", "kafka", "rabbitmq", "spark", "hadoop", "airflow",
 })
 
+# Technical skills or tools that are also common human given names or surnames
+# These must not disqualify a multi-word person name (e.g. 'Sarah Jenkins', 'Ruby Martinez', 'Julia Roberts')
+TECH_SKILLS_AMBIGUOUS_WITH_HUMAN_NAMES = frozenset({
+    "jenkins", "ruby", "julia", "crystal", "rust", "chef", "puppet",
+    "spark", "pascal", "ada", "ivy", "cliff", "gene", "graham", "perry",
+    "ross", "stewart", "kelly", "clojure", "dart", "elixir", "scala", "maya",
+})
+
 # Business Departments, Disciplines & Industry Categories (Never Human Names or Commercial Employers)
 DEPARTMENTS_AND_INDUSTRIES = frozenset({
     "human resources", "hr", "talent acquisition", "people operations", "people & culture",
@@ -196,6 +210,49 @@ UI_BADGES_AND_ACTIONS = frozenset({
     "endorse", "endorsements", "recommend", "show all", "see all",
     "more", "more actions", "view profile", "view full profile",
     "apply now", "easy apply", "apply", "save job",
+})
+
+# Browser Chrome, Bookmarks, and System UI Noise
+BROWSER_CHROME_NOISE = frozenset({
+    "all bookmarks", "bookmarks", "bookmarks bar", "bookmark this tab", "bookmark",
+    "other bookmarks", "reading list", "search tabs", "tab groups", "tab group",
+    "new tab", "close tab", "reopen closed tab", "extensions", "manage extensions",
+    "chrome web store", "add to chrome", "downloads", "clear browsing data",
+    "history", "clear history", "settings", "settings and privacy", "default browser",
+    "passwords", "autofill", "privacy and security", "sync", "turn on sync",
+    "syncing to", "ask gemini", "gemini", "side panel", "show side panel",
+    "add shortcut", "customize chrome", "incognito", "new incognito window",
+    "guest", "guest profile", "cast", "cast to", "print", "zoom", "page zoom",
+    "translate", "translate this page", "find", "find in page", "more tools",
+    "task manager", "developer tools", "inspect", "view page source",
+    "address bar", "omnibox", "site settings", "secure connection",
+    "profile 1", "person 1", "switch account", "sign out of all accounts",
+})
+
+# Candidate Qualifications, Requirements, Checklists & Candidate Verification Attributes
+# (These must NEVER be treated as candidate human names or corporate employers!)
+QUALIFICATION_AND_REQUIREMENT_WORDS = frozenset({
+    "driver's license", "drivers license", "driver license", "driving license", "valid driver's license",
+    "driver", "drivers", "license", "licenses",
+    "travel", "traveling", "willing to travel", "travel required", "travel yes", "travel no",
+    "security clearance", "clearance", "secret clearance", "top secret", "ts/sci", "polygraph",
+    "work authorization", "authorized to work", "us citizen", "citizenship", "green card",
+    "permanent resident", "visa sponsorship", "sponsorship", "need sponsorship", "h1b", "cpt/opt", "ead",
+    "background check", "drug test", "drug screen", "screening", "screened",
+    "relocation", "relocate", "willing to relocate", "open to relocation",
+    "notice period", "immediate joiner", "serving notice", "available immediately",
+    "shift timing", "day shift", "night shift", "rotational shift", "weekend availability",
+    "vaccination", "vaccinated", "health screening", "physical exam",
+    "transportation", "reliable transportation", "vehicle", "commute", "overtime",
+    "eligibility", "eligible", "qualifications", "qualification", "requirements", "requirement",
+})
+
+# Status Checkmark & Emoji Glyphs associated with form checks/filters
+CHECKMARK_AND_STATUS_SYMBOLS = frozenset({
+    "✓", "✔", "☑", "✅", "√", "✗", "✘", "❌", "❎",
+    "★", "☆", "⭐", "►", "▸", "▶", "◄", "◀", "▼", "▲",
+    "•", "·", "●", "○", "■", "□", "▪", "▫",
+    "🚗", "✈", "🛡", "🪪", "💼", "📍", "📧", "📞", "📱", "🔗", "🔍", "🔔", "⚙", "👤", "👥", "🎯", "🏆"
 })
 
 # Past Employer Prefixes and References (e.g. 'Ex-Google', 'Former VP at Meta')
@@ -428,6 +485,9 @@ def clean_job_title(text: Optional[str]) -> Optional[str]:
     if not text or not isinstance(text, str):
         return None
     cleaned = text.strip()
+    # Reject strings with form checkmarks or emojis
+    if any(c in CHECKMARK_AND_STATUS_SYMBOLS for c in cleaned):
+        cleaned = re.sub(r"[\u2700-\u27bf\u2600-\u26ff\u2b00-\u2bff✓✔☑✅√✗✘❌★☆⭐►▸▶◄◀▼▲•·●○■□▪▫🚗✈🛡🪪💼📍📧📞📱🔗🔍🔔⚙👤👥🎯🏆]+", "", cleaned).strip()
     # Strip leading bullet/hyphen/dash/pipe/colon/asterisk/tilde/slash/punctuation
     cleaned = re.sub(r"^[\s\-_–—•·*|:;~,#>\(\)/]+", "", cleaned).strip()
     # Strip leading list numbers e.g. '1. ', '1) ', '1- '
@@ -438,12 +498,39 @@ def clean_job_title(text: Optional[str]) -> Optional[str]:
     cleaned = re.sub(r"\s*[\(·•|]?\s*\b\d(?:st|nd|rd|th|\+)\b(?:\s*degree)?\)?.*$", "", cleaned, flags=re.IGNORECASE).strip()
     # Strip phone numbers, emails or office/cell tags
     cleaned = re.sub(r"\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}|\b\d{5,}\b|\(office\)|\(cell\)", "", cleaned).strip()
+    # Strip trailing ellipsis or multiple dots e.g. "...", ".."
+    cleaned = re.sub(r"\.{2,}", "", cleaned).strip()
+    # Strip trailing dangling hyphen/dash/pipe fragments e.g. " - Edw - ...", " - Edw", " - sud", " - ntu"
+    cleaned = re.sub(r"\s*[-–—•·*|/]\s*[a-zA-Z0-9]{1,4}(?:\s*[-–—•·*|/.\s]*)*$", "", cleaned).strip()
     # Strip trailing punctuation/dashes/pipes/colons/dots/slashes/parentheses
     cleaned = re.sub(r"[\s\-_–—•·*|:;~,#<\.\(\)/]+$", "", cleaned).strip()
     # Normalize multiple whitespace
     cleaned = re.sub(r"\s+", " ", cleaned).strip()
     if len(cleaned) < 3 or not re.search(r"[a-zA-Z]", cleaned):
         return None
+    # Reject if string is purely qualification or browser chrome noise
+    cleaned_lower = cleaned.lower()
+    if cleaned_lower in QUALIFICATION_AND_REQUIREMENT_WORDS or cleaned_lower in BROWSER_CHROME_NOISE:
+        return None
+
+    # ── OCR / Screen-Capture Corruption Detection Gate ──────────────────────
+    # Reject strings with embedded @ symbols that aren't valid emails (e.g. "R@rLitrmt@")
+    at_count = cleaned.count("@")
+    if at_count >= 1:
+        # If it looks like an email, let it pass (handled elsewhere), otherwise reject as garbled
+        if not re.match(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", cleaned.strip()):
+            return None
+
+    # Reject strings where non-alphanumeric characters (excluding spaces, hyphens, apostrophes, commas, periods)
+    # constitute > 15% of total characters — strong indicator of OCR corruption
+    alpha_chars = sum(1 for c in cleaned if c.isalpha() or c.isspace() or c in "-',.")
+    if len(cleaned) > 0 and alpha_chars / len(cleaned) < 0.80:
+        return None
+
+    # Reject implausible consonant clusters (5+ consonants without vowel) indicating garbled text
+    if re.search(r"[bcdfghjklmnpqrstvwxyz]{5,}", cleaned, re.IGNORECASE):
+        return None
+
     return cleaned
 
 
@@ -584,6 +671,14 @@ def clean_title_and_company(headline: Optional[str], raw_company: Optional[str] 
             parts = re.split(r"(?:^|\s+)@\s+", seg, maxsplit=1)
             t_cand = clean_job_title(parts[0])
             c_cand = parts[1].strip() if len(parts) > 1 else ""
+            if t_cand and not is_plausible_title(t_cand):
+                try:
+                    from .neural_lexicon_repair import lexicon_repair
+                    rep_t, rep_score = lexicon_repair.repair_title(t_cand)
+                    if rep_score >= 0.78 and is_plausible_title(rep_t):
+                        t_cand = rep_t
+                except Exception:
+                    pass
             if not best_title and t_cand and is_plausible_title(t_cand):
                 best_title = t_cand
             if not best_company and c_cand:
@@ -594,6 +689,14 @@ def clean_title_and_company(headline: Optional[str], raw_company: Optional[str] 
             parts = re.split(r"\s+at\s+", seg, maxsplit=1, flags=re.IGNORECASE)
             t_cand = clean_job_title(parts[0])
             c_cand = parts[1].strip() if len(parts) > 1 else ""
+            if t_cand and not is_plausible_title(t_cand):
+                try:
+                    from .neural_lexicon_repair import lexicon_repair
+                    rep_t, rep_score = lexicon_repair.repair_title(t_cand)
+                    if rep_score >= 0.78 and is_plausible_title(rep_t):
+                        t_cand = rep_t
+                except Exception:
+                    pass
             if not best_title and t_cand and is_plausible_title(t_cand):
                 best_title = t_cand
             if not best_company and c_cand:
@@ -603,6 +706,14 @@ def clean_title_and_company(headline: Optional[str], raw_company: Optional[str] 
         else:
             # Segment has NO '@' and NO 'at'
             t_cand = clean_job_title(seg)
+            if t_cand and not is_plausible_title(t_cand):
+                try:
+                    from .neural_lexicon_repair import lexicon_repair
+                    rep_t, rep_score = lexicon_repair.repair_title(t_cand)
+                    if rep_score >= 0.78 and is_plausible_title(rep_t):
+                        t_cand = rep_t
+                except Exception:
+                    pass
             if not best_title and t_cand and is_plausible_title(t_cand):
                 best_title = t_cand
             elif best_title and not best_company:
@@ -675,7 +786,13 @@ def clean_company_name(comp: Optional[str]) -> Optional[str]:
 
     if len(cleaned) < 2:
         return None
-    # Reject if string is an obvious past employer, career status, UI action, or skill combo
+    cleaned_lower = cleaned.lower()
+    if cleaned_lower in BROWSER_CHROME_NOISE or cleaned_lower in QUALIFICATION_AND_REQUIREMENT_WORDS:
+        return None
+    if re.match(r"^(?:all|every|other|another|any)\s+(?:bookmarks?|tabs?|windows?|files?|profiles?|candidates?|pages?|apps?|tools?|items?|results?|shortcuts?|folders?)$", cleaned_lower):
+        return None
+    if any(c in CHECKMARK_AND_STATUS_SYMBOLS for c in cleaned):
+        return None
     if PAST_EMPLOYER_PREFIXES.search(cleaned):
         return None
     if CAREER_STATUS_PATTERN.search(cleaned):
@@ -690,6 +807,30 @@ def clean_company_name(comp: Optional[str]) -> Optional[str]:
         return None
     if SLOGAN_VERB_PATTERN.search(cleaned):
         return None
+
+    # ── OCR / Screen-Capture Corruption Detection Gate ──────────────────────
+    # Reject strings with embedded @ symbols (e.g. "R@rLitrmt@", "Atrl@")
+    if "@" in cleaned:
+        return None
+
+    # Reject strings with excessive non-alphanumeric content (>20% non-alpha, excluding spaces and common corporate punctuation)
+    alpha_chars = sum(1 for c in cleaned if c.isalpha() or c.isspace() or c in "-',.&")
+    if len(cleaned) > 0 and alpha_chars / len(cleaned) < 0.80:
+        return None
+
+    # Reject very short company names (<=5 chars) with implausible consonant clusters — likely garbled OCR
+    # e.g. "Atrl" (trl cluster), "Brtns" (rtns cluster). Real short names (Dell, Uber, Meta, SAP) don't have 3+ consonant runs.
+    if len(cleaned) <= 5 and cleaned.isalpha():
+        consonant_run = 0
+        max_consonant_run = 0
+        for c in cleaned.lower():
+            if c not in "aeiou":
+                consonant_run += 1
+                max_consonant_run = max(max_consonant_run, consonant_run)
+            else:
+                consonant_run = 0
+        if max_consonant_run >= 3:
+            return None
 
     return cleaned
 
@@ -816,11 +957,32 @@ def is_valid_company_name(text: Optional[str]) -> bool:
     ]):
         return False
 
+    # Reject imperative UI action verb + noun phrases (e.g. "Find companies", "Search people",
+    # "Browse jobs", "View all candidates", "Add connections", "Get leads", "Explore profiles")
+    # These are navigation buttons / links on sourcing platforms, NOT corporate entity names.
+    if re.match(
+        r"^(?:find|search|browse|explore|filter|view|see|show|get|add|save|export|reveal|suggest|import|manage|create|edit|remove|delete|download|upload|sort|select|request|send|copy|paste|join|leave|open|close|track|monitor|compare|match|assign|update|refresh|clear|reset|apply|submit|try|start|discover|access)\s+"
+        r"(?:(?:all|my|the|new|more|your|our|recent|available|other|these|those|some|any|every)\s+)?"
+        r"(?:companies|company|people|persons?|jobs?|leads?|profiles?|candidates?|contacts?|connections?|members?|teams?|projects?|accounts?|lists?|groups?|results?|emails?|numbers?|data|records?|reports?|sources?|industries?|skills?|roles?|titles?|searches?|filters?|alerts?|notes?|tags?|files?|documents?|folders?|templates?|tasks?|bookmarks?|tabs?|windows?|pages?|shortcuts?|items?|tools?|apps?)\b",
+        t_lower,
+    ):
+        return False
+
+    # Check against authoritative Browser Chrome Noise and Candidate Qualifications
+    if t_lower in BROWSER_CHROME_NOISE or t_lower in QUALIFICATION_AND_REQUIREMENT_WORDS:
+        return False
+    if any(c in CHECKMARK_AND_STATUS_SYMBOLS for c in t):
+        return False
+    if re.match(r"^(?:all|every|other|another|any)\s+(?:bookmarks?|tabs?|windows?|files?|profiles?|candidates?|pages?|apps?|tools?|items?|results?|shortcuts?|folders?)$", t_lower):
+        return False
+    if re.match(r"^(?:all|every|other|another)\s+", t_lower) and not has_comp_org_suffix and t_lower not in KNOWN_STANDALONE_CORPS:
+        return False
+
     # ===== Chrome / Browser / System UI Noise Blocklist =====
     # These are UI elements that OCR frequently misreads as company names
     chrome_ui_noise = {
         "ask gemini", "gemini", "apps", "search", "more tools", "new tab",
-        "bookmarks", "downloads", "history", "extensions", "settings",
+        "bookmarks", "all bookmarks", "bookmarks bar", "downloads", "history", "extensions", "settings",
         "reading list", "side panel", "tab groups", "chrome web store",
         "customize chrome", "incognito", "cast", "print", "find",
         "zoom", "translate", "passwords", "autofill", "privacy",
@@ -1041,7 +1203,7 @@ def is_valid_company_name(text: Optional[str]) -> bool:
     has_any_corp_marker = (
         t_lower in KNOWN_STANDALONE_CORPS
         or any(d in comp_tokens_lower for d in EXPANDED_CORP_DESIGNATORS)
-        or bool(re.search(r"\b(?:inc|llc|ltd|corp|corporation|technologies|technology|tech|tek|solutions|services|group|partners|holdings|labs|ventures|consulting|agency|capital|systems|analytics|logistics|cloud|digital|media|interactive|studios|infotech)\b", t, re.IGNORECASE))
+        or bool(re.search(r"\b(?:inc|llc|ltd|corp|corporation|technologies|technology|tech|tek|solutions|services|group|partners|holdings|labs|ventures|consulting|agency|capital|systems|analytics|logistics|cloud|digital|media|interactive|studios|infotech|ai)\b", t, re.IGNORECASE))
     )
     if not has_any_corp_marker and is_valid_person_name(t):
         return False
@@ -1126,8 +1288,12 @@ def is_valid_person_name(text: Optional[str]) -> bool:
     if UI_ACTIONS.match(t) or re.search(r"^[·•\u00B7\u2022\u2219\u25E6\u2013\u2014|]", t):
         return False
 
-    # A person name cannot contain digits, colons, or punctuation/math/wildcard symbols
-    if any(c.isdigit() or c in "*@/\\()_~!+=<>[]{}^%$#:;?\"&" for c in t):
+    # A person name must ONLY contain alphabetic characters, spaces, hyphens, apostrophes, and period
+    if any(not (c.isalpha() or c.isspace() or c in "-'.") for c in t):
+        return False
+
+    # Reject status symbols, checkmarks, emojis
+    if any(c in CHECKMARK_AND_STATUS_SYMBOLS for c in t):
         return False
 
     # Reject truncated strings ending with dots or ellipses e.g. "54 Ri Ht...", "John..."
@@ -1135,6 +1301,10 @@ def is_valid_person_name(text: Optional[str]) -> bool:
         return False
 
     t_lower = t.lower()
+
+    # Reject browser chrome noise and candidate qualification / checklist terms
+    if t_lower in BROWSER_CHROME_NOISE or t_lower in QUALIFICATION_AND_REQUIREMENT_WORDS:
+        return False
 
     # A person name CANNOT be a job title!
     if is_plausible_title(t):
@@ -1164,7 +1334,8 @@ def is_valid_person_name(text: Optional[str]) -> bool:
         "solutions", "consulting", "enterprises", "llc", "inc", "corp", "agency",
         "network", "networks", "systems", "ventures", "capital", "companies", "company",
         "college", "university", "queue", "tech", "tek", "labs", "inspirations",
-        "innovations", "dynamics", "logistics", "cloud", "digital", "media"
+        "innovations", "dynamics", "logistics", "cloud", "digital", "media", "ai",
+        "studios", "interactive", "infotech"
     ]):
         return False
 
@@ -1277,13 +1448,26 @@ def is_valid_person_name(text: Optional[str]) -> bool:
         "quality", "assurance", "tech", "tek", "inspirations", "innovations", "dynamics",
         "logistics", "cloud", "digital", "media", "interactive", "studios", "pharma",
         "biotech", "healthcare", "systems", "solutions", "services", "consultancy",
-        "advisors", "enterprises", "holdings", "ventures", "capital",
+        # Candidate Qualifications, Criteria, and Badges
+        "driver", "drivers", "license", "licenses", "travel", "traveling", "clearance",
+        "citizen", "citizenship", "relocation", "relocate", "authorization", "authorized",
+        "sponsorship", "passport", "permanent", "resident", "screening", "screen",
+        "vaccine", "vaccinated", "notice", "period", "shift", "shifts", "weekend",
+        "weekends", "weekday", "weekdays", "bilingual", "multilingual", "transportation",
+        "vehicle", "commute", "overtime", "eligibility", "eligible", "requirements",
+        "requirement", "qualifications", "qualification",
     }
     if any(w in blacklisted for w in lower_words):
         return False
+    if any(w in QUALIFICATION_AND_REQUIREMENT_WORDS for w in lower_words):
+        return False
+    if any(w in BROWSER_CHROME_NOISE for w in lower_words):
+        return False
     if any(w in EXPANDED_CORP_DESIGNATORS for w in lower_words if len(w) > 1):
         return False
-    if any(w in COMMON_TECH_SKILLS for w in lower_words if len(w) > 1):
+    if all(w in COMMON_TECH_SKILLS for w in lower_words):
+        return False
+    if any(w in COMMON_TECH_SKILLS and w not in TECH_SKILLS_AMBIGUOUS_WITH_HUMAN_NAMES for w in lower_words if len(w) > 1):
         return False
     if "reason:" in t.lower() or "active window" in t.lower() or "overview" in t.lower():
         return False
@@ -1390,6 +1574,12 @@ def clean_person_name(text: Optional[str]) -> Optional[str]:
     # Immediate rejection of key-value / label pairs with colons or truncated strings with ellipses
     if ":" in raw_str or ".." in raw_str or raw_str.endswith("..."):
         return None
+    # Immediate rejection if string contains status checkmarks, checkboxes, crosses, or emojis
+    if any(c in CHECKMARK_AND_STATUS_SYMBOLS for c in raw_str):
+        return None
+    raw_lower = raw_str.lower()
+    if raw_lower in BROWSER_CHROME_NOISE or raw_lower in QUALIFICATION_AND_REQUIREMENT_WORDS:
+        return None
     t = raw_str
     # Strip leading notification numbers or badges e.g. "54 | ", "(54) ", "[12] "
     t = re.sub(r"^(?:[\(\[]\d+\+?[\)\]]\s*[|•·–—\-:]?\s*|\d+\s*[|•·–—\-:]\s*)+", "", t).strip()
@@ -1436,6 +1626,14 @@ def classify_semantic_entity(text: Optional[str]) -> Dict[str, Any]:
 
     t_lower = t.lower()
 
+    # 0. Checkmarks, Checkbox status glyphs or qualification elements
+    if any(c in CHECKMARK_AND_STATUS_SYMBOLS for c in t) or t_lower in QUALIFICATION_AND_REQUIREMENT_WORDS:
+        return {"entity_type": "UI_NOISE", "confidence": 0.99, "details": "Candidate qualification, requirement, or checkbox badge"}
+
+    # 0b. Browser Chrome / Bookmarks / System UI Noise
+    if t_lower in BROWSER_CHROME_NOISE or re.match(r"^(?:all|every|other|another|any)\s+(?:bookmarks?|tabs?|windows?|files?|profiles?|candidates?|pages?|apps?|tools?|items?|results?|shortcuts?|folders?)$", t_lower):
+        return {"entity_type": "UI_NOISE", "confidence": 0.99, "details": "Browser chrome, bookmark bar, or system UI navigation artifact"}
+
     # 1. Section Headers (Universal invariants: 'Overview', 'Experience', 'About', etc.)
     if t_lower in SECTION_HEADERS:
         return {"entity_type": "SECTION_HEADER", "confidence": 0.99, "details": "Resume or profile section header"}
@@ -1474,6 +1672,15 @@ def classify_semantic_entity(text: Optional[str]) -> Dict[str, Any]:
     # 5. Career Availability & Transition Statuses (e.g. 'Open to opportunities', 'Available for hire')
     if CAREER_STATUS_PATTERN.search(t):
         return {"entity_type": "UI_NOISE", "confidence": 0.99, "details": "Career availability or transition status"}
+
+    # 5b. Imperative UI Action Verb + Noun Phrases (e.g. "Find companies", "Search people", "View all candidates")
+    if re.match(
+        r"^(?:find|search|browse|explore|filter|view|see|show|get|add|save|export|reveal|suggest|import|manage|create|edit|remove|delete|download|upload|sort|select|request|send|copy|paste|join|leave|open|close|track|monitor|compare|match|assign|update|refresh|clear|reset|apply|submit|try|start|discover|access)\s+"
+        r"(?:(?:all|my|the|new|more|your|our|recent|available|other|these|those|some|any|every)\s+)?"
+        r"(?:companies|company|people|persons?|jobs?|leads?|profiles?|candidates?|contacts?|connections?|members?|teams?|projects?|accounts?|lists?|groups?|results?|emails?|numbers?|data|records?|reports?|sources?|industries?|skills?|roles?|titles?|searches?|filters?|alerts?|notes?|tags?|files?|documents?|folders?|templates?|tasks?|bookmarks?|tabs?|windows?|pages?|shortcuts?|items?|tools?|apps?)\b",
+        t_lower,
+    ):
+        return {"entity_type": "UI_NOISE", "confidence": 0.99, "details": "Imperative UI action verb + noun phrase (e.g. 'Find companies')"}
 
     # 6. UI Action Phrases, Buttons & Platform Actions (e.g. 'Show credential', 'Provide services', 'Send InMail')
     if UI_ACTION_PHRASES.search(t):

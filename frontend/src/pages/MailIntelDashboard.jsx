@@ -157,13 +157,13 @@ export default function MailIntelDashboard() {
                 Deliverability Rate
               </div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                <span style={{ fontSize: 24, fontWeight: 800, color: '#10B981', lineHeight: 1 }}>{deliverability_rate}%</span>
-                <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: 'rgba(16, 185, 129, 0.15)', color: '#10B981' }}>
+                <span style={{ fontSize: 24, fontWeight: 800, color: '#ffffff', lineHeight: 1 }}>{deliverability_rate}%</span>
+                <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: 'rgba(255, 255, 255, 0.08)', color: '#ffffff' }}>
                   SAFE
                 </span>
               </div>
             </div>
-            <ShieldCheck size={32} color="#10B981" opacity={0.8} />
+            <ShieldCheck size={32} color="#ffffff" opacity={0.8} />
           </div>
         </div>
       </div>
@@ -174,7 +174,7 @@ export default function MailIntelDashboard() {
           label="Tier 1: Verified Corporate" 
           value={verified} 
           icon={CheckCircle2} 
-          color="#10B981" 
+          color="#ffffff" 
           subtitle="95-100% Delivery Safe" 
         />
         <MetricCard 
@@ -188,7 +188,7 @@ export default function MailIntelDashboard() {
           label="Tier 3: Risky / Catch-All" 
           value={needs_monitoring} 
           icon={AlertTriangle} 
-          color="#F59E0B" 
+          color="#d4d4d8" 
           subtitle="Role & Catch-All accounts" 
         />
         <MetricCard 
@@ -226,17 +226,17 @@ export default function MailIntelDashboard() {
               100% of candidate profiles validated through asynchronous DNS MX resolution and disposable firewall filters.
             </p>
           </div>
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#10B981', background: 'rgba(16, 185, 129, 0.12)', padding: '4px 10px', borderRadius: 999 }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#ffffff', background: 'rgba(255, 255, 255, 0.08)', padding: '4px 10px', borderRadius: 999 }}>
             ● Active Multi-Signal Engine
           </span>
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6, fontWeight: 600 }}>
           <span style={{ color: 'var(--text-secondary)' }}>Deliverability Coverage ({total_deliverable.toLocaleString()} / {total_emails.toLocaleString()} with registered address)</span>
-          <span style={{ color: '#10B981' }}>{deliverability_rate}%</span>
+          <span style={{ color: '#ffffff' }}>{deliverability_rate}%</span>
         </div>
         <div style={{ width: '100%', height: 8, borderRadius: 4, background: 'var(--bg-elevated)', overflow: 'hidden' }}>
-          <div style={{ width: `${deliverability_rate}%`, height: '100%', background: 'linear-gradient(90deg, #10B981, #d4d4d8)', borderRadius: 4, transition: 'width 0.6s ease' }} />
+          <div style={{ width: `${deliverability_rate}%`, height: '100%', background: 'linear-gradient(90deg, #ffffff, #d4d4d8)', borderRadius: 4, transition: 'width 0.6s ease' }} />
         </div>
       </div>
 
@@ -278,9 +278,9 @@ export default function MailIntelDashboard() {
                     </td>
                     <td style={{ padding: '14px 16px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontSize: 12, fontWeight: 800, color: isSafe ? '#10B981' : '#F59E0B' }}>{d.success_rate}%</span>
+                        <span style={{ fontSize: 12, fontWeight: 800, color: isSafe ? '#ffffff' : '#d4d4d8' }}>{d.success_rate}%</span>
                         <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--card-border)', overflow: 'hidden' }}>
-                          <div style={{ width: `${d.success_rate}%`, height: '100%', background: isSafe ? '#10B981' : '#F59E0B' }} />
+                          <div style={{ width: `${d.success_rate}%`, height: '100%', background: isSafe ? '#ffffff' : '#d4d4d8' }} />
                         </div>
                       </div>
                     </td>
@@ -293,8 +293,8 @@ export default function MailIntelDashboard() {
                         fontWeight: 700, 
                         padding: '3px 8px', 
                         borderRadius: 4, 
-                        background: isSafe ? 'rgba(16, 185, 129, 0.12)' : 'rgba(245, 158, 11, 0.12)', 
-                        color: isSafe ? '#10B981' : '#F59E0B' 
+                        background: isSafe ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.05)', 
+                        color: isSafe ? '#ffffff' : '#d4d4d8' 
                       }}>
                         {isSafe ? 'ACTIVE MX' : 'MONITORED'}
                       </span>

@@ -359,7 +359,7 @@ export default function Settings() {
                         <div style={{ flex: 1 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <div style={{ fontWeight: 500, color: 'var(--text-primary)', fontSize: 14 }}>Windows / Chrome</div>
-                            <span style={{ fontSize: 10, background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '2px 6px', borderRadius: 4, fontWeight: 800 }}>CURRENT</span>
+                            <span style={{ fontSize: 10, background: 'rgba(255, 255, 255, 0.08)', color: '#ffffff', padding: '2px 6px', borderRadius: 4, fontWeight: 800 }}>CURRENT</span>
                           </div>
                           <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>New York, United States &bull; Active now</div>
                         </div>
@@ -470,7 +470,7 @@ export default function Settings() {
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                     <span style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: 14 }}>{acc.email_address}</span>
                                     {acc.is_shadow_alias && (
-                                      <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.3)', fontWeight: 600 }}>
+                                      <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: 'rgba(255, 255, 255, 0.05)', color: '#d4d4d8', border: '1px solid rgba(255, 255, 255, 0.05)', fontWeight: 600 }}>
                                         ⚠️ Shadow Alias
                                       </span>
                                     )}
@@ -489,21 +489,21 @@ export default function Settings() {
                             </td>
                             <td style={{ padding: '16px 24px' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-secondary)', fontSize: 13 }}>
-                                {acc.provider === 'microsoft' && <span style={{ color: '#0078d4', fontWeight: 900, fontSize: 14 }}>O</span>}
+                                {acc.provider === 'microsoft' && <span style={{ color: '#ffffff', fontWeight: 900, fontSize: 14 }}>O</span>}
                                 {acc.provider === 'google' && <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" style={{ width: 14, height: 14 }} />}
-                                {acc.provider === 'yahoo' && <span style={{ color: '#6001d2', fontWeight: 900, fontSize: 14 }}>Y!</span>}
+                                {acc.provider === 'yahoo' && <span style={{ color: '#e4e4e7', fontWeight: 900, fontSize: 14 }}>Y!</span>}
                                 {acc.provider === 'smtp' && <Server size={14} />}
                                 {acc.provider === 'microsoft' ? 'Microsoft 365' : acc.provider === 'google' ? 'Gmail' : acc.provider === 'yahoo' ? 'Yahoo Mail' : 'Custom SMTP'}
                               </div>
                             </td>
                             <td style={{ padding: '16px 24px' }}>
-                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: acc.health_status === 'healthy' ? '#10b981' : '#ef4444', fontSize: 13, background: acc.health_status === 'healthy' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', padding: '4px 8px', borderRadius: 12 }}>
-                                <div style={{ width: 6, height: 6, borderRadius: '50%', background: acc.health_status === 'healthy' ? '#10b981' : '#ef4444' }} />
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: acc.health_status === 'healthy' ? '#ffffff' : '#ef4444', fontSize: 13, background: acc.health_status === 'healthy' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(239, 68, 68, 0.1)', padding: '4px 8px', borderRadius: 12 }}>
+                                <div style={{ width: 6, height: 6, borderRadius: '50%', background: acc.health_status === 'healthy' ? '#ffffff' : '#ef4444' }} />
                                 {acc.health_status === 'healthy' ? 'Connected' : 'Error'}
                               </div>
                             </td>
                             <td style={{ padding: '16px 24px', textAlign: 'center' }}>
-                              <Star size={16} style={{ color: acc.is_default ? '#f59e0b' : 'var(--text-tertiary)', fill: acc.is_default ? '#f59e0b' : 'transparent' }} />
+                              <Star size={16} style={{ color: acc.is_default ? '#d4d4d8' : 'var(--text-tertiary)', fill: acc.is_default ? '#d4d4d8' : 'transparent' }} />
                             </td>
                             <td style={{ padding: '16px 24px', textAlign: 'right' }}>
                               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
@@ -532,9 +532,9 @@ export default function Settings() {
                 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
                   {[
-                    { id: 'microsoft', name: 'Microsoft 365', desc: 'Connect your Outlook or Microsoft 365 account.', icon: <span style={{ color: '#0078d4', fontWeight: 900, fontSize: 20 }}>O</span> },
+                    { id: 'microsoft', name: 'Microsoft 365', desc: 'Connect your Outlook or Microsoft 365 account.', icon: <span style={{ color: '#ffffff', fontWeight: 900, fontSize: 20 }}>O</span> },
                     { id: 'google', name: 'Gmail', desc: 'Connect your Gmail or Google Workspace account.', icon: <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" style={{ width: 20, height: 20 }} /> },
-                    { id: 'yahoo', name: 'Yahoo Mail', desc: 'Connect your Yahoo Mail account securely.', icon: <span style={{ color: '#6001d2', fontWeight: 900, fontSize: 20 }}>Y!</span> },
+                    { id: 'yahoo', name: 'Yahoo Mail', desc: 'Connect your Yahoo Mail account securely.', icon: <span style={{ color: '#e4e4e7', fontWeight: 900, fontSize: 20 }}>Y!</span> },
                     { id: 'smtp', name: 'Custom SMTP', desc: 'Use custom SMTP settings for any email provider.', icon: <Mail size={20} style={{ color: 'var(--text-secondary)' }} /> }
                   ].map(provider => (
                     <div key={provider.id} style={{ border: '1px solid var(--card-border)', borderRadius: 8, padding: 20, display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -602,17 +602,17 @@ export default function Settings() {
             <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
               {/* Banner */}
               <div style={{
-                background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(228, 228, 231, 0.08) 100%)',
-                border: '1px solid rgba(16, 185, 129, 0.35)', borderRadius: 12, padding: '24px 28px',
+                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(228, 228, 231, 0.08) 100%)',
+                border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: 12, padding: '24px 28px',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16
               }}>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                    <Laptop size={22} color="#10b981" />
+                    <Laptop size={22} color="#ffffff" />
                     <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
                       TalentOps Scout Desktop (Windows)
                     </h2>
-                    <span style={{ fontSize: 10, fontWeight: 700, background: 'rgba(16, 185, 129, 0.2)', color: '#4ade80', padding: '2px 8px', borderRadius: 12 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, background: 'rgba(255, 255, 255, 0.08)', color: '#ffffff', padding: '2px 8px', borderRadius: 12 }}>
                       v2.0 PRODUCTION
                     </span>
                   </div>
@@ -633,9 +633,9 @@ export default function Settings() {
                       toast.success('Desktop Installer download started!');
                     }}
                     style={{
-                      padding: '10px 20px', background: '#10b981', color: '#ffffff', border: 'none',
+                      padding: '10px 20px', background: '#ffffff', color: '#ffffff', border: 'none',
                       borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex',
-                      alignItems: 'center', gap: 8, boxShadow: '0 4px 14px rgba(16, 185, 129, 0.35)',
+                      alignItems: 'center', gap: 8, boxShadow: '0 4px 14px rgba(255, 255, 255, 0.08)',
                       whiteSpace: 'nowrap'
                     }}
                   >
@@ -664,7 +664,7 @@ export default function Settings() {
                 </h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
                   <div style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 10, padding: 14 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: '#10b981', marginBottom: 4 }}>1. Download Setup</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#ffffff', marginBottom: 4 }}>1. Download Setup</div>
                     <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Download <code>TalentOpsScoutSetup.exe</code> and install in 10 seconds.</div>
                   </div>
                   <div style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 10, padding: 14 }}>

@@ -109,8 +109,8 @@ export default function AIAutonomySettings() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-            <span style={{ fontSize: '13px', color: '#10b981' }}>🛡</span>
-            <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: '#10b981', letterSpacing: '0.08em' }}>
+            <span style={{ fontSize: '13px', color: '#ffffff' }}>🛡</span>
+            <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: '#ffffff', letterSpacing: '0.08em' }}>
               Governance & Safety Controls
             </span>
             <EvidenceBadge status="VERIFIED" confidence={1.0} size="sm" />
@@ -127,7 +127,7 @@ export default function AIAutonomySettings() {
           onClick={handleSave}
           disabled={saving}
           style={{
-            background: 'linear-gradient(135deg, #10b981, #e4e4e7)',
+            background: 'linear-gradient(135deg, #ffffff, #d4d4d8)',
             border: 'none',
             borderRadius: '8px',
             padding: '8px 20px',
@@ -170,7 +170,7 @@ export default function AIAutonomySettings() {
                   <span style={{ fontSize: '12px', fontWeight: 800, color: isSelected ? '#e4e4e7' : 'var(--text-primary)' }}>
                     {al.title}
                   </span>
-                  {isSelected && <span style={{ color: '#10b981', fontWeight: 900 }}>✓</span>}
+                  {isSelected && <span style={{ color: '#ffffff', fontWeight: 900 }}>✓</span>}
                 </div>
                 <div style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
                   {al.desc}
@@ -267,7 +267,7 @@ export default function AIAutonomySettings() {
                 <span style={{ color: 'var(--text-secondary)' }}>{log.created_at?.slice(0, 19).replace('T', ' ')}</span>
                 <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{log.action_type}</span>
                 <span style={{ color: '#e4e4e7' }}>{log.model_name}</span>
-                <span style={{ color: '#10b981' }}>{log.latency_ms}ms</span>
+                <span style={{ color: '#ffffff' }}>{log.latency_ms}ms</span>
                 <span style={{ color: 'var(--text-secondary)' }}>${(log.cost_usd || 0).toFixed(5)}</span>
               </div>
             ))

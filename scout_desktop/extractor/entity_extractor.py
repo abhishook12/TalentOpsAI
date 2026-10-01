@@ -395,12 +395,16 @@ class EntityExtractor:
                     if title and title.lower() != target_name.lower() and is_plausible_title(title):
                         if not cluster.current_title:
                             intel = classify_title(title)
-                            canonical = (intel.get("canonical_title") if intel else None) or title
+                            # CRITICAL: Use the CLEANED ON-SCREEN title, NOT the synthesized canonical.
+                            # "Staffing Advisor" must be preserved as "Staffing Advisor", not overwritten
+                            # to "Recruiter" by the canonical synthesis engine. The canonical is stored
+                            # separately for seniority/specialization metadata only.
+                            display_title = title
                             cluster.add_observation(Observation(
                                 semantic_type="PERSON",
                                 subject=target_name,
                                 predicate="HAS_TITLE",
-                                object_value=canonical,
+                                object_value=display_title,
                                 confidence=0.92,
                                 evidence=line,
                                 capture_id=capture_id,
@@ -457,7 +461,7 @@ class EntityExtractor:
                     continue
                 if is_valid_company_name(line) and not is_plausible_title(line):
                     se = classify_semantic_entity(line)
-                    if se.get("entity_type") == "COMPANY" and se.get("confidence", 0) >= 0.90:
+                    if se.get("entity_type") == "COMPANY" and se.get("confidence", 0) >= 0.80:
                         cluster.add_observation(Observation(
                             semantic_type="COMPANY",
                             subject=target_name,
@@ -1193,7 +1197,7 @@ class EntityExtractor:
             if job_title and not company_name and len(line) >= 2 and not is_valid_location(line) and not extract_connection_degree(line):
                 if is_valid_company_name(line) and not is_plausible_title(line):
                     se = classify_semantic_entity(line)
-                    if se.get("entity_type") == "COMPANY" and se.get("confidence", 0) >= 0.90:
+                    if se.get("entity_type") == "COMPANY" and se.get("confidence", 0) >= 0.80:
                         company_name = line
                 continue
             if not job_location and is_valid_location(clean_location_text(line)):
@@ -1399,7 +1403,7 @@ class EntityExtractor:
 
             if cluster.current_title and not cluster.current_company and is_valid_company_name(line) and not is_plausible_title(line) and not is_valid_location(line):
                 se = classify_semantic_entity(line)
-                if se.get("entity_type") == "COMPANY" and se.get("confidence", 0) >= 0.90:
+                if se.get("entity_type") == "COMPANY" and se.get("confidence", 0) >= 0.80:
                     cluster.add_observation(Observation(
                         semantic_type="PERSON",
                         subject=candidate_name,

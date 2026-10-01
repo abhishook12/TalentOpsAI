@@ -91,7 +91,7 @@ export default function USHeatmap() {
   // Logarithmic color scale helps show data even when heavily skewed
   const colorScale = scaleLinear()
     .domain([0, maxCount > 0 ? Math.max(1, maxCount * 0.08) : 1, maxCount || 1])
-    .range(["#241d10", "#96731f", "#f0d78c"]);
+    .range(["#18181b", "#71717a", "#ffffff"]);
 
   const handleMouseMove = (e) => {
     // Keep tooltip relative to the map container by using nativeEvent offset
@@ -247,7 +247,7 @@ export default function USHeatmap() {
       {/* Legend */}
       <div style={{ position: "absolute", top: 56, right: 20, display: "flex", flexDirection: "column", alignItems: "center", gap: "8px", fontSize: "12px", color: "var(--text-muted)", fontWeight: 600 }}>
         <span>High ({maxCount.toLocaleString()})</span>
-        <div style={{ width: "8px", height: "140px", background: "linear-gradient(to bottom, #f0d78c, #241d10)", borderRadius: "8px" }} />
+        <div style={{ width: "8px", height: "140px", background: "linear-gradient(to bottom, #ffffff, #18181b)", borderRadius: "8px" }} />
         <span>Low</span>
       </div>
     </div>

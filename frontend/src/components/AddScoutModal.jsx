@@ -108,9 +108,9 @@ export default function AddScoutModal({ isOpen, onClose, onActivated }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
           <div style={{
             width: 44, height: 44, borderRadius: 12,
-            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+            background: 'linear-gradient(135deg, #ffffff 0%, #e4e4e7 100%)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 4px 14px rgba(16, 185, 129, 0.35)'
+            boxShadow: '0 4px 14px rgba(255, 255, 255, 0.08)'
           }}>
             <Laptop size={24} color="#fff" />
           </div>
@@ -173,8 +173,8 @@ export default function AddScoutModal({ isOpen, onClose, onActivated }) {
             </span>
             <span style={{
               fontSize: 11, fontWeight: 700,
-              color: timeLeft < 60 ? '#ef4444' : '#10b981',
-              background: timeLeft < 60 ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+              color: timeLeft < 60 ? '#ef4444' : '#ffffff',
+              background: timeLeft < 60 ? 'rgba(239, 68, 68, 0.15)' : 'rgba(255, 255, 255, 0.08)',
               padding: '2px 8px', borderRadius: 10
             }}>
               Expires in {formatTime(timeLeft)}
@@ -188,7 +188,7 @@ export default function AddScoutModal({ isOpen, onClose, onActivated }) {
           }}>
             <span style={{
               fontFamily: 'monospace', fontSize: 20, fontWeight: 800,
-              color: '#10b981', letterSpacing: 2
+              color: '#ffffff', letterSpacing: 2
             }}>
               {loading ? 'GENERATING...' : (codeData?.code || 'TOS-....-....')}
             </span>
@@ -196,7 +196,7 @@ export default function AddScoutModal({ isOpen, onClose, onActivated }) {
               onClick={handleCopyCode}
               disabled={loading || !codeData?.code}
               style={{
-                padding: '6px 14px', background: copied ? '#10b981' : 'var(--card-bg, #27272a)',
+                padding: '6px 14px', background: copied ? '#ffffff' : 'var(--card-bg, #27272a)',
                 color: copied ? '#ffffff' : 'var(--text-primary, #ffffff)', border: '1px solid var(--card-border, #3f3f46)', borderRadius: 6, fontSize: 12,
                 fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6
               }}
@@ -211,10 +211,10 @@ export default function AddScoutModal({ isOpen, onClose, onActivated }) {
               onClick={handleDeepLink}
               disabled={loading || !codeData?.code}
               style={{
-                flex: 1, padding: '10px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                flex: 1, padding: '10px', background: 'linear-gradient(135deg, #ffffff 0%, #e4e4e7 100%)',
                 color: '#fff', border: 'none', borderRadius: 8, fontSize: 13,
                 fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center',
-                justifyContent: 'center', gap: 6, boxShadow: '0 2px 10px rgba(16, 185, 129, 0.3)'
+                justifyContent: 'center', gap: 6, boxShadow: '0 2px 10px rgba(255, 255, 255, 0.08)'
               }}
             >
               <Zap size={15} />

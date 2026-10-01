@@ -102,11 +102,11 @@ export default function NotificationCenter() {
         style={{ position: 'relative' }} 
         onClick={() => setIsOpen(true)}
       >
-        <Bell size={18} />
+        <Bell size={19} />
         {unreadCount > 0 && (
           <span style={{ 
-            position: 'absolute', top: 7, right: 9, 
-            width: 8, height: 8, borderRadius: 999, 
+            position: 'absolute', top: 7, right: 8, 
+            width: 7, height: 7, borderRadius: 999, 
             background: 'var(--danger)',
             boxShadow: '0 0 8px var(--danger)'
           }} />
@@ -154,9 +154,9 @@ export default function NotificationCenter() {
                     <button 
                       onClick={() => setShowComposer(!showComposer)} 
                       style={{ 
-                        background: showComposer ? '#1E293B' : 'rgba(56, 189, 248, 0.12)', 
-                        border: '1px solid rgba(56, 189, 248, 0.3)', 
-                        color: '#38BDF8', 
+                        background: showComposer ? 'var(--card-bg, #161618)' : 'rgba(255, 255, 255, 0.06)', 
+                        border: '1px solid rgba(255, 255, 255, 0.06)', 
+                        color: '#ffffff', 
                         fontSize: 12, 
                         cursor: 'pointer', 
                         fontWeight: 600,
@@ -182,8 +182,8 @@ export default function NotificationCenter() {
 
               {/* Admin Broadcast Composer */}
               {isAdmin && showComposer && (
-                <form onSubmit={handleSendBroadcast} style={{ padding: '12px 16px', background: '#0F172A', borderBottom: '1px solid var(--card-border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#38BDF8', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <form onSubmit={handleSendBroadcast} style={{ padding: '12px 16px', background: 'var(--panel-bg, #121214)', borderBottom: '1px solid var(--card-border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#ffffff', display: 'flex', alignItems: 'center', gap: 6 }}>
                     <Radio size={13} />
                     <span>Dispatch Global Fleet Broadcast</span>
                   </div>
@@ -193,7 +193,7 @@ export default function NotificationCenter() {
                     value={composerForm.title}
                     onChange={(e) => setComposerForm({ ...composerForm, title: e.target.value })}
                     style={{
-                      background: '#1E293B',
+                      background: 'var(--card-bg, #161618)',
                       border: '1px solid var(--card-border)',
                       borderRadius: 4,
                       padding: '6px 10px',
@@ -207,7 +207,7 @@ export default function NotificationCenter() {
                     value={composerForm.message}
                     onChange={(e) => setComposerForm({ ...composerForm, message: e.target.value })}
                     style={{
-                      background: '#1E293B',
+                      background: 'var(--card-bg, #161618)',
                       border: '1px solid var(--card-border)',
                       borderRadius: 4,
                       padding: '6px 10px',
@@ -221,7 +221,7 @@ export default function NotificationCenter() {
                       value={composerForm.type}
                       onChange={(e) => setComposerForm({ ...composerForm, type: e.target.value })}
                       style={{
-                        background: '#1E293B',
+                        background: 'var(--card-bg, #161618)',
                         border: '1px solid var(--card-border)',
                         borderRadius: 4,
                         padding: '4px 8px',
@@ -238,7 +238,7 @@ export default function NotificationCenter() {
                       type="submit"
                       disabled={isSending}
                       style={{
-                        background: '#0284C7',
+                        background: '#ffffff',
                         border: 'none',
                         color: '#fff',
                         borderRadius: 4,
@@ -270,7 +270,7 @@ export default function NotificationCenter() {
                     if (n.type === 'success') { Icon = Check; color = 'var(--success)'; }
                     if (n.type === 'warning') { Icon = AlertTriangle; color = 'var(--warning)'; }
                     if (n.type === 'error') { Icon = AlertCircle; color = 'var(--danger)'; }
-                    if (n.type === 'update') { Icon = Radio; color = '#10B981'; }
+                    if (n.type === 'update') { Icon = Radio; color = '#ffffff'; }
 
                     return (
                       <div 
@@ -278,8 +278,8 @@ export default function NotificationCenter() {
                         onClick={() => !n.read && markItemRead(n.id)}
                         style={{ 
                           display: 'flex', gap: 12, padding: '12px 14px', 
-                          background: n.read ? 'transparent' : 'rgba(56, 189, 248, 0.05)',
-                          border: n.read ? '1px solid transparent' : '1px solid rgba(56, 189, 248, 0.12)',
+                          background: n.read ? 'transparent' : 'rgba(255, 255, 255, 0.06)',
+                          border: n.read ? '1px solid transparent' : '1px solid rgba(255, 255, 255, 0.06)',
                           borderRadius: 6, margin: '4px 0',
                           cursor: n.read ? 'default' : 'pointer'
                         }}

@@ -86,7 +86,7 @@ export default function AdminLock({ onUnlock, errorMessage }) {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <div style={{ width: 52, height: 52, borderRadius: 6, background: 'rgba(161, 161, 170,0.22)', border: '1px solid rgba(161, 161, 170,0.28)', display: 'grid', placeItems: 'center' }}>
-            <i className="ti ti-terminal-2" style={{ fontSize: 22, color: '#c7d2fe' }} />
+            <i className="ti ti-terminal-2" style={{ fontSize: 22, color: '#ffffff' }} />
           </div>
           <div style={{ fontSize: 34, fontWeight: 900, letterSpacing: '-0.02em' }}>RECRUIT-INTEL</div>
         </div>
@@ -105,7 +105,7 @@ export default function AdminLock({ onUnlock, errorMessage }) {
           <div className="card" style={{ padding: 16, borderRadius: 6, width: 220, background: 'var(--bg-surface)', border: '1px solid var(--card-border)' }}>
             <div style={{ fontSize: 10, color: 'rgba(229,231,235,0.65)', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Active Clusters</div>
             <div style={{ marginTop: 8, fontSize: 26, fontWeight: 900 }}>1,204</div>
-            <div style={{ marginTop: 2, fontSize: 12, color: '#34d399' }}>+12%</div>
+            <div style={{ marginTop: 2, fontSize: 12, color: '#e4e4e7' }}>+12%</div>
           </div>
         </div>
       </div>
@@ -193,7 +193,7 @@ export default function AdminLock({ onUnlock, errorMessage }) {
                   borderRadius: 10,
                   fontSize: 18,
                   fontWeight: 600,
-                  background: k.key === 'enter' ? 'linear-gradient(135deg, #d4d4d8, #d4d4d8)' : '#111c30',
+                  background: k.key === 'enter' ? 'linear-gradient(135deg, #d4d4d8, #d4d4d8)' : '#1e1e22',
                   color: k.key === 'enter' ? '#fff' : '#a1a1aa',
                   border: '1px solid #27272a',
                   cursor: verifying ? 'not-allowed' : 'pointer',
@@ -209,7 +209,7 @@ export default function AdminLock({ onUnlock, errorMessage }) {
                   e.currentTarget.style.color = '#e4e4e7'
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = k.key === 'enter' ? 'linear-gradient(135deg, #d4d4d8, #d4d4d8)' : '#111c30'
+                  e.currentTarget.style.background = k.key === 'enter' ? 'linear-gradient(135deg, #d4d4d8, #d4d4d8)' : '#1e1e22'
                   e.currentTarget.style.color = k.key === 'enter' ? '#fff' : '#a1a1aa'
                 }}
               >
@@ -262,7 +262,7 @@ export default function AdminLock({ onUnlock, errorMessage }) {
           )}
 
           {(lockedMsg || errorMessage || attempts > 0) && (
-            <div style={{ fontSize: 11.5, color: lockedMsg ? '#fbbf24' : '#f87171', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ fontSize: 11.5, color: lockedMsg ? '#d4d4d8' : '#f87171', display: 'flex', alignItems: 'center', gap: 6 }}>
               <i className={`ti ${lockedMsg ? 'ti-alert-circle' : 'ti-alert-triangle'}`} style={{ fontSize: 13 }} />
               {lockedMsg || errorMessage || `Invalid PIN`}
             </div>

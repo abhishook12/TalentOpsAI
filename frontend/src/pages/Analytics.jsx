@@ -12,7 +12,7 @@ const CHART_TICK = { fill: 'var(--text-primary)', fontSize: 12, fontWeight: 700 
 
 const BAR_LABEL_PROPS = { fill: 'var(--text-primary)', fontSize: 12, fontWeight: 700 }
 
-const PAGE_COLORS = ['#C9A84C', '#0F6E56', '#a1a1aa', '#BA7517', '#C4394A', '#1695A3', '#f0d78c', '#D97706']
+const PAGE_COLORS = ['#ffffff', '#e4e4e7', '#d4d4d8', '#a1a1aa', '#71717a', '#52525b', '#3f3f46', '#27272a']
 
 const STATE_FULL_NAMES = {
   AL:'Alabama',AK:'Alaska',AZ:'Arizona',AR:'Arkansas',CA:'California',CO:'Colorado',CT:'Connecticut',
@@ -148,7 +148,7 @@ function StateTooltip({ active, payload, label }) {
       <div style={{ display: 'flex', gap: 16 }}>
         <div>
           <p style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Recruiters</p>
-          <p style={{ fontSize: 16, fontWeight: 700, color: '#185FA5' }}>{d?.recruiters?.toLocaleString()}</p>
+          <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>{d?.recruiters?.toLocaleString()}</p>
         </div>
       </div>
     </div>
@@ -159,6 +159,8 @@ export default function Analytics() {
   const [selectedStates, setSelectedStates] = useSessionState('an_selectedStates', [])
   const [syncing, setSyncing] = useState(false)
   const [syncResult, setSyncResult] = useState(null)
+  const [funnelData, setFunnelData] = useState(null)
+  const [funnelLoading, setFunnelLoading] = useState(false)
 
   const { data: taxonomyData, refetch: refetchTaxonomy, isError: isTaxError, error: taxError } = useQuery({
     queryKey: ['taxonomy-distribution'],
@@ -179,6 +181,21 @@ export default function Analytics() {
       setSyncing(false)
     }
   }
+
+  useEffect(() => {
+    const fetchFunnel = async () => {
+      setFunnelLoading(true)
+      try {
+        const res = await api.get('/analytics/sourcing-funnel?days=30')
+        setFunnelData(res.data)
+      } catch (e) {
+        console.error('Funnel fetch failed:', e)
+      } finally {
+        setFunnelLoading(false)
+      }
+    }
+    fetchFunnel()
+  }, [])
 
   const { data: analyticsData, isLoading: loading, isError: isAnalyticsError, error: analyticsError, refetch: refetchAnalytics } = useQuery({
     queryKey: ['analytics-dashboard'],
@@ -282,15 +299,15 @@ export default function Analytics() {
         <h1 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', margin: 0, lineHeight: 1.1 }}>Advanced Metrics</h1>
         <div style={{ display: 'flex', gap: 8 }}>
           <KPI inline label="Total Visits" value={(visits?.total_visits || 0).toLocaleString()} color="var(--text-primary)" icon="ti-eye" />
-          <KPI inline label="Today" value={(visits?.today || 0).toLocaleString()} sub={todayChange !== null ? `${todayChange > 0 ? '▲' : '▼'} ${Math.abs(todayChange)}%` : null} color="#185FA5" icon="ti-calendar-today" />
-          <KPI inline label="Yesterday" value={(visits?.yesterday || 0).toLocaleString()} color="#0F6E56" icon="ti-calendar" />
+          <KPI inline label="Today" value={(visits?.today || 0).toLocaleString()} sub={todayChange !== null ? `${todayChange > 0 ? '▲' : '▼'} ${Math.abs(todayChange)}%` : null} color="#ffffff" icon="ti-calendar-today" />
+          <KPI inline label="Yesterday" value={(visits?.yesterday || 0).toLocaleString()} color="#d4d4d8" icon="ti-calendar" />
         </div>
         
         <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', margin: '8px 0 0', lineHeight: 1.1 }}>State Extraction Intelligence</h2>
         <div style={{ display: 'flex', gap: 8 }}>
-          <KPI inline label="Known State" value={dq?.known_state_count?.toLocaleString()} color="#0F6E56" icon="ti-map-pin-filled" />
-          <KPI inline label="Explicit State" value={dq?.explicit_state_count?.toLocaleString()} color="#185FA5" icon="ti-target" />
-          <KPI inline label="Inferred State" value={dq?.inferred_state_count?.toLocaleString()} color="var(--text-primary)" icon="ti-wand" />
+          <KPI inline label="Known State" value={dq?.known_state_count?.toLocaleString()} color="#ffffff" icon="ti-map-pin-filled" />
+          <KPI inline label="Explicit State" value={dq?.explicit_state_count?.toLocaleString()} color="#d4d4d8" icon="ti-target" />
+          <KPI inline label="Inferred State" value={dq?.inferred_state_count?.toLocaleString()} color="#a1a1aa" icon="ti-wand" />
           <KPI inline label="Unknown State" value={dq?.unknown_state_count?.toLocaleString()} color="#ef4444" icon="ti-alert-triangle" />
         </div>
         <div style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4, padding: '8px 12px', background: 'rgba(239, 68, 68, 0.05)', borderRadius: 8, border: '1px solid rgba(239, 68, 68, 0.1)' }}>
@@ -444,15 +461,15 @@ export default function Analytics() {
               <AreaChart data={dailyData} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
                 <defs>
                   <linearGradient id="visitGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#185FA5" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="#185FA5" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#ffffff" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="#ffffff" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" vertical={false} />
                 <XAxis dataKey="day" tick={CHART_TICK} axisLine={false} tickLine={false} />
                 <YAxis tick={CHART_TICK} axisLine={false} tickLine={false} width={36} allowDecimals={false} />
                 <Tooltip {...customTooltipStyle} />
-                <Area type="monotone" dataKey="visits" stroke="#185FA5" strokeWidth={1.5} fill="url(#visitGrad)" dot={false} />
+                <Area type="monotone" dataKey="visits" stroke="#ffffff" strokeWidth={1.5} fill="url(#visitGrad)" dot={false} />
               </AreaChart>
             </ChartBox>
           </div>
@@ -470,7 +487,7 @@ export default function Analytics() {
                 <XAxis dataKey="week" tick={CHART_TICK} axisLine={false} tickLine={false} />
                 <YAxis tick={CHART_TICK} axisLine={false} tickLine={false} width={36} allowDecimals={false} />
                 <Tooltip {...customTooltipStyle} />
-                <Bar dataKey="visits" fill="#534AB7" radius={[3, 3, 0, 0]}>
+                <Bar dataKey="visits" fill="#e4e4e7" radius={[3, 3, 0, 0]}>
                   <LabelList dataKey="visits" position="top" {...BAR_LABEL_PROPS} />
                 </Bar>
               </BarChart>
@@ -584,7 +601,7 @@ export default function Analytics() {
                   {syncing ? 'Syncing with Gemini...' : taxonomyData?.uncategorized === 0 ? 'All Titles Categorized' : `Categorize ${taxonomyData?.uncategorized?.toLocaleString()} Titles`}
                 </button>
                 {syncResult && (
-                  <div style={{ marginTop: 8, fontSize: 11, padding: '8px 10px', borderRadius: 6, background: syncResult.error ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)', color: syncResult.error ? '#ef4444' : '#22c55e', border: `1px solid ${syncResult.error ? 'rgba(239,68,68,0.2)' : 'rgba(34,197,94,0.2)'}` }}>
+                  <div style={{ marginTop: 8, fontSize: 11, padding: '8px 10px', borderRadius: 6, background: syncResult.error ? 'rgba(239,68,68,0.1)' : 'rgba(255,255,255,0.06)', color: syncResult.error ? '#ef4444' : '#ffffff', border: `1px solid ${syncResult.error ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.12)'}` }}>
                     {syncResult.error || `✓ ${syncResult.message} — ${syncResult.updated_recruiters} recruiters updated.`}
                   </div>
                 )}
@@ -597,7 +614,7 @@ export default function Analytics() {
                     const pct = taxonomyData.total > 0 ? Math.round(d.count / taxonomyData.total * 100) : 0
                     return (
                       <div key={d.category} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11 }}>
-                        <span style={{ width: 8, height: 8, borderRadius: 999, background: d.category === 'Uncategorized' ? '#6b7280' : PAGE_COLORS[i % PAGE_COLORS.length], flexShrink: 0 }} />
+                        <span style={{ width: 8, height: 8, borderRadius: 999, background: d.category === 'Uncategorized' ? '#71717a' : PAGE_COLORS[i % PAGE_COLORS.length], flexShrink: 0 }} />
                         <span style={{ flex: 1, color: 'var(--text-primary)', fontWeight: 500 }}>{d.category}</span>
                         <span style={{ color: 'var(--text-muted)', fontFamily: 'var(--mono)', fontSize: 10 }}>{d.count.toLocaleString()}</span>
                         <span style={{ color: 'var(--text-muted)', fontSize: 10, width: 32, textAlign: 'right' }}>{pct}%</span>
@@ -617,6 +634,81 @@ export default function Analytics() {
           <DataHealthScorecard />
         </SectionCard>
       )}
+
+      {/* Sourcing Funnel Analytics */}
+      <div style={{ marginTop: 32, gridColumn: '1 / -1' }}>
+        <h2 style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <i className="ti ti-filter" style={{ color: '#ffffff' }} />
+          Sourcing Funnel
+        </h2>
+        {funnelLoading ? (
+          <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)' }}>Loading funnel data...</div>
+        ) : funnelData ? (
+          <div style={{ display: 'grid', gap: 16 }}>
+            {/* Funnel Bars */}
+            <div className="ds-card" style={{ padding: 20 }}>
+              <div className="ds-eyebrow" style={{ marginBottom: 16 }}>Discovery Pipeline</div>
+              {[
+                { label: 'Discovered', value: funnelData.funnel?.discovered || 0, color: '#ffffff', icon: 'ti-search' },
+                { label: 'Promoted', value: funnelData.funnel?.promoted || 0, color: '#e4e4e7', icon: 'ti-arrow-up' },
+                { label: 'Committed', value: funnelData.funnel?.committed || 0, color: '#d4d4d8', icon: 'ti-check' },
+                { label: 'Enriched', value: funnelData.funnel?.enriched || 0, color: '#a1a1aa', icon: 'ti-sparkles' },
+              ].map((stage, i) => {
+                const maxVal = funnelData.funnel?.discovered || 1
+                const pct = Math.round((stage.value / maxVal) * 100)
+                return (
+                  <div key={stage.label} style={{ marginBottom: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <i className={`ti ${stage.icon}`} style={{ color: stage.color, fontSize: 14 }} />
+                        {stage.label}
+                      </span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: stage.color }}>{stage.value.toLocaleString()} ({pct}%)</span>
+                    </div>
+                    <div style={{ height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.06)' }}>
+                      <div style={{ height: '100%', borderRadius: 4, background: `linear-gradient(90deg, ${stage.color}, ${stage.color}88)`, width: `${pct}%`, transition: 'width 0.6s ease' }} />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            
+            {/* Outreach Metrics */}
+            <div className="ds-card" style={{ padding: 20 }}>
+              <div className="ds-eyebrow" style={{ marginBottom: 16 }}>Outreach Performance</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 12 }}>
+                {[
+                  { label: 'Contacted', value: funnelData.funnel?.contacted || 0, color: '#ffffff' },
+                  { label: 'Delivered', value: funnelData.funnel?.delivered || 0, color: '#e4e4e7' },
+                  { label: 'Opened', value: funnelData.funnel?.opened || 0, color: '#d4d4d8' },
+                  { label: 'Replied', value: funnelData.funnel?.replied || 0, color: '#ffffff' },
+                  { label: 'Bounced', value: funnelData.funnel?.bounced || 0, color: '#ef4444' },
+                ].map(m => (
+                  <div key={m.label} style={{ padding: 12, borderRadius: 8, background: 'rgba(255,255,255,0.03)', textAlign: 'center' }}>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: m.color }}>{m.value.toLocaleString()}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{m.label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            {/* Conversion Rates */}
+            {funnelData.conversion_rates && Object.keys(funnelData.conversion_rates).length > 0 && (
+              <div className="ds-card" style={{ padding: 20 }}>
+                <div className="ds-eyebrow" style={{ marginBottom: 16 }}>Conversion Rates</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
+                  {Object.entries(funnelData.conversion_rates).map(([key, val]) => (
+                    <div key={key} style={{ padding: 10, borderRadius: 8, background: 'rgba(255,255,255,0.03)' }}>
+                      <div style={{ fontSize: 18, fontWeight: 800, color: val > 50 ? '#ffffff' : val > 20 ? '#d4d4d8' : '#ef4444' }}>{val}%</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, textTransform: 'capitalize' }}>{key.replace(/_/g, ' ')}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : null}
+      </div>
 
     </div>
   )
@@ -639,8 +731,8 @@ function DataHealthScorecard() {
   if (!data || !data.metrics) return <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)' }}>No data available</div>
 
   const getScoreColor = (score) => {
-    if (score >= 90) return '#0F6E56' // Green
-    if (score >= 70) return '#eab308' // Yellow
+    if (score >= 90) return '#ffffff'
+    if (score >= 70) return '#a1a1aa'
     return '#ef4444' // Red
   }
 

@@ -183,8 +183,8 @@ export default function ExtensionReport() {
           {/* Totals */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 28 }}>
             {[
-              { label: 'Contacts Accepted', val: report.totals.accepted, color: '#22c55e' },
-              { label: 'Duplicates Skipped', val: report.totals.duplicates, color: '#f59e0b' },
+              { label: 'Contacts Accepted', val: report.totals.accepted, color: '#ffffff' },
+              { label: 'Duplicates Skipped', val: report.totals.duplicates, color: '#d4d4d8' },
               { label: 'Total Received', val: report.totals.received, color: '#a1a1aa' },
             ].map(s => (
               <div key={s.label} style={{
@@ -221,8 +221,8 @@ export default function ExtensionReport() {
                     <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={{ padding: '10px 12px', color: 'var(--text-primary)', fontWeight: 500 }}>{row.day}</td>
                       <td style={{ padding: '10px 12px', color: '#a1a1aa' }}>{row.received}</td>
-                      <td style={{ padding: '10px 12px', color: '#22c55e', fontWeight: 700 }}>{row.accepted}</td>
-                      <td style={{ padding: '10px 12px', color: '#f59e0b' }}>{row.duplicates}</td>
+                      <td style={{ padding: '10px 12px', color: '#ffffff', fontWeight: 700 }}>{row.accepted}</td>
+                      <td style={{ padding: '10px 12px', color: '#d4d4d8' }}>{row.duplicates}</td>
                       <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{row.active_devices}</td>
                     </tr>
                   ))}
@@ -246,7 +246,7 @@ export default function ExtensionReport() {
                 }}>
                   <img src={`https://logos.hunter.io/${s.site}`} style={{ width: 14, height: 14, borderRadius: 3, objectFit: 'contain' }} alt="" />
                   <span>{s.site}</span>
-                  <span style={{ color: '#22c55e', fontWeight: 700 }}>+{s.contacts}</span>
+                  <span style={{ color: '#ffffff', fontWeight: 700 }}>+{s.contacts}</span>
                 </div>
               ))}
               {report.top_source_sites.length === 0 && (
@@ -279,16 +279,16 @@ export default function ExtensionReport() {
                 </div>
                 <div style={{ display: 'flex', gap: 16, alignItems: 'center', textAlign: 'right' }}>
                   <div>
-                    <div style={{ fontSize: 18, fontWeight: 800, color: '#22c55e' }}>{(d.total_accepted || 0).toLocaleString()}</div>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: '#ffffff' }}>{(d.total_accepted || 0).toLocaleString()}</div>
                     <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>accepted</div>
                   </div>
                   <div>
-                    <div style={{ fontSize: 18, fontWeight: 800, color: '#f59e0b' }}>{(d.total_duplicates || 0).toLocaleString()}</div>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: '#d4d4d8' }}>{(d.total_duplicates || 0).toLocaleString()}</div>
                     <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>dupes</div>
                   </div>
                   <div style={{
                     width: 8, height: 8, borderRadius: '50%',
-                    background: d.is_active ? '#22c55e' : '#ef4444',
+                    background: d.is_active ? '#ffffff' : '#ef4444',
                   }} />
                 </div>
               </div>
@@ -445,7 +445,7 @@ export default function ExtensionReport() {
 
               <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                 <div style={{
-                  background: '#4ade80', color: '#0b0b0c', width: 26, height: 26, borderRadius: '50%',
+                  background: '#ffffff', color: '#0b0b0c', width: 26, height: 26, borderRadius: '50%',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, flexShrink: 0,
                 }}>
                   3
@@ -466,7 +466,7 @@ export default function ExtensionReport() {
                 <div style={{ fontSize: 10, color: 'var(--text-muted, #a1a1aa)', textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 600 }}>
                   Your Activation Code
                 </div>
-                <div style={{ fontSize: 14, fontFamily: 'monospace', fontWeight: 700, color: '#4ade80', marginTop: 2 }}>
+                <div style={{ fontSize: 14, fontFamily: 'monospace', fontWeight: 700, color: '#ffffff', marginTop: 2 }}>
                   {activeCode}
                 </div>
               </div>
@@ -477,7 +477,7 @@ export default function ExtensionReport() {
                   setTimeout(() => setCopiedCode(false), 2000)
                 }}
                 style={{
-                  padding: '6px 14px', background: copiedCode ? '#22c55e' : '#a1a1aa', color: '#fff',
+                  padding: '6px 14px', background: copiedCode ? '#ffffff' : '#a1a1aa', color: '#fff',
                   border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer',
                 }}
               >

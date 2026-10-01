@@ -95,7 +95,7 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
         <div style={{
           padding: '24px 28px', borderBottom: '1px solid var(--card-border, #232326)',
           display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
-          background: 'linear-gradient(180deg, rgba(16,185,129,0.05) 0%, transparent 100%)'
+          background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, transparent 100%)'
         }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
@@ -105,9 +105,9 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
               {profile?.quality_scores && (
                 <span style={{
                   fontSize: 11, fontWeight: 800, padding: '3px 8px', borderRadius: 6,
-                  background: profile.quality_scores.overall_score >= 80 ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)',
-                  color: profile.quality_scores.overall_score >= 80 ? '#10b981' : '#f59e0b',
-                  border: `1px solid ${profile.quality_scores.overall_score >= 80 ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.3)'}`
+                  background: profile.quality_scores.overall_score >= 80 ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.05)',
+                  color: profile.quality_scores.overall_score >= 80 ? '#ffffff' : '#d4d4d8',
+                  border: `1px solid ${profile.quality_scores.overall_score >= 80 ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.05)'}`
                 }}>
                   {profile.quality_scores.tier} • {profile.quality_scores.overall_score}% QUALITY
                 </span>
@@ -148,7 +148,7 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
         </div>
 
         {/* Tab Navigation */}
-        <div style={{ display: 'flex', gap: 6, padding: '12px 28px', borderBottom: '1px solid var(--card-border, #232326)', background: 'var(--bg-base, #0c121e)' }}>
+        <div style={{ display: 'flex', gap: 6, padding: '12px 28px', borderBottom: '1px solid var(--card-border, #232326)', background: 'var(--bg-base, #121214)' }}>
           {[
             { id: 'contributions', label: '📊 Contributions', icon: BarChart3 },
             { id: 'quality', label: '🎯 Quality & Impact', icon: Award },
@@ -163,9 +163,9 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
               style={{
                 padding: '8px 14px', borderRadius: 8, fontSize: 12, fontWeight: 700,
                 cursor: 'pointer', border: 'none', transition: 'all 0.15s ease',
-                background: activeTab === tab.id ? 'rgba(16,185,129,0.18)' : 'transparent',
-                color: activeTab === tab.id ? '#10b981' : 'var(--text-secondary, #a1a1aa)',
-                borderBottom: activeTab === tab.id ? '2px solid #10b981' : '2px solid transparent'
+                background: activeTab === tab.id ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+                color: activeTab === tab.id ? '#ffffff' : 'var(--text-secondary, #a1a1aa)',
+                borderBottom: activeTab === tab.id ? '2px solid #ffffff' : '2px solid transparent'
               }}
             >
               {tab.label}
@@ -203,10 +203,10 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
                     </div>
 
                     <div style={{ borderLeft: '1px solid var(--card-border, rgba(212, 212, 216,0.2))', paddingLeft: 20 }}>
-                      <div style={{ fontSize: 11, color: '#10b981', fontWeight: 700, textTransform: 'uppercase' }}>
+                      <div style={{ fontSize: 11, color: '#ffffff', fontWeight: 700, textTransform: 'uppercase' }}>
                         Canonical Records Improved
                       </div>
-                      <div style={{ fontSize: 26, fontWeight: 900, color: '#10b981', margin: '4px 0' }}>
+                      <div style={{ fontSize: 26, fontWeight: 900, color: '#ffffff', margin: '4px 0' }}>
                         {profile?.contributions?.canonical_records_improved?.toLocaleString() || 0}
                       </div>
                       <div style={{ fontSize: 12, color: 'var(--text-muted, #71717a)' }}>
@@ -219,11 +219,11 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
                     {[
                       { label: 'New People', val: profile?.contributions?.people_created, color: 'var(--text-primary, #e4e4e7)' },
-                      { label: 'People Enriched', val: profile?.contributions?.people_enriched, color: '#10b981' },
-                      { label: 'Companies', val: profile?.contributions?.companies_discovered, color: '#f59e0b' },
+                      { label: 'People Enriched', val: profile?.contributions?.people_enriched, color: '#ffffff' },
+                      { label: 'Companies', val: profile?.contributions?.companies_discovered, color: '#d4d4d8' },
                       { label: 'Contacts (Emails/Phones)', val: profile?.contributions?.contacts_discovered, color: 'var(--text-secondary, #a1a1aa)' },
                     ].map((card, i) => (
-                      <div key={i} style={{ padding: '14px 16px', background: 'var(--card-bg, #0e1526)', border: '1px solid var(--card-border, #232326)', borderRadius: 10 }}>
+                      <div key={i} style={{ padding: '14px 16px', background: 'var(--card-bg, #161618)', border: '1px solid var(--card-border, #232326)', borderRadius: 10 }}>
                         <div style={{ fontSize: 11, color: 'var(--text-muted, #71717a)', fontWeight: 600 }}>{card.label}</div>
                         <div style={{ fontSize: 20, fontWeight: 800, color: card.color, marginTop: 4 }}>
                           +{card.val || 0}
@@ -233,7 +233,7 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
                   </div>
 
                   {/* Specific Fields Discovered */}
-                  <div style={{ background: 'var(--card-bg, #0e1526)', border: '1px solid var(--card-border, #232326)', borderRadius: 12, padding: '18px 20px' }}>
+                  <div style={{ background: 'var(--card-bg, #161618)', border: '1px solid var(--card-border, #232326)', borderRadius: 12, padding: '18px 20px' }}>
                     <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary, #d4d4d8)', marginBottom: 14 }}>
                       Verified Field Discoveries
                     </div>
@@ -260,7 +260,7 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
                   </div>
 
                   {/* 14-Day Timeline Preview */}
-                  <div style={{ background: 'var(--card-bg, #0e1526)', border: '1px solid var(--card-border, #232326)', borderRadius: 12, padding: '18px 20px' }}>
+                  <div style={{ background: 'var(--card-bg, #161618)', border: '1px solid var(--card-border, #232326)', borderRadius: 12, padding: '18px 20px' }}>
                     <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary, #d4d4d8)', marginBottom: 12 }}>
                       14-Day Contribution Timeline
                     </div>
@@ -268,7 +268,7 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
                       {(profile?.timeline || []).slice(-7).map((t, idx) => (
                         <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--card-border, #232326)', fontSize: 12 }}>
                           <span style={{ color: 'var(--text-secondary, #a1a1aa)' }}>{t.date}</span>
-                          <span style={{ color: '#10b981', fontWeight: 700 }}>+{t.people} people</span>
+                          <span style={{ color: '#ffffff', fontWeight: 700 }}>+{t.people} people</span>
                           <span style={{ color: 'var(--text-primary, #e4e4e7)' }}>+{t.companies} companies</span>
                           <span style={{ color: 'var(--text-secondary, #a1a1aa)' }}>+{t.contacts} contacts</span>
                         </div>
@@ -293,11 +293,11 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
                     ].map((q, i) => (
                       <div key={i} style={{
                         padding: '16px 18px', borderRadius: 10,
-                        background: q.highlight ? 'rgba(16,185,129,0.12)' : 'var(--card-bg, #0e1526)',
-                        border: `1px solid ${q.highlight ? 'rgba(16,185,129,0.35)' : 'var(--card-border, #232326)'}`
+                        background: q.highlight ? 'rgba(255, 255, 255, 0.08)' : 'var(--card-bg, #161618)',
+                        border: `1px solid ${q.highlight ? 'rgba(255, 255, 255, 0.08)' : 'var(--card-border, #232326)'}`
                       }}>
-                        <div style={{ fontSize: 11, color: q.highlight ? '#10b981' : 'var(--text-muted, #71717a)', fontWeight: 700 }}>{q.label}</div>
-                        <div style={{ fontSize: 24, fontWeight: 900, color: q.highlight ? '#10b981' : 'var(--text-primary, #fafafa)', margin: '4px 0' }}>
+                        <div style={{ fontSize: 11, color: q.highlight ? '#ffffff' : 'var(--text-muted, #71717a)', fontWeight: 700 }}>{q.label}</div>
+                        <div style={{ fontSize: 24, fontWeight: 900, color: q.highlight ? '#ffffff' : 'var(--text-primary, #fafafa)', margin: '4px 0' }}>
                           {q.val || 0}%
                         </div>
                         <div style={{ fontSize: 10, color: 'var(--text-muted, #71717a)', lineHeight: 1.4 }}>{q.desc}</div>
@@ -306,7 +306,7 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
                   </div>
 
                   {/* Downstream Impact Details */}
-                  <div style={{ background: 'var(--card-bg, #0e1526)', border: '1px solid var(--card-border, #232326)', borderRadius: 12, padding: '20px' }}>
+                  <div style={{ background: 'var(--card-bg, #161618)', border: '1px solid var(--card-border, #232326)', borderRadius: 12, padding: '20px' }}>
                     <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary, #d4d4d8)', marginBottom: 16 }}>
                       Canonical Master Database Impact
                     </div>
@@ -319,13 +319,13 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
                       </div>
                       <div>
                         <div style={{ fontSize: 11, color: 'var(--text-muted, #71717a)' }}>Existing Entities Enriched</div>
-                        <div style={{ fontSize: 18, fontWeight: 800, color: '#10b981', marginTop: 2 }}>
+                        <div style={{ fontSize: 18, fontWeight: 800, color: '#ffffff', marginTop: 2 }}>
                           {profile?.data_quality_impact?.existing_entities_enriched || 0}
                         </div>
                       </div>
                       <div>
                         <div style={{ fontSize: 11, color: 'var(--text-muted, #71717a)' }}>Corrections Proposed / Accepted</div>
-                        <div style={{ fontSize: 18, fontWeight: 800, color: '#f59e0b', marginTop: 2 }}>
+                        <div style={{ fontSize: 18, fontWeight: 800, color: '#d4d4d8', marginTop: 2 }}>
                           {profile?.data_quality_impact?.corrections_accepted || 0}
                         </div>
                       </div>
@@ -337,7 +337,7 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
                       </div>
                       <div>
                         <div style={{ fontSize: 11, color: 'var(--text-muted, #71717a)' }}>Quarantined for Review</div>
-                        <div style={{ fontSize: 18, fontWeight: 800, color: '#f59e0b', marginTop: 2 }}>
+                        <div style={{ fontSize: 18, fontWeight: 800, color: '#d4d4d8', marginTop: 2 }}>
                           {profile?.data_quality_impact?.quarantined_observations || 0}
                         </div>
                       </div>
@@ -362,19 +362,19 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
                   ) : (
                     (profile?.devices || []).map((dev, idx) => (
                       <div key={idx} style={{
-                        background: 'var(--card-bg, #0e1526)', border: '1px solid var(--card-border, #232326)', borderRadius: 12, padding: '18px 20px',
+                        background: 'var(--card-bg, #161618)', border: '1px solid var(--card-border, #232326)', borderRadius: 12, padding: '18px 20px',
                         display: 'flex', justifyContent: 'space-between', alignItems: 'center'
                       }}>
                         <div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                            <Laptop size={16} color={dev.is_active ? '#10b981' : '#ef4444'} />
+                            <Laptop size={16} color={dev.is_active ? '#ffffff' : '#ef4444'} />
                             <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary, #fafafa)' }}>
                               {dev.device_name}
                             </span>
                             <span style={{
                               fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
-                              background: dev.is_active ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
-                              color: dev.is_active ? '#10b981' : '#ef4444'
+                              background: dev.is_active ? 'rgba(255, 255, 255, 0.08)' : 'rgba(239,68,68,0.15)',
+                              color: dev.is_active ? '#ffffff' : '#ef4444'
                             }}>
                               {dev.is_active ? 'ACTIVE' : 'REVOKED'}
                             </span>
@@ -416,8 +416,8 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
                               onClick={() => handleEnableDevice(dev.device_id)}
                               disabled={actionLoading === dev.device_id}
                               style={{
-                                padding: '6px 12px', background: 'rgba(16,185,129,0.15)', color: '#10b981',
-                                border: '1px solid rgba(16,185,129,0.3)', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer'
+                                padding: '6px 12px', background: 'rgba(255, 255, 255, 0.08)', color: '#ffffff',
+                                border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer'
                               }}
                             >
                               Enable
@@ -437,33 +437,33 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
                     Breakdown of verified discoveries across authorized integration sources:
                   </div>
                   {Object.entries(profile?.source_breakdown || {}).map(([src, count], idx) => {
-                    let srcColor = '#e4e4e7';
-                    let srcBg = 'rgba(228, 228, 231, 0.12)';
-                    if (src === 'ZoomInfo') { srcColor = '#f43f5e'; srcBg = 'rgba(244, 63, 94, 0.15)'; }
-                    else if (src === 'LinkedIn') { srcColor = 'var(--text-primary, #e4e4e7)'; srcBg = 'rgba(228, 228, 231, 0.15)'; }
-                    else if (src === 'Apollo') { srcColor = '#eab308'; srcBg = 'rgba(234, 179, 8, 0.15)'; }
-                    else if (src === 'Microsoft Teams' || src === 'TEAMS') { srcColor = 'var(--text-muted, #a1a1aa)'; srcBg = 'rgba(161, 161, 170, 0.15)'; }
-                    else if (src === 'Google Chat' || src === 'GOOGLE_CHAT') { srcColor = '#10b981'; srcBg = 'rgba(16, 185, 129, 0.15)'; }
-                    else if (src === 'Slack' || src === 'SLACK') { srcColor = '#e01e5a'; srcBg = 'rgba(224, 30, 90, 0.15)'; }
-                    else if (src === 'Indeed') { srcColor = '#3b82f6'; srcBg = 'rgba(59, 130, 246, 0.15)'; }
-                    else if (src === 'SimplyHired' || src === 'SIMPLYHIRED') { srcColor = '#06b6d4'; srcBg = 'rgba(6, 182, 212, 0.15)'; }
-                    else if (src === 'Jobright AI' || src === 'JOBRIGHT') { srcColor = '#8b5cf6'; srcBg = 'rgba(139, 92, 246, 0.15)'; }
-                    else if (src === 'Glassdoor' || src === 'GLASSDOOR') { srcColor = '#059669'; srcBg = 'rgba(5, 150, 105, 0.15)'; }
-                    else if (src === 'ZipRecruiter' || src === 'ZIPRECRUITER') { srcColor = '#10b981'; srcBg = 'rgba(16, 185, 129, 0.15)'; }
-                    else if (src === 'Greenhouse') { srcColor = '#10b981'; srcBg = 'rgba(16, 185, 129, 0.15)'; }
-                    else if (src === 'Ashby') { srcColor = '#ec4899'; srcBg = 'rgba(236, 72, 153, 0.15)'; }
-                    else if (src === 'Workday') { srcColor = '#f59e0b'; srcBg = 'rgba(245, 158, 11, 0.15)'; }
-                    else if (src === 'Lever') { srcColor = '#6366f1'; srcBg = 'rgba(99, 102, 241, 0.15)'; }
-                    else if (src === 'Recruitment Agency' || src === 'RECRUITMENT_AGENCY') { srcColor = '#f97316'; srcBg = 'rgba(249, 115, 22, 0.15)'; }
-                    else if (src === 'GitHub') { srcColor = '#a855f7'; srcBg = 'rgba(168, 85, 247, 0.15)'; }
-                    else if (src === 'WhatsApp' || src === 'WHATSAPP') { srcColor = '#25d366'; srcBg = 'rgba(37, 211, 102, 0.15)'; }
-                    else if (src === 'Telegram' || src === 'TELEGRAM') { srcColor = '#229ed9'; srcBg = 'rgba(34, 158, 217, 0.15)'; }
-                    else if (src === 'Gmail' || src === 'GMAIL') { srcColor = '#ea4335'; srcBg = 'rgba(234, 67, 53, 0.15)'; }
-                    else if (src === 'Outlook' || src === 'OUTLOOK') { srcColor = '#0078d4'; srcBg = 'rgba(0, 120, 212, 0.15)'; }
-                    else if (src === 'WebHarvest' || src === 'web_harvest' || src === 'WEB_HARVEST') { srcColor = '#14b8a6'; srcBg = 'rgba(20, 184, 166, 0.15)'; }
+                    let srcColor = '#ffffff';
+                    let srcBg = 'rgba(255, 255, 255, 0.08)';
+                    if (src === 'ZoomInfo') { srcColor = '#ffffff'; srcBg = 'rgba(255, 255, 255, 0.08)'; }
+                    else if (src === 'LinkedIn') { srcColor = '#ffffff'; srcBg = 'rgba(255, 255, 255, 0.08)'; }
+                    else if (src === 'Apollo') { srcColor = '#e4e4e7'; srcBg = 'rgba(255, 255, 255, 0.08)'; }
+                    else if (src === 'Microsoft Teams' || src === 'TEAMS') { srcColor = '#d4d4d8'; srcBg = 'rgba(255, 255, 255, 0.06)'; }
+                    else if (src === 'Google Chat' || src === 'GOOGLE_CHAT') { srcColor = '#ffffff'; srcBg = 'rgba(255, 255, 255, 0.08)'; }
+                    else if (src === 'Slack' || src === 'SLACK') { srcColor = '#e4e4e7'; srcBg = 'rgba(255, 255, 255, 0.08)'; }
+                    else if (src === 'Indeed') { srcColor = '#e4e4e7'; srcBg = 'rgba(255, 255, 255, 0.06)'; }
+                    else if (src === 'SimplyHired' || src === 'SIMPLYHIRED') { srcColor = '#d4d4d8'; srcBg = 'rgba(255, 255, 255, 0.06)'; }
+                    else if (src === 'Jobright AI' || src === 'JOBRIGHT') { srcColor = '#d4d4d8'; srcBg = 'rgba(255, 255, 255, 0.06)'; }
+                    else if (src === 'Glassdoor' || src === 'GLASSDOOR') { srcColor = '#e4e4e7'; srcBg = 'rgba(255, 255, 255, 0.06)'; }
+                    else if (src === 'ZipRecruiter' || src === 'ZIPRECRUITER') { srcColor = '#ffffff'; srcBg = 'rgba(255, 255, 255, 0.08)'; }
+                    else if (src === 'Greenhouse') { srcColor = '#ffffff'; srcBg = 'rgba(255, 255, 255, 0.08)'; }
+                    else if (src === 'Ashby') { srcColor = '#e4e4e7'; srcBg = 'rgba(255, 255, 255, 0.08)'; }
+                    else if (src === 'Workday') { srcColor = '#d4d4d8'; srcBg = 'rgba(255, 255, 255, 0.05)'; }
+                    else if (src === 'Lever') { srcColor = '#d4d4d8'; srcBg = 'rgba(255, 255, 255, 0.06)'; }
+                    else if (src === 'Recruitment Agency' || src === 'RECRUITMENT_AGENCY') { srcColor = '#d4d4d8'; srcBg = 'rgba(255, 255, 255, 0.05)'; }
+                    else if (src === 'GitHub') { srcColor = '#ffffff'; srcBg = 'rgba(255, 255, 255, 0.08)'; }
+                    else if (src === 'WhatsApp' || src === 'WHATSAPP') { srcColor = '#e4e4e7'; srcBg = 'rgba(255, 255, 255, 0.08)'; }
+                    else if (src === 'Telegram' || src === 'TELEGRAM') { srcColor = '#d4d4d8'; srcBg = 'rgba(255, 255, 255, 0.06)'; }
+                    else if (src === 'Gmail' || src === 'GMAIL') { srcColor = '#ef4444'; srcBg = 'rgba(239, 68, 68, 0.15)'; }
+                    else if (src === 'Outlook' || src === 'OUTLOOK') { srcColor = '#ffffff'; srcBg = 'rgba(255, 255, 255, 0.08)'; }
+                    else if (src === 'WebHarvest' || src === 'web_harvest' || src === 'WEB_HARVEST') { srcColor = '#ffffff'; srcBg = 'rgba(255, 255, 255, 0.06)'; }
                     return (
                       <div key={idx} style={{
-                        padding: '14px 18px', background: 'var(--card-bg, #0e1526)', border: '1px solid var(--card-border, #232326)', borderRadius: 10,
+                        padding: '14px 18px', background: 'var(--card-bg, #161618)', border: '1px solid var(--card-border, #232326)', borderRadius: 10,
                         display: 'flex', justifyContent: 'space-between', alignItems: 'center'
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -477,7 +477,7 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
                             {src === 'ZoomInfo' ? 'B2B Org & Contact Intelligence' : src === 'LinkedIn' ? 'Candidate Profiles & Recruiter' : src === 'Apollo' ? 'Direct Sourcing & Leads' : (src === 'Greenhouse' || src === 'Ashby' || src === 'Workday' || src === 'Lever') ? 'Enterprise ATS Ingestion' : 'Collaboration Stream'}
                           </span>
                         </div>
-                        <span style={{ fontSize: 16, fontWeight: 900, color: '#10b981' }}>
+                        <span style={{ fontSize: 16, fontWeight: 900, color: '#ffffff' }}>
                           {count} observations
                         </span>
                       </div>
@@ -494,9 +494,9 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
                         const total = Object.values(profile.geo_distribution).reduce((a, b) => a + b, 0);
                         const pct = total > 0 ? Math.round((count / total) * 100) : 0;
                         const colors = {
-                          NORTH_AMERICA: '#3b82f6',
-                          UK: '#8b5cf6',
-                          SOUTH_AMERICA: '#f59e0b',
+                          NORTH_AMERICA: '#e4e4e7',
+                          UK: '#d4d4d8',
+                          SOUTH_AMERICA: '#d4d4d8',
                           OTHER: '#ef4444',
                           UNKNOWN: '#6b7280',
                         };
@@ -536,7 +536,7 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
                   </div>
                   {(profile?.provenance_trail || []).map((p, idx) => (
                     <div key={idx} style={{
-                      padding: '12px 16px', background: 'var(--card-bg, #0e1526)', border: '1px solid var(--card-border, #232326)', borderRadius: 8,
+                      padding: '12px 16px', background: 'var(--card-bg, #161618)', border: '1px solid var(--card-border, #232326)', borderRadius: 8,
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12
                     }}>
                       <div>
@@ -548,7 +548,7 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
                               href={p.canonical_profile_url}
                               target="_blank"
                               rel="noreferrer"
-                              style={{ color: '#38bdf8', fontSize: 11, textDecoration: 'none', fontWeight: 600 }}
+                              style={{ color: '#ffffff', fontSize: 11, textDecoration: 'none', fontWeight: 600 }}
                             >
                               [Open ↗]
                             </a>
@@ -564,7 +564,7 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
                                 key={ci}
                                 style={{
                                   fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 4,
-                                  background: 'rgba(16,185,129,0.12)', color: '#10b981', border: '1px solid rgba(16,185,129,0.25)'
+                                  background: 'rgba(255, 255, 255, 0.08)', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.08)'
                                 }}
                               >
                                 ✓ {chk}
@@ -577,8 +577,8 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
                       <div style={{ textAlign: 'right' }}>
                         <span style={{
                           fontSize: 10, fontWeight: 800, padding: '2px 6px', borderRadius: 4,
-                          background: p.decision === 'ENRICHED' ? 'rgba(16,185,129,0.15)' : 'rgba(228, 228, 231,0.15)',
-                          color: p.decision === 'ENRICHED' ? '#10b981' : 'var(--text-primary, #e4e4e7)'
+                          background: p.decision === 'ENRICHED' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(228, 228, 231,0.15)',
+                          color: p.decision === 'ENRICHED' ? '#ffffff' : 'var(--text-primary, #e4e4e7)'
                         }}>
                           {p.decision}
                         </span>
@@ -594,7 +594,7 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
               {/* TAB 6: ADMIN CONTROLS */}
               {activeTab === 'actions' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  <div style={{ padding: '16px 20px', background: 'var(--card-bg, #0e1526)', border: '1px solid var(--card-border, #232326)', borderRadius: 12 }}>
+                  <div style={{ padding: '16px 20px', background: 'var(--card-bg, #161618)', border: '1px solid var(--card-border, #232326)', borderRadius: 12 }}>
                     <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary, #fafafa)', marginBottom: 4 }}>
                       Reset User Pairing & Clear Credentials
                     </div>

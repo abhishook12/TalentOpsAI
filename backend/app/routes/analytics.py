@@ -1298,3 +1298,198 @@ async def trigger_identity_job(current_user: User = Depends(get_current_user_fro
     
     await identity_engine.start_job()
     return {"status": "started", "state": identity_engine.state}
+
+@router.get("/sourcing-funnel")
+def get_sourcing_funnel(
+    days: int = Query(30, ge=1, le=365),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request)
+):
+    """Returns sourcing funnel metrics: Discovered -> Staged -> Promoted -> Enriched -> Contacted -> Opened -> Replied."""
+    cached = analytics_cache.get(f"funnel_{days}")
+    if cached:
+        return cached
+    
+    from ..models.staging_models import DiscoveryStaging
+    from ..models.campaigns import Campaign, CampaignRecruiter, EmailLog
+    from sqlalchemy import func, case
+    
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    
+    # Stage 1: Discovery funnel
+    staging_stats = db.execute(text("""
+        SELECT 
+            COUNT(*) as total_discovered,
+            COUNT(CASE WHEN processing_status = 'processed' OR decision = 'PROMOTE' THEN 1 END) as promoted,
+            COUNT(CASE WHEN decision = 'PROMOTE' THEN 1 END) as committed,
+            COUNT(CASE WHEN raw_email IS NOT NULL OR raw_phone IS NOT NULL THEN 1 END) as enriched,
+            COUNT(CASE WHEN processing_status = 'pending' THEN 1 END) as pending,
+            COUNT(CASE WHEN decision = 'IGNORE' OR processing_status = 'failed' THEN 1 END) as rejected
+        FROM discovery_staging
+        WHERE created_at >= :cutoff
+    """), {"cutoff": cutoff}).fetchone()
+    
+    # Stage 2: Campaign funnel
+    campaign_stats = db.execute(text("""
+        SELECT
+            COUNT(DISTINCT cr.campaign_recruiter_id) as contacted,
+            COUNT(DISTINCT CASE WHEN cr.status IN ('Delivered', 'delivered') THEN cr.campaign_recruiter_id END) as delivered,
+            COUNT(DISTINCT CASE WHEN cr.opened_at IS NOT NULL THEN cr.campaign_recruiter_id END) as opened,
+            COUNT(DISTINCT CASE WHEN cr.replied_at IS NOT NULL THEN cr.campaign_recruiter_id END) as replied,
+            COUNT(DISTINCT CASE WHEN cr.bounced_at IS NOT NULL THEN cr.campaign_recruiter_id END) as bounced
+        FROM campaign_recruiters cr
+        JOIN campaigns c ON cr.campaign_id = c.campaign_id
+        WHERE c.created_at >= :cutoff
+    """), {"cutoff": cutoff}).fetchone()
+    
+    # Stage 3: Source attribution
+    source_breakdown = []
+    try:
+        source_rows = db.execute(text("""
+            SELECT extraction_source, COUNT(*) as count
+            FROM discovery_staging
+            WHERE created_at >= :cutoff
+            GROUP BY extraction_source
+            ORDER BY count DESC
+            LIMIT 10
+        """), {"cutoff": cutoff}).fetchall()
+        source_breakdown = [{"source": r[0] or "unknown", "count": r[1]} for r in source_rows]
+    except Exception:
+        pass
+    
+    # Stage 4: Daily trend (last 14 days)
+    daily_trend = []
+    try:
+        trend_rows = db.execute(text("""
+            SELECT DATE(created_at) as day, COUNT(*) as discovered,
+                   COUNT(CASE WHEN processing_status = 'processed' OR decision = 'PROMOTE' THEN 1 END) as promoted
+            FROM discovery_staging
+            WHERE created_at >= :cutoff_14
+            GROUP BY DATE(created_at)
+            ORDER BY day DESC
+            LIMIT 14
+        """), {"cutoff_14": datetime.now(timezone.utc) - timedelta(days=14)}).fetchall()
+        daily_trend = [{"date": str(r[0]), "discovered": r[1], "promoted": r[2]} for r in trend_rows]
+    except Exception:
+        pass
+    
+    # Campaign performance over time
+    campaign_perf = []
+    try:
+        perf_rows = db.execute(text("""
+            SELECT c.name, c.status, 
+                   COUNT(cr.campaign_recruiter_id) as recipients,
+                   COUNT(CASE WHEN cr.status IN ('Delivered', 'delivered') THEN 1 END) as delivered,
+                   COUNT(CASE WHEN cr.opened_at IS NOT NULL THEN 1 END) as opened,
+                   COUNT(CASE WHEN cr.replied_at IS NOT NULL THEN 1 END) as replied
+            FROM campaigns c
+            LEFT JOIN campaign_recruiters cr ON c.campaign_id = cr.campaign_id
+            WHERE c.created_at >= :cutoff
+            GROUP BY c.campaign_id, c.name, c.status
+            ORDER BY c.created_at DESC
+            LIMIT 20
+        """), {"cutoff": cutoff}).fetchall()
+        campaign_perf = [
+            {"name": r[0], "status": r[1], "recipients": r[2], "delivered": r[3], "opened": r[4], "replied": r[5]}
+            for r in perf_rows
+        ]
+    except Exception:
+        pass
+    
+    result = {
+        "period_days": days,
+        "funnel": {
+            "discovered": staging_stats[0] if staging_stats else 0,
+            "pending": staging_stats[4] if staging_stats else 0,
+            "promoted": staging_stats[1] if staging_stats else 0,
+            "committed": staging_stats[2] if staging_stats else 0,
+            "enriched": staging_stats[3] if staging_stats else 0,
+            "rejected": staging_stats[5] if staging_stats else 0,
+            "contacted": campaign_stats[0] if campaign_stats else 0,
+            "delivered": campaign_stats[1] if campaign_stats else 0,
+            "opened": campaign_stats[2] if campaign_stats else 0,
+            "replied": campaign_stats[3] if campaign_stats else 0,
+            "bounced": campaign_stats[4] if campaign_stats else 0,
+        },
+        "conversion_rates": {},
+        "source_breakdown": source_breakdown,
+        "daily_trend": daily_trend,
+        "campaign_performance": campaign_perf
+    }
+    
+    # Compute conversion rates
+    f = result["funnel"]
+    if f["discovered"] > 0:
+        result["conversion_rates"]["discovery_to_promotion"] = round(f["promoted"] / f["discovered"] * 100, 1)
+    if f["promoted"] > 0:
+        result["conversion_rates"]["promotion_to_contact"] = round(f["contacted"] / f["promoted"] * 100, 1) if f["contacted"] > 0 else 0
+    if f["contacted"] > 0:
+        result["conversion_rates"]["contact_to_open"] = round(f["opened"] / f["contacted"] * 100, 1)
+        result["conversion_rates"]["contact_to_reply"] = round(f["replied"] / f["contacted"] * 100, 1)
+    if f["delivered"] > 0:
+        result["conversion_rates"]["open_rate"] = round(f["opened"] / f["delivered"] * 100, 1)
+        result["conversion_rates"]["reply_rate"] = round(f["replied"] / f["delivered"] * 100, 1)
+        result["conversion_rates"]["bounce_rate"] = round(f["bounced"] / f["delivered"] * 100, 1)
+    
+    analytics_cache.set(f"funnel_{days}", result, ttl=120)
+    return result
+
+
+@router.get("/pipeline-velocity")
+def get_pipeline_velocity(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request)
+):
+    """Returns pipeline velocity metrics: time between stages, throughput rates."""
+    cached = analytics_cache.get("velocity")
+    if cached:
+        return cached
+    
+    # Average time from discovery to promotion
+    velocity = {}
+    try:
+        v_row = db.execute(text("""
+            SELECT 
+                AVG(EXTRACT(EPOCH FROM (processed_at - created_at))) as avg_processing_seconds,
+                COUNT(*) as total_processed
+            FROM discovery_staging
+            WHERE processing_status = 'processed'
+            AND processed_at > created_at
+        """)).fetchone()
+        if v_row:
+            avg_sec = v_row[0] or 0
+            velocity["avg_processing_time_hours"] = round(avg_sec / 3600, 1)
+            velocity["total_processed"] = v_row[1]
+    except Exception:
+        velocity["avg_processing_time_hours"] = 0
+        velocity["total_processed"] = 0
+    
+    # Throughput: records processed per day (last 7 days)
+    try:
+        tp_row = db.execute(text("""
+            SELECT COUNT(*) as count
+            FROM discovery_staging
+            WHERE processing_status = 'processed'
+            AND processed_at >= NOW() - INTERVAL '7 days'
+        """)).fetchone()
+        velocity["weekly_throughput"] = tp_row[0] if tp_row else 0
+        velocity["daily_throughput"] = round(velocity["weekly_throughput"] / 7, 1)
+    except Exception:
+        velocity["weekly_throughput"] = 0
+        velocity["daily_throughput"] = 0
+    
+    # Campaign velocity
+    try:
+        cv_row = db.execute(text("""
+            SELECT 
+                AVG(EXTRACT(EPOCH FROM (cr.last_sent_at - cr.enrolled_at))) as avg_time_to_send
+            FROM campaign_recruiters cr
+            WHERE cr.last_sent_at IS NOT NULL AND cr.enrolled_at IS NOT NULL
+        """)).fetchone()
+        velocity["avg_time_to_first_send_hours"] = round((cv_row[0] or 0) / 3600, 1) if cv_row else 0
+    except Exception:
+        velocity["avg_time_to_first_send_hours"] = 0
+    
+    analytics_cache.set("velocity", velocity, ttl=120)
+    return velocity
+

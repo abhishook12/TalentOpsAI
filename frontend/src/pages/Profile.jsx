@@ -135,7 +135,7 @@ export default function Profile() {
                 width: 104,
                 height: 104,
                 borderRadius: '50%',
-                border: isDragging ? '2px dashed #10b981' : '2px solid var(--card-border, #3f3f46)',
+                border: isDragging ? '2px dashed #ffffff' : '2px solid var(--card-border, #3f3f46)',
                 margin: '0 auto',
                 display: 'grid',
                 placeItems: 'center',
@@ -147,7 +147,7 @@ export default function Profile() {
                 position: 'relative',
                 overflow: 'hidden',
                 transition: 'all 0.2s ease',
-                boxShadow: isDragging ? '0 0 16px rgba(16, 185, 129, 0.3)' : '0 4px 16px rgba(0,0,0,0.2)'
+                boxShadow: isDragging ? '0 0 16px rgba(255, 255, 255, 0.08)' : '0 4px 16px rgba(0,0,0,0.2)'
               }}
               title="Click or drag photo here to upload from PC"
             >
@@ -197,7 +197,7 @@ export default function Profile() {
                 width: 28,
                 height: 28,
                 borderRadius: '50%',
-                background: 'var(--brand, #10b981)',
+                background: 'var(--brand, #ffffff)',
                 color: '#000',
                 display: 'grid',
                 placeItems: 'center',
@@ -358,11 +358,11 @@ export default function Profile() {
               {!loadingBridge && bridgeStatus && bridgeStatus.connected_email ? (
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                    <div style={{ width: 48, height: 48, borderRadius: 6, background: bridgeStatus.status === 'online' ? 'rgba(74, 222, 128, 0.1)' : 'rgba(255, 170, 0, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Activity size={24} color={bridgeStatus.status === 'online' ? "#4ade80" : "#ffaa00"} />
+                    <div style={{ width: 48, height: 48, borderRadius: 6, background: bridgeStatus.status === 'online' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 170, 0, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Activity size={24} color={bridgeStatus.status === 'online' ? "#ffffff" : "#d4d4d8"} />
                     </div>
                     <div>
-                      <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: bridgeStatus.status === 'online' ? '#4ade80' : '#ffaa00' }}>
+                      <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: bridgeStatus.status === 'online' ? '#ffffff' : '#d4d4d8' }}>
                         {bridgeStatus.status === 'online' ? 'Bridge Online' : 'Bridge Offline (Account Linked)'}
                       </h4>
                       <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)' }}>
@@ -396,7 +396,7 @@ export default function Profile() {
                         </div>
                         <div style={{ width: 1, background: 'var(--card-border)' }}></div>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 24, fontWeight: 800, color: '#4ade80' }}>{bridgeStatus.stats.sent || 0}</div>
+                          <div style={{ fontSize: 24, fontWeight: 800, color: '#ffffff' }}>{bridgeStatus.stats.sent || 0}</div>
                           <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Messages Sent</div>
                         </div>
                         <div style={{ width: 1, background: 'var(--card-border)' }}></div>
@@ -431,7 +431,7 @@ export default function Profile() {
                   </p>
                   <button 
                     onClick={handleConnectOutlook}
-                    style={{ padding: '10px 20px', borderRadius: 8, background: '#00A4EF', color: '#fff', fontWeight: 600, border: 'none', cursor: 'pointer' }}
+                    style={{ padding: '10px 20px', borderRadius: 8, background: '#ffffff', color: '#09090b', fontWeight: 600, border: 'none', cursor: 'pointer' }}
                   >
                     Connect Outlook Account
                   </button>

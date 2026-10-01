@@ -444,29 +444,29 @@ class ScanPage(QWidget):
         pipe_head.addWidget(btn_details)
         pipe_layout.addLayout(pipe_head)
 
-        # 4 Funnel Stages with Monochromatic Progress Bars
+        # 4 Funnel Stages with Color-Coded Progress Bars
         self.funnel_rows = []
         stages = [
-            ("STAGE 01: DETECTED", "0", "100.0%", 1.00),
-            ("STAGE 02: EXTRACTED", "0", "0.0%", 0.0),
-            ("STAGE 03: VERIFIED", "0", "0.0%", 0.0),
-            ("STAGE 04: READY TO SYNC", "0", "0.0%", 0.0)
+            ("STAGE 01: DETECTED", "0", "100.0%", 1.00, "#38BDF8"),
+            ("STAGE 02: EXTRACTED", "0", "0.0%", 0.0, "#818CF8"),
+            ("STAGE 03: VERIFIED", "0", "0.0%", 0.0, "#A78BFA"),
+            ("STAGE 04: READY TO SYNC", "0", "0.0%", 0.0, "#34D399")
         ]
 
-        for st_name, st_val, st_pct_str, st_pct_val in stages:
+        for st_name, st_val, st_pct_str, st_pct_val, st_color in stages:
             st_box = QVBoxLayout()
             st_box.setSpacing(2)
 
             st_row = QHBoxLayout()
             lbl_sn = QLabel(st_name)
             lbl_sn.setFont(QFont("Consolas", 7, QFont.Weight.Bold))
-            lbl_sn.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY if 'CANONICAL' in st_name or 'OBSERVED' in st_name else COLOR_TEXT_SECONDARY};")
+            lbl_sn.setStyleSheet(f"color: {st_color};")
             st_row.addWidget(lbl_sn)
 
             st_row.addStretch()
 
             lbl_sv = QLabel(st_val)
-            lbl_sv.setFont(QFont("Consolas", 8, QFont.Weight.Bold))
+            lbl_sv.setFont(QFont("Segoe UI", 9, QFont.Weight.Bold))
             lbl_sv.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY};")
             st_row.addWidget(lbl_sv)
 
@@ -476,7 +476,7 @@ class ScanPage(QWidget):
             st_row.addWidget(lbl_sp)
             st_box.addLayout(st_row)
 
-            bar = _MiniProgressBarWidget(st_pct_val)
+            bar = _MiniProgressBarWidget(st_pct_val, bar_color=st_color)
             st_box.addWidget(bar)
             pipe_layout.addLayout(st_box)
 
@@ -531,23 +531,24 @@ class ScanPage(QWidget):
         act_layout.addLayout(act_head)
 
         log_entries = [
-            ("■", "14:02:11.890", "PARSED: Danielle Mason", "GATE: PASSED [ID#9901]", True),
-            ("■", "14:01:54.204", "INDEXED: Moyo Systems Corp", "RESOLVED_DOMAIN", True),
-            ("□", "14:00:32.112", "DROP: duplicate_collision_uuid_84", "[REJECTED]", False),
-            ("■", "13:58:09.671", "AUTH_REVOKE: session_ping_ack", "SYNC_FLUSH", True)
+            ("●", "#34D399", "14:02:11.890", "PARSED: Danielle Mason", "GATE: PASSED [ID#9901]", True),
+            ("●", "#818CF8", "14:01:54.204", "INDEXED: Moyo Systems Corp", "RESOLVED_DOMAIN", True),
+            ("●", "#F87171", "14:00:32.112", "DROP: duplicate_collision_uuid_84", "[REJECTED]", False),
+            ("●", "#F59E0B", "13:58:09.671", "AUTH_REVOKE: session_ping_ack", "SYNC_FLUSH", True)
         ]
 
-        for dot_char, time_str, desc_str, badge_str, is_primary in log_entries:
+        for dot_char, dot_color, time_str, desc_str, badge_str, is_primary in log_entries:
             row_f = QFrame()
-            row_f.setFixedHeight(28)
-            row_f.setStyleSheet("background: transparent; border-bottom: 1px solid #1F1F1F;")
+            row_f.setFixedHeight(30)
+            row_f.setStyleSheet(f"background: transparent; border-bottom: 1px solid #1A1A1A;")
             r_l = QHBoxLayout(row_f)
             r_l.setContentsMargins(0, 2, 0, 2)
             r_l.setSpacing(8)
 
             lbl_d = QLabel(dot_char)
-            lbl_d.setFont(QFont("Consolas", 7))
-            lbl_d.setStyleSheet("color: #FFFFFF;" if is_primary else f"color: {COLOR_TEXT_MUTED};")
+            lbl_d.setFont(QFont("Consolas", 6))
+            lbl_d.setStyleSheet(f"color: {dot_color};")
+            lbl_d.setFixedWidth(10)
             r_l.addWidget(lbl_d)
 
             lbl_t = QLabel(time_str)
@@ -563,8 +564,13 @@ class ScanPage(QWidget):
             r_l.addStretch()
 
             lbl_b = QLabel(badge_str)
-            lbl_b.setFont(QFont("Consolas", 7))
-            lbl_b.setStyleSheet(f"color: {COLOR_TEXT_MUTED};")
+            lbl_b.setFont(QFont("Consolas", 6, QFont.Weight.Bold))
+            lbl_b.setStyleSheet(f"""
+                color: {dot_color};
+                background-color: rgba({int(dot_color[1:3], 16)}, {int(dot_color[3:5], 16)}, {int(dot_color[5:7], 16)}, 0.10);
+                border-radius: 3px;
+                padding: 1px 5px;
+            """)
             r_l.addWidget(lbl_b)
 
             act_layout.addWidget(row_f)
@@ -598,35 +604,36 @@ class ScanPage(QWidget):
         entity_header.setSpacing(10)
 
         self.lbl_avatar = QLabel("DM")
-        self.lbl_avatar.setFont(QFont("Segoe UI", 11, QFont.Weight.Bold))
+        self.lbl_avatar.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
         self.lbl_avatar.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_avatar.setFixedSize(44, 44)
+        self.lbl_avatar.setFixedSize(50, 50)
         self.lbl_avatar.setStyleSheet(f"""
-            background-color: {COLOR_SURFACE_HOVER};
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                stop:0 #38BDF8, stop:1 #818CF8);
             color: #FFFFFF;
-            border-radius: 6px;
-            border: 1px solid {COLOR_SURFACE_BORDER};
+            border-radius: 10px;
+            border: 2px solid #1B1B1B;
         """)
         entity_header.addWidget(self.lbl_avatar)
 
         name_box = QVBoxLayout()
-        name_box.setSpacing(1)
+        name_box.setSpacing(2)
 
         name_row = QHBoxLayout()
         self.lbl_cand_name = QLabel("Danielle Mason")
-        self.lbl_cand_name.setFont(QFont("Segoe UI", 11, QFont.Weight.Bold))
+        self.lbl_cand_name.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
         self.lbl_cand_name.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY}; background: transparent; border: none;")
         name_row.addWidget(self.lbl_cand_name)
 
         chk = QLabel("✓")
         chk.setFont(QFont("Segoe UI", 9, QFont.Weight.Bold))
-        chk.setStyleSheet("color: #FFFFFF;")
+        chk.setStyleSheet("color: #34D399; background: transparent; border: none;")
         name_row.addWidget(chk)
         name_row.addStretch()
         name_box.addLayout(name_row)
 
-        self.lbl_cand_subtitle = QLabel("People Operations Specialist • Moyo")
-        self.lbl_cand_subtitle.setFont(QFont("Segoe UI", 8))
+        self.lbl_cand_subtitle = QLabel("People Operations Specialist · Moyo")
+        self.lbl_cand_subtitle.setFont(QFont("Segoe UI", 8, QFont.Weight.Medium))
         self.lbl_cand_subtitle.setStyleSheet(f"color: {COLOR_TEXT_SECONDARY}; background: transparent; border: none;")
         name_box.addWidget(self.lbl_cand_subtitle)
 
@@ -638,18 +645,30 @@ class ScanPage(QWidget):
         entity_header.addLayout(name_box)
         latest_layout.addLayout(entity_header)
 
+        # Separator line before confidence section
+        sep_line = QFrame()
+        sep_line.setFixedHeight(1)
+        sep_line.setStyleSheet(f"background-color: {COLOR_SURFACE_BORDER};")
+        latest_layout.addWidget(sep_line)
+
         # Extraction Confidence Section
         csm_head = QHBoxLayout()
         lbl_csm = QLabel("EXTRACTION CONFIDENCE")
         lbl_csm.setFont(QFont("Consolas", 7, QFont.Weight.Bold))
-        lbl_csm.setStyleSheet(f"color: {COLOR_TEXT_MUTED};")
+        lbl_csm.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; letter-spacing: 0.5px;")
         csm_head.addWidget(lbl_csm)
 
         csm_head.addStretch()
 
-        self.lbl_conf_val = QLabel("AGGREGATE: 91.2%")
+        self.lbl_conf_val = QLabel("AGGREGATE: 91%")
         self.lbl_conf_val.setFont(QFont("Consolas", 7, QFont.Weight.Bold))
-        self.lbl_conf_val.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY};")
+        self.lbl_conf_val.setStyleSheet(f"""
+            background-color: rgba(52, 211, 153, 0.15);
+            color: #34D399;
+            border: 1px solid rgba(52, 211, 153, 0.3);
+            border-radius: 4px;
+            padding: 2px 6px;
+        """)
         csm_head.addWidget(self.lbl_conf_val)
         latest_layout.addLayout(csm_head)
 
@@ -678,18 +697,24 @@ class ScanPage(QWidget):
         self.btn_open_record = QPushButton("Open record →")
         self.btn_open_record.setFont(QFont("Segoe UI", 8, QFont.Weight.Bold))
         self.btn_open_record.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.btn_open_record.setFixedHeight(34)
+        self.btn_open_record.setFixedHeight(36)
         self.btn_open_record.setStyleSheet(f"""
             QPushButton {{
-                background-color: {COLOR_SURFACE_CARD};
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #38BDF8, stop:1 #818CF8);
                 color: #FFFFFF;
-                border: 1px solid #FFFFFF;
-                border-radius: 6px;
+                border: none;
+                border-radius: 8px;
                 font-weight: bold;
+                letter-spacing: 0.5px;
             }}
             QPushButton:hover {{
-                background-color: #FFFFFF;
-                color: #0E0E0E;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #60CBFA, stop:1 #9BA3FA);
+            }}
+            QPushButton:pressed {{
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #2AA3DB, stop:1 #6D73E0);
             }}
         """)
         self.btn_open_record.clicked.connect(self._on_open_record_clicked)
@@ -846,24 +871,51 @@ class ScanPage(QWidget):
 
     def _create_monochrome_stat(self, title: str, count: str, sub: str) -> QWidget:
         box = Card()
-        box.setFixedHeight(95)
+        box.setFixedHeight(102)
+        # Determine accent color based on card type
+        accent_colors = {
+            "PROFILES": "#38BDF8",    # cyan
+            "COMPANIES": "#A78BFA",   # violet
+            "JOB POSTS": "#34D399",   # emerald
+            "REJECTED": "#F87171",    # red
+        }
+        accent = accent_colors.get(title, "#FFFFFF")
+
+        box.setStyleSheet(f"""
+            QFrame#ScoutCard {{
+                background-color: {COLOR_SURFACE_CARD};
+                border: 1px solid {COLOR_SURFACE_BORDER};
+                border-top: 3px solid {accent};
+                border-radius: 12px;
+            }}
+            QFrame#ScoutCard QLabel {{
+                background: transparent;
+                border: none;
+            }}
+        """)
+
         l = QVBoxLayout(box)
         l.setContentsMargins(14, 10, 14, 10)
-        l.setSpacing(2)
+        l.setSpacing(3)
 
         lbl_t = QLabel(title)
-        lbl_t.setFont(QFont("Segoe UI", 7, QFont.Weight.Bold))
-        lbl_t.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; letter-spacing: 0.5px; border: none; background: transparent;")
+        lbl_t.setFont(QFont("Consolas", 7, QFont.Weight.Bold))
+        lbl_t.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; letter-spacing: 1px; border: none; background: transparent;")
         l.addWidget(lbl_t)
 
+        # Count row with accent color
+        count_row = QHBoxLayout()
+        count_row.setSpacing(4)
         lbl_c = QLabel(count)
-        lbl_c.setFont(QFont("Segoe UI", 18, QFont.Weight.Bold))
+        lbl_c.setFont(QFont("Segoe UI", 20, QFont.Weight.Bold))
         lbl_c.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY}; border: none; background: transparent;")
-        l.addWidget(lbl_c)
+        count_row.addWidget(lbl_c)
+        count_row.addStretch()
+        l.addLayout(count_row)
 
         lbl_s = QLabel(sub)
-        lbl_s.setFont(QFont("Consolas", 7))
-        lbl_s.setStyleSheet(f"color: {COLOR_TEXT_SECONDARY}; border: none; background: transparent;")
+        lbl_s.setFont(QFont("Segoe UI", 7))
+        lbl_s.setStyleSheet(f"color: {accent}; border: none; background: transparent;")
         l.addWidget(lbl_s)
 
         box.lbl_title = lbl_t
@@ -1014,6 +1066,20 @@ class ScanPage(QWidget):
             active_confs = [name_conf, title_conf, comp_conf, loc_conf]
             agg = round(sum(active_confs) / 4) if any(active_confs) else 0
             self.lbl_conf_val.setText(f"AGGREGATE: {agg}%")
+            # Color-code the aggregate pill based on score
+            if agg >= 75:
+                pill_color = "#34D399"   # emerald
+            elif agg >= 50:
+                pill_color = "#F59E0B"   # amber
+            else:
+                pill_color = "#F87171"   # red
+            self.lbl_conf_val.setStyleSheet(f"""
+                background-color: rgba({int(pill_color[1:3], 16)}, {int(pill_color[3:5], 16)}, {int(pill_color[5:7], 16)}, 0.15);
+                color: {pill_color};
+                border: 1px solid rgba({int(pill_color[1:3], 16)}, {int(pill_color[3:5], 16)}, {int(pill_color[5:7], 16)}, 0.3);
+                border-radius: 4px;
+                padding: 2px 6px;
+            """)
 
 
     def _create_checklist_item(self, icon: str, text: str, passed: bool) -> QWidget:
@@ -1981,11 +2047,12 @@ class _MiniSparklineWidget(QWidget):
 
 
 class _MiniProgressBarWidget(QWidget):
-    """Monochrome thin progress bar matching Stitch card design"""
-    def __init__(self, pct: float = 0.5, parent: Optional[QWidget] = None):
+    """Color-coded thin progress bar for pipeline stages"""
+    def __init__(self, pct: float = 0.5, parent: Optional[QWidget] = None, bar_color: str = "#FFFFFF"):
         super().__init__(parent)
         self.pct = max(0.0, min(1.0, float(pct)))
-        self.setFixedHeight(4)
+        self._bar_color = bar_color
+        self.setFixedHeight(5)
 
     def set_progress(self, pct: float):
         self.pct = max(0.0, min(1.0, float(pct)))
@@ -1996,12 +2063,16 @@ class _MiniProgressBarWidget(QWidget):
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         w = self.width()
         h = self.height()
+        r = h / 2.0
         # Track
-        p.fillRect(0, 0, w, h, QColor("#2A2A2A"))
-        # Fill
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor("#1F1F1F"))
+        p.drawRoundedRect(0, 0, w, h, r, r)
+        # Fill with color
         fill_w = int(self.pct * w)
         if fill_w > 0:
-            p.fillRect(0, 0, fill_w, h, QColor("#FFFFFF"))
+            p.setBrush(QColor(self._bar_color))
+            p.drawRoundedRect(0, 0, max(fill_w, int(h)), h, r, r)
         p.end()
 
 

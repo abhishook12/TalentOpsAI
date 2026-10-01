@@ -50,7 +50,7 @@ export default function Sidebar() {
     { to: '/directory', label: 'Directory', icon: Map, aliases: ['/states', '/companies'] },
     { to: '/analytics', label: 'Analytics', icon: BarChart2 },
     { to: '/search', label: 'Search', icon: Search },
-    { to: '/download-scout', label: 'Desktop Scout', icon: Laptop, badge: 'v2.10.0', badgeVariant: 'version' },
+    { to: '/download-scout', label: 'Desktop Scout', icon: Laptop, badge: 'v2.13.0', badgeVariant: 'version' },
     { isGroupHeader: true, label: 'Account' },
     { to: '/profile', label: 'Profile', icon: UserCircle },
     { to: '/settings', label: 'Settings', icon: Settings },
@@ -197,9 +197,15 @@ export default function Sidebar() {
               <span style={{ flex: 1 }}>{label}</span>
               {item.badge && (
                 <div style={{
-                  background: item.badgeVariant === 'version' ? 'rgba(56, 189, 248, 0.15)' : item.badgeVariant === 'webharvest' ? 'rgba(20, 184, 166, 0.15)' : 'var(--danger)',
-                  color: item.badgeVariant === 'version' ? '#38bdf8' : item.badgeVariant === 'webharvest' ? '#14b8a6' : 'white',
-                  border: item.badgeVariant === 'version' ? '1px solid rgba(56, 189, 248, 0.3)' : item.badgeVariant === 'webharvest' ? '1px solid rgba(20, 184, 166, 0.3)' : 'none',
+                  background: item.badgeVariant === 'pending' || item.badgeVariant === 'danger' || (typeof item.badge === 'number' && item.badge > 0)
+                    ? 'rgba(239, 68, 68, 0.14)'
+                    : 'rgba(255, 255, 255, 0.08)',
+                  color: item.badgeVariant === 'pending' || item.badgeVariant === 'danger' || (typeof item.badge === 'number' && item.badge > 0)
+                    ? '#ef4444'
+                    : '#e4e4e7',
+                  border: item.badgeVariant === 'pending' || item.badgeVariant === 'danger' || (typeof item.badge === 'number' && item.badge > 0)
+                    ? '1px solid rgba(239, 68, 68, 0.35)'
+                    : '1px solid rgba(255, 255, 255, 0.18)',
                   fontSize: '10px',
                   fontWeight: 600,
                   padding: '2px 6px',

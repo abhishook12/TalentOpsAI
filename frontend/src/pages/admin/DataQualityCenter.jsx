@@ -463,7 +463,7 @@ export default function DataQualityCenter() {
   } = data || {}
 
   const overallHealth = dqSummary?.quality_dimensions?.overall_health_score || health_score || 92.6
-  const healthColor = overallHealth >= 90 ? '#10B981' : overallHealth >= 70 ? '#F59E0B' : '#EF4444'
+  const healthColor = overallHealth >= 90 ? '#ffffff' : overallHealth >= 70 ? '#d4d4d8' : '#EF4444'
   const grade = overallHealth >= 95 ? 'A+' : overallHealth >= 90 ? 'A' : overallHealth >= 80 ? 'B' : overallHealth >= 70 ? 'C' : 'D'
 
   // Top KPI metrics
@@ -518,9 +518,9 @@ export default function DataQualityCenter() {
             onClick={handleRunSelfHealing}
             disabled={runningSelfHealing}
             className="cc-ghost-button"
-            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', fontSize: 13, fontWeight: 600, color: '#10B981', borderColor: '#10B98150' }}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', fontSize: 13, fontWeight: 600, color: '#ffffff', borderColor: 'rgba(255, 255, 255, 0.25)' }}
           >
-            {runningSelfHealing ? <RefreshCw className="animate-spin" size={16} /> : <Sparkles size={16} color="#10B981" />}
+            {runningSelfHealing ? <RefreshCw className="animate-spin" size={16} /> : <Sparkles size={16} color="#ffffff" />}
             {runningSelfHealing ? 'Probing...' : 'Self-Heal Probes'}
           </button>
 
@@ -540,7 +540,7 @@ export default function DataQualityCenter() {
             className="cc-ghost-button"
             style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', fontSize: 13, fontWeight: 600, background: 'var(--panel-bg)', borderColor: 'var(--card-border)' }}
           >
-            {runningBatchRepair ? <RefreshCw className="animate-spin" size={16} /> : <Sparkles size={16} color="#10B981" />}
+            {runningBatchRepair ? <RefreshCw className="animate-spin" size={16} /> : <Sparkles size={16} color="#ffffff" />}
             {runningBatchRepair ? 'Applying Repairs...' : 'Run Safe Repairs'}
           </button>
 
@@ -577,14 +577,14 @@ export default function DataQualityCenter() {
           label="Healthy" 
           value={healthyCount} 
           icon={CheckCircle} 
-          color="#10B981" 
+          color="#ffffff" 
           subtitle="Valid MX, Syntax & Profile" 
         />
         <MetricCard 
           label="Needs Review" 
           value={needsReviewCount} 
           icon={AlertTriangle} 
-          color="#F59E0B" 
+          color="#d4d4d8" 
           subtitle="Ambiguous Matches & Shifts" 
         />
         <MetricCard 
@@ -617,7 +617,7 @@ export default function DataQualityCenter() {
           icon={Search}
           label="14-Validator Scanner & Issues"
           badge={remediationQueue.length || dqSummary?.issues_breakdown?.total_actionable_issues}
-          badgeColor="#F59E0B"
+          badgeColor="#d4d4d8"
         />
         <TabButton 
           active={activeTab === 'quarantine'} 
@@ -674,7 +674,7 @@ export default function DataQualityCenter() {
             <DimensionMeterCard 
               label="Email Deliverability"
               pct={dqSummary?.quality_dimensions?.email_deliverability_pct ?? 91.4}
-              color="#10B981"
+              color="#ffffff"
               icon={Mail}
               stages="7 Stages: Syntax • DNS MX • Disposable • Role • Match"
               subtitle="Live SMTP & Mailbox Check"
@@ -682,7 +682,7 @@ export default function DataQualityCenter() {
             <DimensionMeterCard 
               label="Identity Confidence"
               pct={dqSummary?.quality_dimensions?.person_identity_confidence_pct ?? 96.2}
-              color="#0078D4"
+              color="#ffffff"
               icon={Users}
               stages="Weighted: LinkedIn (0.35) • Email (0.30) • Phone (0.20)"
               subtitle="Non-Destructive Resolution"
@@ -698,7 +698,7 @@ export default function DataQualityCenter() {
             <DimensionMeterCard 
               label="Field Freshness & Provenance"
               pct={dqSummary?.quality_dimensions?.data_freshness_pct ?? 84.7}
-              color="#F59E0B"
+              color="#d4d4d8"
               icon={Clock}
               stages="Temporal Windows • Decay Half-Life • Best Contact Channel"
               subtitle="Multi-Observation Ledger"
@@ -729,7 +729,7 @@ export default function DataQualityCenter() {
               title="Missing Email"
               count={dqSummary?.problem_types_breakdown?.missing ?? 31182}
               severity="MEDIUM"
-              color="#F59E0B"
+              color="#d4d4d8"
               description="Profile has no primary email recorded"
               actionLabel="Enrich Contacts"
               onClick={() => setActiveTab('scanner')}
@@ -747,7 +747,7 @@ export default function DataQualityCenter() {
               title="Company Mismatch"
               count={dqSummary?.issues_breakdown?.company_mismatches ?? 8431}
               severity="HIGH"
-              color="#EC4899"
+              color="#e4e4e7"
               description="Employer changed; old corporate email invalid"
               actionLabel="Resolve Shift"
               onClick={() => setActiveTab('scanner')}
@@ -774,7 +774,7 @@ export default function DataQualityCenter() {
               title="Timeline Conflicts"
               count={3827}
               severity="HIGH"
-              color="#F97316"
+              color="#d4d4d8"
               description="Negative career durations or future dates"
               actionLabel="View Conflicts"
               onClick={() => setActiveTab('scanner')}
@@ -783,7 +783,7 @@ export default function DataQualityCenter() {
               title="Missing Required Fields"
               count={47228}
               severity="MEDIUM"
-              color="#EAB308"
+              color="#a1a1aa"
               description="Missing critical title, company or name field"
               actionLabel="Enrich Gaps"
               onClick={() => setActiveTab('scanner')}
@@ -801,7 +801,7 @@ export default function DataQualityCenter() {
                   Test real emails through the multi-stage quality pipeline with instant feedback.
                 </p>
               </div>
-              <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 4, background: '#10B98120', color: '#10B981' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 4, background: 'rgba(255, 255, 255, 0.1)', color: '#ffffff' }}>
                 LIVE RESOLUTION READY
               </span>
             </div>
@@ -858,8 +858,8 @@ export default function DataQualityCenter() {
                       fontWeight: 800, 
                       padding: '3px 8px', 
                       borderRadius: 4, 
-                      background: emailEvalResult.quality_status === 'VERIFIED' ? '#10B98120' : '#EF444420',
-                      color: emailEvalResult.quality_status === 'VERIFIED' ? '#10B981' : '#EF4444'
+                      background: emailEvalResult.quality_status === 'VERIFIED' ? 'rgba(255, 255, 255, 0.1)' : '#EF444420',
+                      color: emailEvalResult.quality_status === 'VERIFIED' ? '#ffffff' : '#EF4444'
                     }}>
                       STATUS: {emailEvalResult.quality_status}
                     </span>
@@ -925,7 +925,7 @@ export default function DataQualityCenter() {
               </div>
             ) : remediationQueue.length === 0 ? (
               <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                <CheckCircle size={36} color="#10B981" style={{ margin: '0 auto 12px' }} />
+                <CheckCircle size={36} color="#ffffff" style={{ margin: '0 auto 12px' }} />
                 <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>All Clean! Zero Open Issues</div>
                 <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
                   No corrupted or unresolved issues found in the production database.
@@ -957,8 +957,8 @@ export default function DataQualityCenter() {
                             fontWeight: 800, 
                             padding: '2px 7px', 
                             borderRadius: 4,
-                            background: item.severity === 'HIGH' ? '#EF444418' : item.severity === 'MEDIUM' ? '#F59E0B18' : '#d4d4d818',
-                            color: item.severity === 'HIGH' ? '#EF4444' : item.severity === 'MEDIUM' ? '#F59E0B' : '#d4d4d8'
+                            background: item.severity === 'HIGH' ? '#EF444418' : item.severity === 'MEDIUM' ? 'rgba(255, 255, 255, 0.06)' : '#d4d4d818',
+                            color: item.severity === 'HIGH' ? '#EF4444' : item.severity === 'MEDIUM' ? '#d4d4d8' : '#d4d4d8'
                           }}>
                             {item.severity}
                           </span>
@@ -1053,7 +1053,7 @@ export default function DataQualityCenter() {
               </div>
             ) : quarantineList.length === 0 ? (
               <div style={{ padding: '3.5rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                <ShieldCheck size={40} color="#10B981" style={{ margin: '0 auto 12px' }} />
+                <ShieldCheck size={40} color="#ffffff" style={{ margin: '0 auto 12px' }} />
                 <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>Quarantine Room Empty</div>
                 <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
                   No active records are currently in hospital isolation.
@@ -1098,8 +1098,8 @@ export default function DataQualityCenter() {
                             fontWeight: 800, 
                             padding: '2px 7px', 
                             borderRadius: 4,
-                            background: item.problem_type === 'BAD' ? '#EF444420' : '#F59E0B20',
-                            color: item.problem_type === 'BAD' ? '#EF4444' : '#F59E0B'
+                            background: item.problem_type === 'BAD' ? '#EF444420' : 'rgba(255, 255, 255, 0.08)',
+                            color: item.problem_type === 'BAD' ? '#EF4444' : '#d4d4d8'
                           }}>
                             {item.problem_type}
                           </span>
@@ -1111,7 +1111,7 @@ export default function DataQualityCenter() {
                           <button
                             onClick={() => handleReleaseQuarantine(item.id)}
                             className="cc-ghost-button"
-                            style={{ padding: '5px 12px', fontSize: 11, fontWeight: 700, color: '#10B981', borderColor: '#10B98140' }}
+                            style={{ padding: '5px 12px', fontSize: 11, fontWeight: 700, color: '#ffffff', borderColor: '#ffffff40' }}
                           >
                             Release from Quarantine
                           </button>
@@ -1156,7 +1156,7 @@ export default function DataQualityCenter() {
               </div>
             ) : proposalsList.length === 0 ? (
               <div style={{ padding: '3.5rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                <CheckCircle size={40} color="#10B981" style={{ margin: '0 auto 12px' }} />
+                <CheckCircle size={40} color="#ffffff" style={{ margin: '0 auto 12px' }} />
                 <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>No Pending Proposals</div>
                 <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
                   All proposed corrections have been processed or promoted.
@@ -1189,7 +1189,7 @@ export default function DataQualityCenter() {
                         <td style={{ padding: '12px 14px', color: '#EF4444', textDecoration: 'line-through' }}>
                           {prop.old_value || '<NONE>'}
                         </td>
-                        <td style={{ padding: '12px 14px', color: '#10B981', fontWeight: 700 }}>
+                        <td style={{ padding: '12px 14px', color: '#ffffff', fontWeight: 700 }}>
                           {prop.proposed_value}
                         </td>
                         <td style={{ padding: '12px 14px' }}>
@@ -1232,7 +1232,7 @@ export default function DataQualityCenter() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: 12 }}>
             <div>
               <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <History color="#10B981" size={20} />
+                <History color="#ffffff" size={20} />
                 Lossless Audit Trail & Batch Snapshots
               </h2>
               <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
@@ -1289,7 +1289,7 @@ export default function DataQualityCenter() {
                         <td style={{ padding: '12px 14px', color: '#EF4444' }}>
                           {item.old_value || '<EMPTY>'}
                         </td>
-                        <td style={{ padding: '12px 14px', color: '#10B981', fontWeight: 700 }}>
+                        <td style={{ padding: '12px 14px', color: '#ffffff', fontWeight: 700 }}>
                           {item.new_value}
                         </td>
                         <td style={{ padding: '12px 14px' }}>
@@ -1305,8 +1305,8 @@ export default function DataQualityCenter() {
                             fontWeight: 800, 
                             padding: '2px 7px', 
                             borderRadius: 4,
-                            background: item.reverted ? '#EF444420' : '#10B98120',
-                            color: item.reverted ? '#EF4444' : '#10B981'
+                            background: item.reverted ? '#EF444420' : 'rgba(255, 255, 255, 0.1)',
+                            color: item.reverted ? '#EF4444' : '#ffffff'
                           }}>
                             {item.reverted ? 'REVERTED' : 'CURRENT'}
                           </span>
@@ -1352,7 +1352,7 @@ export default function DataQualityCenter() {
               </div>
             ) : anomalies.length === 0 ? (
               <div style={{ padding: '3.5rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                <CheckCircle size={40} color="#10B981" style={{ margin: '0 auto 12px' }} />
+                <CheckCircle size={40} color="#ffffff" style={{ margin: '0 auto 12px' }} />
                 <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>Sentinel Stream Clear</div>
               </div>
             ) : (
@@ -1382,7 +1382,7 @@ export default function DataQualityCenter() {
                           </div>
                         </td>
                         <td style={{ padding: '12px 14px' }}>
-                          <span style={{ fontWeight: 800, color: item.completeness_score >= 80 ? '#10B981' : '#F59E0B' }}>
+                          <span style={{ fontWeight: 800, color: item.completeness_score >= 80 ? '#ffffff' : '#d4d4d8' }}>
                             {item.completeness_score}%
                           </span>
                         </td>
@@ -1519,10 +1519,10 @@ export default function DataQualityCenter() {
                               padding: '3px 8px',
                               borderRadius: 4,
                               background: currentPoint.event_type === 'INITIAL_RECORD_CREATED' ? '#d4d4d820' : (
-                                currentPoint.event_type === 'AUDIT_CHANGE' ? '#a1a1aa20' : '#F59E0B20'
+                                currentPoint.event_type === 'AUDIT_CHANGE' ? '#a1a1aa20' : 'rgba(255, 255, 255, 0.08)'
                               ),
                               color: currentPoint.event_type === 'INITIAL_RECORD_CREATED' ? '#d4d4d8' : (
-                                currentPoint.event_type === 'AUDIT_CHANGE' ? '#a1a1aa' : '#F59E0B'
+                                currentPoint.event_type === 'AUDIT_CHANGE' ? '#a1a1aa' : '#d4d4d8'
                               )
                             }}>
                               {currentPoint.event_type}
@@ -1588,7 +1588,7 @@ export default function DataQualityCenter() {
                             <td style={{ padding: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
                               {currentVal}
                             </td>
-                            <td style={{ padding: '12px', fontWeight: 600, color: isDiff ? '#F59E0B' : 'var(--text-secondary)' }}>
+                            <td style={{ padding: '12px', fontWeight: 600, color: isDiff ? '#d4d4d8' : 'var(--text-secondary)' }}>
                               {snapshotVal}
                             </td>
                             <td style={{ padding: '12px', textAlign: 'right' }}>
@@ -1597,8 +1597,8 @@ export default function DataQualityCenter() {
                                 fontWeight: 800,
                                 padding: '2px 8px',
                                 borderRadius: 4,
-                                background: isDiff ? '#F59E0B20' : '#10B98120',
-                                color: isDiff ? '#F59E0B' : '#10B981'
+                                background: isDiff ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.1)',
+                                color: isDiff ? '#d4d4d8' : '#ffffff'
                               }}>
                                 {isDiff ? 'MUTATED' : 'IDENTICAL'}
                               </span>
@@ -1677,11 +1677,11 @@ export default function DataQualityCenter() {
                 </div>
               </div>
 
-              <div style={{ padding: '1rem', borderRadius: 8, background: '#10B98110', border: '1px solid #10B98130' }}>
-                <div style={{ fontSize: 11, fontWeight: 800, color: '#10B981', textTransform: 'uppercase', marginBottom: 4 }}>
+              <div style={{ padding: '1rem', borderRadius: 8, background: '#ffffff10', border: '1px solid rgba(255, 255, 255, 0.15)' }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase', marginBottom: 4 }}>
                   PROPOSED VALUE
                 </div>
-                <div style={{ fontSize: 15, fontWeight: 800, color: '#10B981', wordBreak: 'break-all' }}>
+                <div style={{ fontSize: 15, fontWeight: 800, color: '#ffffff', wordBreak: 'break-all' }}>
                   {selectedProposal.proposed_value}
                 </div>
               </div>
@@ -1694,15 +1694,15 @@ export default function DataQualityCenter() {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, color: 'var(--text-primary)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <CheckCircle size={15} color="#10B981" />
+                  <CheckCircle size={15} color="#ffffff" />
                   <span>{selectedProposal.reason}</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <CheckCircle size={15} color="#10B981" />
+                  <CheckCircle size={15} color="#ffffff" />
                   <span>Corroborated across authorized source observations</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <CheckCircle size={15} color="#10B981" />
+                  <CheckCircle size={15} color="#ffffff" />
                   <span>Deterministic validation gates passed ({Math.round(selectedProposal.confidence * 100)}% Confidence)</span>
                 </div>
               </div>
@@ -1850,7 +1850,7 @@ export default function DataQualityCenter() {
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem', borderBottom: '1px solid var(--card-border)', paddingBottom: '1rem' }}>
               <div>
-                <span style={{ fontSize: 11, fontWeight: 800, padding: '2px 8px', borderRadius: 4, background: '#0078D420', color: '#0078D4' }}>
+                <span style={{ fontSize: 11, fontWeight: 800, padding: '2px 8px', borderRadius: 4, background: '#ffffff20', color: '#ffffff' }}>
                   {selectedPersonCard.canonical_id}
                 </span>
                 <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', margin: '6px 0 2px 0' }}>
@@ -1863,7 +1863,7 @@ export default function DataQualityCenter() {
 
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: 10, textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>Confidence</div>
-                <div style={{ fontSize: 24, fontWeight: 800, color: '#10B981' }}>
+                <div style={{ fontSize: 24, fontWeight: 800, color: '#ffffff' }}>
                   {Math.round(selectedPersonCard.identity_confidence * 100)}%
                 </div>
               </div>
@@ -1871,12 +1871,12 @@ export default function DataQualityCenter() {
 
             {/* Best Contact Recommendation Card */}
             {selectedPersonCard.best_contact_recommendation && (
-              <div style={{ padding: '1rem', borderRadius: 8, background: '#10B98115', border: '1px solid #10B98130', marginBottom: '1.5rem' }}>
+              <div style={{ padding: '1rem', borderRadius: 8, background: '#ffffff15', border: '1px solid rgba(255, 255, 255, 0.15)', marginBottom: '1.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                  <span style={{ fontSize: 11, fontWeight: 800, color: '#10B981', textTransform: 'uppercase' }}>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
                     Recommended Outreach Target
                   </span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: '#10B981' }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#ffffff' }}>
                     Confidence: {Math.round(selectedPersonCard.best_contact_recommendation.confidence_score * 100)}%
                   </span>
                 </div>
@@ -1906,8 +1906,8 @@ export default function DataQualityCenter() {
                       fontWeight: 700, 
                       padding: '2px 6px', 
                       borderRadius: 4,
-                      background: h.status === 'current' ? '#10B98120' : '#F59E0B20',
-                      color: h.status === 'current' ? '#10B981' : '#F59E0B'
+                      background: h.status === 'current' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.08)',
+                      color: h.status === 'current' ? '#ffffff' : '#d4d4d8'
                     }}>
                       {h.status.toUpperCase()}
                     </span>
@@ -2054,7 +2054,7 @@ function ResultItem({ label, value, pass }) {
   return (
     <div style={{ padding: '8px 10px', borderRadius: 6, background: 'var(--panel-bg)', border: '1px solid var(--card-border)' }}>
       <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>{label}</div>
-      <div style={{ fontSize: 13, fontWeight: 700, color: pass ? '#10B981' : '#EF4444', marginTop: 2 }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: pass ? '#ffffff' : '#EF4444', marginTop: 2 }}>
         {value}
       </div>
     </div>

@@ -33,8 +33,8 @@ export default function SqlConsole() {
   return (
     <Section title="SQL Read Console" icon="ti-code" action={
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <Badge color="#22c55e">READ-ONLY</Badge>
-        <Badge color="#f59e0b">SELECT only</Badge>
+        <Badge color="#ffffff">READ-ONLY</Badge>
+        <Badge color="#d4d4d8">SELECT only</Badge>
       </div>
     }>
       {/* Presets */}
@@ -94,7 +94,7 @@ export default function SqlConsole() {
             <tbody>
               {result.rows.map((row, i) => (
                 <tr key={i} style={{ borderBottom: '1px solid var(--card-border)' }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#111c30'}
+                  onMouseEnter={e => e.currentTarget.style.background = '#1e1e22'}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
                   {result.columns.map(c => (

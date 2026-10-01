@@ -62,7 +62,7 @@ export default function ProcessLoadModal({ isOpen, onClose, dbRecordCount }) {
           border: '1px solid var(--border, rgba(255,255,255,0.12))',
           borderRadius: '14px',
           overflow: 'hidden',
-          boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.7), 0 0 30px rgba(16, 185, 129, 0.08)',
+          boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.7), 0 0 30px rgba(255, 255, 255, 0.08)',
           animation: 'fadeIn 0.2s ease-out'
         }}
       >
@@ -80,12 +80,12 @@ export default function ProcessLoadModal({ isOpen, onClose, dbRecordCount }) {
               width: '36px',
               height: '36px',
               borderRadius: '8px',
-              background: 'rgba(16, 185, 129, 0.15)',
-              border: '1px solid rgba(16, 185, 129, 0.3)',
+              background: 'rgba(255, 255, 255, 0.08)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#10b981'
+              color: '#ffffff'
             }}>
               <Activity size={20} />
             </div>
@@ -155,9 +155,9 @@ export default function ProcessLoadModal({ isOpen, onClose, dbRecordCount }) {
               border: '1px solid var(--border, rgba(255,255,255,0.07))'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted, #a1a1aa)', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                <Zap size={13} color="#eab308" /> Roundtrip Latency
+                <Zap size={13} color="#a1a1aa" /> Roundtrip Latency
               </div>
-              <div style={{ fontSize: '24px', fontWeight: 800, color: '#10b981', marginTop: '6px', letterSpacing: '-0.02em' }}>
+              <div style={{ fontSize: '24px', fontWeight: 800, color: '#ffffff', marginTop: '6px', letterSpacing: '-0.02em' }}>
                 {pingLatency !== null ? `${pingLatency}ms` : '—'}
               </div>
               <div style={{ fontSize: '11px', color: 'var(--text-muted, #71717a)', marginTop: '2px' }}>
@@ -172,7 +172,7 @@ export default function ProcessLoadModal({ isOpen, onClose, dbRecordCount }) {
               border: '1px solid var(--border, rgba(255,255,255,0.07))'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted, #a1a1aa)', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                <Database size={13} color="#3b82f6" /> Indexed Records
+                <Database size={13} color="#e4e4e7" /> Indexed Records
               </div>
               <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary, #f4f4f5)', marginTop: '6px', letterSpacing: '-0.02em' }}>
                 {typeof parquetCount === 'number' ? parquetCount.toLocaleString() : parquetCount}
@@ -189,9 +189,9 @@ export default function ProcessLoadModal({ isOpen, onClose, dbRecordCount }) {
               border: '1px solid var(--border, rgba(255,255,255,0.07))'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted, #a1a1aa)', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                <Shield size={13} color="#10b981" /> Engine State
+                <Shield size={13} color="#ffffff" /> Engine State
               </div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#10b981', marginTop: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{ fontSize: '20px', fontWeight: 800, color: '#ffffff', marginTop: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <CheckCircle2 size={18} /> Optimal
               </div>
               <div style={{ fontSize: '11px', color: 'var(--text-muted, #71717a)', marginTop: '2px' }}>
@@ -215,14 +215,14 @@ export default function ProcessLoadModal({ isOpen, onClose, dbRecordCount }) {
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                 <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary, #f4f4f5)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Cpu size={15} color="#8b5cf6" /> Process Memory
+                  <Cpu size={15} color="#d4d4d8" /> Process Memory
                 </span>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: memPercent > 80 ? '#f59e0b' : '#10b981' }}>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: memPercent > 80 ? '#d4d4d8' : '#ffffff' }}>
                   {memPercent}%
                 </span>
               </div>
               <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.06)', borderRadius: '999px', overflow: 'hidden' }}>
-                <div style={{ width: `${memPercent}%`, height: '100%', background: memPercent > 80 ? '#f59e0b' : '#10b981', borderRadius: '999px', transition: 'width 0.4s ease' }} />
+                <div style={{ width: `${memPercent}%`, height: '100%', background: memPercent > 80 ? '#d4d4d8' : '#ffffff', borderRadius: '999px', transition: 'width 0.4s ease' }} />
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-muted, #71717a)', marginTop: '8px' }}>
                 <span>Allocated: {health?.components?.memory?.used_gb || 'Normal'}</span>
@@ -239,14 +239,14 @@ export default function ProcessLoadModal({ isOpen, onClose, dbRecordCount }) {
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                 <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary, #f4f4f5)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <HardDrive size={15} color="#06b6d4" /> Disk & Parquet Storage
+                  <HardDrive size={15} color="#ffffff" /> Disk & Parquet Storage
                 </span>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: diskPercent > 85 ? '#f59e0b' : '#06b6d4' }}>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: diskPercent > 85 ? '#ef4444' : '#ffffff' }}>
                   {diskPercent}%
                 </span>
               </div>
               <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.06)', borderRadius: '999px', overflow: 'hidden' }}>
-                <div style={{ width: `${diskPercent}%`, height: '100%', background: '#06b6d4', borderRadius: '999px', transition: 'width 0.4s ease' }} />
+                <div style={{ width: `${diskPercent}%`, height: '100%', background: diskPercent > 85 ? '#ef4444' : '#ffffff', borderRadius: '999px', transition: 'width 0.4s ease' }} />
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-muted, #71717a)', marginTop: '8px' }}>
                 <span>Free: {health?.components?.disk?.free_gb ? `${health.components.disk.free_gb} GB` : 'Optimal'}</span>
@@ -259,18 +259,18 @@ export default function ProcessLoadModal({ isOpen, onClose, dbRecordCount }) {
           <div style={{
             padding: '14px 18px',
             borderRadius: '10px',
-            background: 'rgba(16, 185, 129, 0.05)',
-            border: '1px solid rgba(16, 185, 129, 0.15)',
+            background: 'rgba(255, 255, 255, 0.08)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             fontSize: '12px'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-primary, #f4f4f5)' }}>
-              <Server size={16} color="#10b981" />
+              <Server size={16} color="#ffffff" />
               <span><strong>Execution Pipeline:</strong> DuckDB Parquet In-Memory Engine + Postgres RLS</span>
             </div>
-            <span style={{ color: '#10b981', fontWeight: 600, fontFamily: 'var(--mono, monospace)', fontSize: '11px' }}>
+            <span style={{ color: '#ffffff', fontWeight: 600, fontFamily: 'var(--mono, monospace)', fontSize: '11px' }}>
               ONLINE (ACTIVE)
             </span>
           </div>

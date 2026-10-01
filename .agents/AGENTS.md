@@ -41,3 +41,16 @@ Every change touching Desktop Scout must be audited and applied across the follo
 Before reporting completion to the user:
 - Execute at least 3 distinct verification checks with verifiable proof.
 - Verify Desktop extraction logic, Backend telemetry/source counting, and Frontend build integrity.
+
+---
+
+## 3. Permanent Autonomous Engine Perpetuity & Never-Stop Mandate (Strict User Mandate)
+
+All autonomous discovery, harvesting, enrichment, and pipeline background engines MUST run perpetually 24/7/365 without exception:
+
+1. **Zero Browser Dependency**: All background engines (WebHarvest, Night Sweeper, Offline Buffer Watchdog, Sequence Schedulers) MUST operate 100% server-side and headless. Under NO circumstances should any crawler or background process depend on whether a browser tab (`localhost:5173`) is open, focused, minimized, or closed.
+2. **Anti-Starvation & Immortality Guard**: Seed generators and target selection loops must NEVER enter a 0-target idle deadlock when domains enter cooldown. Expired cooldowns must automatically decay, and emergency immortal baseline seeds must activate to guarantee perpetual cycle execution.
+3. **Internal Auto-Revival (Engine Immunity Sentinel)**: The in-process `EngineImmunitySentinel` must remain active in `main.py`, checking engine heartbeats every 30s and auto-reviving any stopped or stagnated loop in <5 seconds.
+4. **OS-Level Process Supervisor**: `backend/talentops_supervisor.py` must remain permanently running via Windows Startup (`shell:startup`) and Windows Task Scheduler (`TalentOpsPerpetualSupervisor`). If the backend process ever crashes, terminates, or the PC wakes from sleep/hibernation, the supervisor must immediately auto-relaunch it.
+5. **No Code May Break This Guarantee**: No future agent is permitted to disable, remove, or comment out these sentinel layers or make background workers contingent on user UI actions.
+

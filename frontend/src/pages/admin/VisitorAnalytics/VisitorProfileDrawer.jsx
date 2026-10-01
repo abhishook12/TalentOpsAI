@@ -72,11 +72,11 @@ export default function VisitorProfileDrawer({ sessionId, onClose }) {
                 {data.profile.location} ({data.profile.ip_address})
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: 'var(--text-secondary)' }}>
-                <Monitor size={16} style={{ color: '#4ade80' }}/>
+                <Monitor size={16} style={{ color: '#ffffff' }}/>
                 {data.profile.system}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: 'var(--text-secondary)' }}>
-                <Clock size={16} style={{ color: '#fb923c' }}/>
+                <Clock size={16} style={{ color: '#d4d4d8' }}/>
                 Started {format(new Date(data.profile.started_at), 'MMM d, h:mm:ss a')}
               </div>
             </div>

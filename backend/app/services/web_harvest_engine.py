@@ -318,12 +318,26 @@ class WebHarvestEngine:
 
         self.stats["domains_queued"] = len(targets)
 
-        # Filter valid targets
+        # Filter valid targets (scan targets until batch_size non-cooldown targets are found)
         valid_targets = []
-        for target in targets[:self.batch_size]:
+        for target in targets:
             domain = target.get("domain")
             if domain and not self._is_domain_on_cooldown(domain):
                 valid_targets.append(target)
+                if len(valid_targets) >= self.batch_size:
+                    break
+
+        # Anti-Starvation Immortality Guard: If all targets were on cooldown, decay cooldowns and recycle
+        if not valid_targets and targets:
+            logger.info("[WEBHARVEST] Anti-Starvation Guard: Active cooldowns saturated. Pruning cooldown cache to keep engine running 24/7.")
+            cutoff = datetime.now(timezone.utc) - timedelta(minutes=30)
+            self._scraped_domains = {d: t for d, t in self._scraped_domains.items() if t > cutoff}
+            for target in targets:
+                domain = target.get("domain")
+                if domain:
+                    valid_targets.append(target)
+                    if len(valid_targets) >= self.batch_size:
+                        break
 
         if not valid_targets:
             return result
@@ -481,17 +495,18 @@ class WebHarvestEngine:
             con = duckdb.connect(database=":memory:", read_only=False)
 
             # Strategy 1: Find companies with few known contacts (high-value expansion targets)
-            # Extract corporate domains from existing email addresses
+            # Extract corporate domains from existing email addresses (strictly excluding multi-email pipe strings)
             query = f"""
                 SELECT
-                    SPLIT_PART(email, '@', 2) as domain,
-                    ANY_VALUE(COALESCE(
-                        NULLIF(TRIM(CAST(company_id AS VARCHAR)), ''),
-                        NULLIF(TRIM(CAST(recruiter_name AS VARCHAR)), '')
-                    )) as company_name,
+                    LOWER(TRIM(SPLIT_PART(email, '@', 2))) as domain,
+                    ANY_VALUE(NULLIF(TRIM(CAST(company_id AS VARCHAR)), '')) as company_name,
                     COUNT(*) as contact_count
                 FROM read_parquet('{parquet_path}')
                 WHERE email IS NOT NULL
+                    AND email NOT LIKE '%|%'
+                    AND email NOT LIKE '%/%'
+                    AND email NOT LIKE '%,%'
+                    AND email LIKE '%@%.%'
                     AND email NOT LIKE '%@noemail.talentops%'
                     AND email NOT LIKE '%@missing.local%'
                     AND email NOT LIKE '%@example.com%'
@@ -502,7 +517,7 @@ class WebHarvestEngine:
                         'yandex.com', 'zoho.com', 'live.com', 'msn.com',
                         'comcast.net', 'att.net', 'verizon.net', 'cox.net'
                     )
-                GROUP BY SPLIT_PART(email, '@', 2)
+                GROUP BY LOWER(TRIM(SPLIT_PART(email, '@', 2)))
                 HAVING COUNT(*) BETWEEN 1 AND 3
                 ORDER BY RANDOM()
                 LIMIT {self.batch_size * 3}
@@ -510,9 +525,15 @@ class WebHarvestEngine:
             rows = con.execute(query).fetchall()
             con.close()
 
+            from ..utils.normalizer import validate_human_name, BOGUS_COMPANIES
+
             for row in rows:
-                domain, company_name, count = row[0], row[1], row[2]
+                domain, raw_comp, count = (row[0] or "").strip().lower(), row[1], row[2]
                 if domain and '.' in domain and len(domain) > 4:
+                    # Enforce strict domain format (no spaces, no pipes, valid TLD)
+                    if not re.match(r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$", domain):
+                        continue
+
                     # Skip blocked domains
                     root_domain = '.'.join(domain.split('.')[-2:])
                     if root_domain in BLOCKED_DOMAINS:
@@ -520,9 +541,24 @@ class WebHarvestEngine:
                     if self._is_domain_on_cooldown(domain):
                         continue
 
+                    clean_company_name = None
+                    if raw_comp and isinstance(raw_comp, str):
+                        cand_name = raw_comp.strip()
+                        # Reject company names that contain emails or pipes
+                        if "@" not in cand_name and "|" not in cand_name and "/" not in cand_name:
+                            # Reject if company name is actually an individual human name (e.g. "Yurena Garcia")
+                            is_human, _, _ = validate_human_name(cand_name)
+                            if not is_human and cand_name.lower() not in BOGUS_COMPANIES:
+                                clean_company_name = cand_name
+
+                    if not clean_company_name:
+                        # Derive professional title from domain root (e.g. okeanos.vc -> Okeanos)
+                        dom_root = domain.split('.')[0]
+                        clean_company_name = re.sub(r"[^a-zA-Z0-9]", " ", dom_root).strip().title()
+
                     targets.append({
                         "domain": domain,
-                        "company_name": company_name or domain.split('.')[0].title(),
+                        "company_name": clean_company_name,
                         "existing_contacts": count,
                         "priority": "high" if count == 1 else "medium",
                     })
@@ -532,22 +568,138 @@ class WebHarvestEngine:
         except Exception as e:
             logger.warning("[WEBHARVEST] Seed generation error: %s", e)
 
+        # Immortal Seed Fallback: Ensure engine NEVER starves with 0 targets
+        if not targets:
+            logger.info("[WEBHARVEST] Activating Immortal Baseline Seed Pool.")
+            emergency_seeds = [
+                ("roberthalf.com", "Robert Half"), ("teksystems.com", "TEKsystems"),
+                ("apexsystems.com", "Apex Systems"), ("insightglobal.com", "Insight Global"),
+                ("aerotek.com", "Aerotek"), ("kforce.com", "Kforce"),
+                ("beaconhillstaffing.com", "Beacon Hill Staffing"), ("randstadusa.com", "Randstad USA"),
+                ("manpower.com", "ManpowerGroup"), ("experis.com", "Experis"),
+                ("adeccousa.com", "Adecco"), ("hays.com", "Hays"),
+                ("kellyservices.us", "Kelly Services"), ("allegisgroup.com", "Allegis Group"),
+            ]
+            for dom, co in emergency_seeds:
+                targets.append({
+                    "domain": dom,
+                    "company_name": co,
+                    "existing_contacts": 0,
+                    "priority": "immortal_fallback",
+                    "registry_tier": "IMMORTAL_BASELINE",
+                })
+
         return targets
 
     # ── Web Scraping ───────────────────────────────────────────────────────────
 
+    def _extract_team_links_from_html(self, html: str, domain: str) -> List[str]:
+        """
+        Parses navigation anchor links to discover genuine dynamic team/leadership URLs
+        directly from the site's DOM structure.
+        """
+        if not html:
+            return []
+        NAV_TEAM_PATTERN = re.compile(
+            r'(?:^|/)(?:[a-zA-Z0-9_\-]+/)*(?:[a-zA-Z0-9_\-]*?(?:team|people|leadership|staff|about|executive|who-we-are|directory|board|advisor)[a-zA-Z0-9_\-]*)(?:[/?#]|$)',
+            re.IGNORECASE
+        )
+        hrefs = re.findall(r'href=["\']([^"\']+)["\']', html)
+        discovered = []
+        for h in hrefs:
+            clean = h.strip()
+            if clean.startswith('#') or clean.startswith('mailto:') or clean.startswith('javascript:'):
+                continue
+            parsed = urlparse(clean)
+            if parsed.netloc and domain.lower() not in parsed.netloc.lower():
+                continue
+            path = parsed.path if parsed.path else clean
+            if not path.startswith('/'):
+                path = '/' + path
+            path = path.split('?')[0].split('#')[0]
+            if NAV_TEAM_PATTERN.search(path):
+                if path not in discovered and path not in ('/', ''):
+                    discovered.append(path)
+        return discovered[:8]
+
+    def _extract_team_links_from_sitemap(self, domain: str) -> List[str]:
+        """
+        Extracts team and leadership page URLs from public XML sitemaps.
+        """
+        sitemap_urls = [f"https://{domain}/sitemap.xml", f"https://{domain}/sitemap_index.xml"]
+        discovered = []
+        NAV_TEAM_PATTERN = re.compile(
+            r'/(?:team|people|leadership|staff|about|our-team|meet-the-team|who-we-are|executives)(?:/|[a-zA-Z0-9_\-]+)?$',
+            re.IGNORECASE
+        )
+        for s_url in sitemap_urls:
+            try:
+                xml_text, _ = self._fetch_page(s_url)
+                if not xml_text or "<loc>" not in xml_text:
+                    continue
+                locs = re.findall(r'<loc>([^<]+)</loc>', xml_text)
+                for loc in locs:
+                    clean = loc.strip()
+                    parsed = urlparse(clean)
+                    if parsed.netloc and domain.lower() in parsed.netloc.lower():
+                        path = parsed.path
+                        if path and NAV_TEAM_PATTERN.search(path):
+                            if path not in discovered and path not in ('/', ''):
+                                discovered.append(path)
+                                if len(discovered) >= 12:
+                                    break
+                if discovered:
+                    break
+            except Exception as e:
+                logger.debug("[WEBHARVEST] Sitemap probe error on %s: %s", s_url, e)
+        return discovered
+
     def _scrape_company_website(self, domain: str, company_name: str) -> List[Dict[str, Any]]:
         """
         Scrapes a company's website for team member profiles.
+        Combines DOM dynamic link discovery, XML sitemaps, and headless rendering.
         Returns a list of extracted profile dictionaries.
         """
         all_profiles = []
         pages_tried = 0
         max_pages = 4  # Try up to 4 paths per domain (was 2 — too few for modern agency sites)
 
-        for path in TEAM_PAGE_PATHS:
+        paths_to_try = list(TEAM_PAGE_PATHS)
+        tried_paths = set()
+
+        # Step 0: Probe homepage to dynamically extract genuine navigation links
+        home_url = f"https://{domain}/"
+        discovered_nav_paths = []
+        try:
+            home_html, _ = self._fetch_page(home_url)
+            if home_html:
+                discovered_nav_paths = self._extract_team_links_from_html(home_html, domain)
+                if discovered_nav_paths:
+                    logger.debug("[WEBHARVEST] Dynamic DOM Nav Discovery on %s found paths: %s", domain, discovered_nav_paths)
+                    for dp in reversed(discovered_nav_paths):
+                        if dp not in paths_to_try:
+                            paths_to_try.insert(0, dp)
+        except Exception as home_err:
+            logger.debug("[WEBHARVEST] Home probe failed for %s: %s", domain, home_err)
+
+        # Step 0.5: If home page yielded few links, probe XML sitemap for team directories
+        if len(discovered_nav_paths) < 2:
+            try:
+                sitemap_paths = self._extract_team_links_from_sitemap(domain)
+                if sitemap_paths:
+                    logger.debug("[WEBHARVEST] Sitemap Discovery on %s found paths: %s", domain, sitemap_paths)
+                    for sp in reversed(sitemap_paths):
+                        if sp not in paths_to_try:
+                            paths_to_try.insert(0, sp)
+            except Exception as sm_err:
+                logger.debug("[WEBHARVEST] Sitemap probe error: %s", sm_err)
+
+        for path in paths_to_try:
             if pages_tried >= max_pages:
                 break
+            if path in tried_paths:
+                continue
+            tried_paths.add(path)
 
             url = f"https://{domain}{path}"
             try:
@@ -557,6 +709,12 @@ class WebHarvestEngine:
 
                 pages_tried += 1
                 profiles = self._extract_profiles_from_text(html_text, domain, company_name, url)
+
+                # Also harvest any sub-links from this page
+                sub_paths = self._extract_team_links_from_html(html_text, domain)
+                for sp in sub_paths:
+                    if sp not in tried_paths and sp not in paths_to_try and len(paths_to_try) < 20:
+                        paths_to_try.append(sp)
 
                 # If static fetch returned 0 profiles but page may be a dynamic JS app, trigger headless browser
                 if not profiles and strategy != "headless_browser":

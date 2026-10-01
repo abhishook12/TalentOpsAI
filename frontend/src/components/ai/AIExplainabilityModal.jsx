@@ -138,7 +138,7 @@ export default function AIExplainabilityModal({ isOpen, onClose, explanationData
             <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>
               Confidence Tier
             </div>
-            <div style={{ fontSize: '16px', fontWeight: 800, color: '#10b981', marginTop: '2px' }}>
+            <div style={{ fontSize: '16px', fontWeight: 800, color: '#ffffff', marginTop: '2px' }}>
               {confidence_tier} ({Math.round(confidence * 100)}%)
             </div>
           </div>
@@ -228,7 +228,7 @@ export default function AIExplainabilityModal({ isOpen, onClose, explanationData
               Is this score evaluation accurate?
             </span>
             {feedbackSent ? (
-              <span style={{ fontSize: '12px', color: '#10b981', fontWeight: 700 }}>
+              <span style={{ fontSize: '12px', color: '#ffffff', fontWeight: 700 }}>
                 ✓ Thank you! Evaluation recorded.
               </span>
             ) : (
@@ -244,9 +244,9 @@ export default function AIExplainabilityModal({ isOpen, onClose, explanationData
                     fontSize: '12px',
                     fontWeight: 700,
                     borderRadius: '6px',
-                    border: '1px solid rgba(16, 185, 129, 0.3)',
-                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                    color: '#10b981',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                    color: '#ffffff',
                     cursor: 'pointer'
                   }}
                 >

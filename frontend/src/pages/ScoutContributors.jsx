@@ -133,16 +133,16 @@ export default function ScoutContributors() {
     const st = (status || '').toUpperCase()
     switch (st) {
       case 'CONTRIBUTING':
-        return { bg: 'rgba(16, 185, 129, 0.15)', text: '#10b981', border: 'rgba(16, 185, 129, 0.3)', icon: Sparkles }
+        return { bg: 'rgba(255, 255, 255, 0.08)', text: '#ffffff', border: 'rgba(255, 255, 255, 0.08)', icon: Sparkles }
       case 'CONTRIBUTING_OFFLINE':
-        return { bg: 'rgba(245, 158, 11, 0.15)', text: '#f59e0b', border: 'rgba(245, 158, 11, 0.3)', icon: Clock }
+        return { bg: 'rgba(255, 255, 255, 0.05)', text: '#d4d4d8', border: 'rgba(255, 255, 255, 0.05)', icon: Clock }
       case 'ACTIVE':
-        return { bg: 'rgba(59, 130, 246, 0.15)', text: '#3b82f6', border: 'rgba(59, 130, 246, 0.3)', icon: Activity }
+        return { bg: 'rgba(255, 255, 255, 0.06)', text: '#e4e4e7', border: 'rgba(255, 255, 255, 0.06)', icon: Activity }
       case 'PAIRED':
       case 'PAIRED_IDLE':
-        return { bg: 'rgba(139, 92, 246, 0.15)', text: '#a78bfa', border: 'rgba(139, 92, 246, 0.3)', icon: Zap }
+        return { bg: 'rgba(255, 255, 255, 0.06)', text: '#d4d4d8', border: 'rgba(255, 255, 255, 0.06)', icon: Zap }
       case 'OFFLINE':
-        return { bg: 'rgba(245, 158, 11, 0.15)', text: '#f59e0b', border: 'rgba(245, 158, 11, 0.3)', icon: Clock }
+        return { bg: 'rgba(255, 255, 255, 0.05)', text: '#d4d4d8', border: 'rgba(255, 255, 255, 0.05)', icon: Clock }
       default:
         return { bg: 'rgba(255, 255, 255, 0.05)', text: '#a1a1aa', border: 'rgba(255, 255, 255, 0.1)', icon: Clock }
     }

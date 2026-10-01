@@ -179,7 +179,7 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
           onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.05)')}
           onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
         >
-          <i className="ti ti-bot" style={{ fontSize: '15px', color: '#10b981' }} />
+          <i className="ti ti-bot" style={{ fontSize: '15px', color: '#ffffff' }} />
           <span>Copilot</span>
         </button>
       )}
@@ -219,7 +219,7 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
                   width: '26px',
                   height: '26px',
                   borderRadius: '6px',
-                  background: 'linear-gradient(135deg, #10b981, #059669)',
+                  background: 'linear-gradient(135deg, #ffffff, #e4e4e7)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -234,8 +234,8 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
                 <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-primary, #f4f4f5)' }}>
                   TalentOps Copilot
                 </div>
-                <div style={{ fontSize: '10px', color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10b981' }} />
+                <div style={{ fontSize: '10px', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#ffffff' }} />
                   Operational Intelligence Engine
                 </div>
               </div>
@@ -274,7 +274,7 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, overflow: 'hidden' }}>
-              <span style={{ color: activeCandidate ? '#38bdf8' : '#10b981' }}>●</span>
+              <span style={{ color: activeCandidate ? '#ffffff' : '#ffffff' }}>●</span>
               <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {activeCandidate
                   ? `Focus: ${activeCandidate.recruiter_name || activeCandidate.name} (${activeCandidate.company || activeCandidate.company_name || 'Enterprise'})`
@@ -333,7 +333,7 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
                 {/* ── RICH RESULT: CANDIDATE CARDS ── */}
                 {m.results && m.results.length > 0 && (
                   <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <div style={{ fontSize: '10px', fontWeight: 800, color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    <div style={{ fontSize: '10px', fontWeight: 800, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                       Identified Talent Matches ({m.results.length})
                     </div>
                     {m.results.map((c, cIdx) => (
@@ -385,9 +385,9 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
                                 fontWeight: 800,
                                 padding: '2px 6px',
                                 borderRadius: '4px',
-                                backgroundColor: 'rgba(16, 185, 129, 0.15)',
-                                color: '#10b981',
-                                border: '1px solid rgba(16, 185, 129, 0.3)'
+                                backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                                color: '#ffffff',
+                                border: '1px solid rgba(255, 255, 255, 0.08)'
                               }}
                             >
                               {c.match_score || 92}% Match
@@ -411,11 +411,11 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
                                 key={evI}
                                 style={{
                                   fontSize: '9px',
-                                  backgroundColor: 'rgba(56, 189, 248, 0.1)',
-                                  color: '#38bdf8',
+                                  backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                                  color: '#ffffff',
                                   padding: '1px 6px',
                                   borderRadius: '3px',
-                                  border: '1px solid rgba(56, 189, 248, 0.2)'
+                                  border: '1px solid rgba(255, 255, 255, 0.06)'
                                 }}
                               >
                                 {ev}
@@ -434,10 +434,10 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
                             <button
                               onClick={() => handleSendMessage(`Draft outreach for ${c.name}`)}
                               style={{
-                                background: 'rgba(16, 185, 129, 0.15)',
-                                border: '1px solid rgba(16, 185, 129, 0.3)',
+                                background: 'rgba(255, 255, 255, 0.08)',
+                                border: '1px solid rgba(255, 255, 255, 0.08)',
                                 borderRadius: '4px',
-                                color: '#10b981',
+                                color: '#ffffff',
                                 fontSize: '10px',
                                 fontWeight: 700,
                                 padding: '2px 8px',
@@ -478,17 +478,17 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
                   <div
                     style={{
                       marginTop: '12px',
-                      background: 'rgba(16, 185, 129, 0.04)',
-                      border: '1px solid rgba(16, 185, 129, 0.25)',
+                      background: 'rgba(255, 255, 255, 0.08)',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
                       borderRadius: '8px',
                       padding: '12px'
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '10px', fontWeight: 800, color: '#10b981', letterSpacing: '0.05em' }}>
+                      <span style={{ fontSize: '10px', fontWeight: 800, color: '#ffffff', letterSpacing: '0.05em' }}>
                         🛰 SCOUT FLEET TELEMETRY
                       </span>
-                      <span style={{ fontSize: '10px', color: '#10b981', fontWeight: 700 }}>
+                      <span style={{ fontSize: '10px', color: '#ffffff', fontWeight: 700 }}>
                         ● {m.scout_telemetry.fleet_health || 'Operational'}
                       </span>
                     </div>
@@ -500,7 +500,7 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
                       </div>
                       <div style={{ background: 'rgba(0, 0, 0, 0.2)', padding: '8px', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.04)' }}>
                         <div style={{ fontSize: '9px', color: '#a1a1aa' }}>Discoveries Today</div>
-                        <div style={{ fontSize: '14px', fontWeight: 800, color: '#10b981' }}>{m.scout_telemetry.today_discoveries}</div>
+                        <div style={{ fontSize: '14px', fontWeight: 800, color: '#ffffff' }}>{m.scout_telemetry.today_discoveries}</div>
                       </div>
                     </div>
 
@@ -515,18 +515,18 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
                   <div
                     style={{
                       marginTop: '12px',
-                      background: 'rgba(56, 189, 248, 0.04)',
-                      border: '1px solid rgba(56, 189, 248, 0.25)',
+                      background: 'rgba(255, 255, 255, 0.06)',
+                      border: '1px solid rgba(255, 255, 255, 0.06)',
                       borderRadius: '8px',
                       padding: '12px'
                     }}
                   >
-                    <div style={{ fontSize: '10px', fontWeight: 800, color: '#38bdf8', letterSpacing: '0.05em', marginBottom: '8px' }}>
+                    <div style={{ fontSize: '10px', fontWeight: 800, color: '#ffffff', letterSpacing: '0.05em', marginBottom: '8px' }}>
                       📊 CAMPAIGNS ENGINE VITALS
                     </div>
                     <div style={{ display: 'flex', gap: '12px', fontSize: '11px', marginBottom: '8px' }}>
                       <div>Total: <strong style={{ color: '#fff' }}>{m.campaign_metrics.total_campaigns}</strong></div>
-                      <div>Active: <strong style={{ color: '#10b981' }}>{m.campaign_metrics.active_campaigns}</strong></div>
+                      <div>Active: <strong style={{ color: '#ffffff' }}>{m.campaign_metrics.active_campaigns}</strong></div>
                     </div>
                     {m.campaign_metrics.top_campaigns && m.campaign_metrics.top_campaigns.length > 0 && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -546,17 +546,17 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
                   <div
                     style={{
                       marginTop: '12px',
-                      background: 'rgba(245, 158, 11, 0.04)',
-                      border: '1px solid rgba(245, 158, 11, 0.25)',
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid rgba(255, 255, 255, 0.05)',
                       borderRadius: '8px',
                       padding: '12px'
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '10px', fontWeight: 800, color: '#f59e0b', letterSpacing: '0.05em' }}>
+                      <span style={{ fontSize: '10px', fontWeight: 800, color: '#d4d4d8', letterSpacing: '0.05em' }}>
                         🛡 SENTINEL DATA QUALITY HEALTH
                       </span>
-                      <span style={{ fontSize: '11px', fontWeight: 800, color: '#10b981' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 800, color: '#ffffff' }}>
                         {m.data_quality.health_score}/100
                       </span>
                     </div>
@@ -587,10 +587,10 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
                           toast.success('Outreach draft copied to clipboard!')
                         }}
                         style={{
-                          background: 'rgba(16, 185, 129, 0.15)',
-                          border: '1px solid rgba(16, 185, 129, 0.4)',
+                          background: 'rgba(255, 255, 255, 0.08)',
+                          border: '1px solid rgba(255, 255, 255, 0.08)',
                           borderRadius: '4px',
-                          color: '#10b981',
+                          color: '#ffffff',
                           fontSize: '10px',
                           fontWeight: 700,
                           padding: '2px 8px',
@@ -647,7 +647,7 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
                 {/* ── SOURCE TRANSPARENCY BADGE ── */}
                 {m.source_transparency && (
                   <div style={{ marginTop: '8px', fontSize: '9px', color: '#71717a', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <i className="ti ti-check" style={{ color: '#10b981', fontSize: '11px' }} />
+                    <i className="ti ti-check" style={{ color: '#ffffff', fontSize: '11px' }} />
                     <span>Grounded via: {m.source_transparency}</span>
                   </div>
                 )}
@@ -663,7 +663,7 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
                   borderRadius: '10px',
                   padding: '8px 14px',
                   fontSize: '11px',
-                  color: '#10b981',
+                  color: '#ffffff',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px'
@@ -728,7 +728,7 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
               onClick={() => handleSendMessage()}
               disabled={loading || !input.trim()}
               style={{
-                background: loading || !input.trim() ? '#27272a' : 'linear-gradient(135deg, #10b981, #059669)',
+                background: loading || !input.trim() ? '#27272a' : 'linear-gradient(135deg, #ffffff, #e4e4e7)',
                 border: 'none',
                 borderRadius: '6px',
                 padding: '0 14px',

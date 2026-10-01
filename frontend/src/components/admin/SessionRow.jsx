@@ -34,7 +34,7 @@ export default function SessionRow({ session, isOpen, onToggle, index }) {
         <i className={`ti ${isOpen ? 'ti-chevron-up' : 'ti-chevron-down'}`} style={{ color: '#71717a', fontSize: 12 }} />
       </div>
       {isOpen && (
-        <div style={{ borderTop: '1px solid #111c30', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 5 }}>
+        <div style={{ borderTop: '1px solid #1e1e22', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 5 }}>
           <div style={{ fontSize: 10, color: '#3f3f46', fontFamily: "'DM Mono', monospace" }}>{session.ip_address}</div>
           {session.pages.map((p, pi) => (
             <div key={pi} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: '#a1a1aa' }}>

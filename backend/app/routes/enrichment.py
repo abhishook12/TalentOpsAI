@@ -345,6 +345,48 @@ def get_web_harvest_stats(
     }
 
 
+@router.get("/offline-buffer-status")
+def get_offline_buffer_status(
+    current_user: User = Depends(get_current_user_from_request),
+) -> Dict[str, Any]:
+    """
+    Returns real-time status of the Offline Harvest Buffer & Render Watchdog.
+
+    Shows:
+    - render_online: Whether Render cloud backend is currently reachable
+    - pending_buffered: Number of profiles waiting to be flushed when Render wakes up
+    - total_flushed: Total profiles successfully flushed to production since last restart
+    - buffer_db_path: Path to the local SQLite buffer database
+    """
+    from ..services.offline_buffer import offline_buffer
+    stats = offline_buffer.get_stats()
+    return {
+        "success": True,
+        "offline_buffer": stats,
+    }
+
+
+@router.post("/offline-buffer-flush")
+def trigger_offline_buffer_flush(
+    current_user: User = Depends(get_current_user_from_request),
+) -> Dict[str, Any]:
+    """
+    Manually triggers a flush of all pending offline buffered profiles to production.
+    Normally this happens automatically when Render wakes up, but this allows manual override.
+    """
+    from ..services.offline_buffer import offline_buffer
+    pending_before = offline_buffer.get_pending_count()
+    if pending_before == 0:
+        return {"success": True, "message": "No pending profiles to flush.", "flushed": 0}
+    result = offline_buffer.flush_pending_to_production()
+    return {
+        "success": True,
+        "message": f"Flushed {result['flushed']} profiles to production.",
+        "result": result,
+        "pending_before": pending_before,
+    }
+
+
 @router.get("/web-harvest-reports")
 def get_web_harvest_reports(
     limit: int = Query(50, ge=1, le=200),
@@ -797,5 +839,55 @@ def push_recruiter_to_campaign(
         "email": recruiter.email,
         "message": f"Successfully enrolled {recruiter.recruiter_name} into '{campaign.name}'!",
     }
+
+
+# ── Frontier 2: Multi-Surface Waterfall OSINT Endpoints ────────────────────────
+
+@router.post("/waterfall-osint/{recruiter_id}")
+def run_waterfall_osint_enrichment(
+    recruiter_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+) -> Dict[str, Any]:
+    """
+    Frontier 2: Runs Zero-Cost Multi-Surface Waterfall OSINT Triangulation on a candidate.
+    Cascades through Gravatar Identity, GitHub Radar, DuckDuckGo X-Ray, and RFC SMTP checks.
+    Extracts direct phone numbers, personal emails, social URLs, and commits to catalog & Parquet.
+    """
+    from ..services.waterfall_osint_engine import waterfall_osint_engine
+    dossier = waterfall_osint_engine.enrich_recruiter(db, recruiter_id)
+    if not dossier:
+        raise HTTPException(status_code=404, detail=f"Recruiter #{recruiter_id} not found")
+
+    # Dual-Sync update to DuckDB Parquet if phone or personal email was found
+    if dossier.direct_phone or dossier.personal_email:
+        try:
+            update_payload = {
+                "recruiter_id": recruiter_id,
+                "phone": dossier.direct_phone,
+                "phone2": dossier.secondary_phone,
+                "email2": dossier.personal_email,
+                "linkedin": dossier.linkedin_url,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+            parquet_writer.append_records([update_payload])
+        except Exception as pq_err:
+            logger.warning("[WATERFALL_OSINT] Parquet sync notice: %s", pq_err)
+
+    return {
+        "success": True,
+        "recruiter_id": recruiter_id,
+        "dossier": dossier.to_dict(),
+    }
+
+
+@router.get("/waterfall-osint/stats")
+def get_waterfall_osint_stats(
+    current_user: User = Depends(get_current_user_from_request),
+) -> Dict[str, Any]:
+    """Returns real-time telemetry from the Waterfall OSINT Engine."""
+    from ..services.waterfall_osint_engine import waterfall_osint_engine
+    return waterfall_osint_engine.get_telemetry()
+
 
 

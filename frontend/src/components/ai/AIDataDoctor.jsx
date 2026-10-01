@@ -110,7 +110,7 @@ export default function AIDataDoctor() {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '14px', color: '#10b981' }}>🩺</span>
+          <span style={{ fontSize: '14px', color: '#ffffff' }}>🩺</span>
           <div>
             <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)' }}>
               Data Doctor & Quarantine
@@ -127,8 +127,8 @@ export default function AIDataDoctor() {
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            backgroundColor: healthScore >= 80 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
-            border: `1px solid ${healthScore >= 80 ? 'rgba(16, 185, 129, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`,
+            backgroundColor: healthScore >= 80 ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.05)',
+            border: `1px solid ${healthScore >= 80 ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.05)'}`,
             padding: '6px 12px',
             borderRadius: '20px'
           }}
@@ -136,7 +136,7 @@ export default function AIDataDoctor() {
           <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
             Health Score:
           </span>
-          <span style={{ fontSize: '14px', fontWeight: 900, color: healthScore >= 80 ? '#10b981' : '#f59e0b' }}>
+          <span style={{ fontSize: '14px', fontWeight: 900, color: healthScore >= 80 ? '#ffffff' : '#d4d4d8' }}>
             {healthScore}%
           </span>
         </div>
@@ -149,8 +149,8 @@ export default function AIDataDoctor() {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            background: 'linear-gradient(90deg, rgba(16, 185, 129, 0.15), rgba(228, 228, 231, 0.1))',
-            border: '1px solid rgba(16, 185, 129, 0.4)',
+            background: 'linear-gradient(90deg, rgba(255, 255, 255, 0.08), rgba(228, 228, 231, 0.1))',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
             borderRadius: '8px',
             padding: '10px 16px'
           }}
@@ -183,7 +183,7 @@ export default function AIDataDoctor() {
           <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>
             Healthy Records
           </div>
-          <div style={{ fontSize: '20px', fontWeight: 900, color: '#10b981', marginTop: '4px' }}>
+          <div style={{ fontSize: '20px', fontWeight: 900, color: '#ffffff', marginTop: '4px' }}>
             {summary?.healthy_records?.toLocaleString() || '0'}
           </div>
         </div>
@@ -201,7 +201,7 @@ export default function AIDataDoctor() {
           <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>
             Unverified Phones
           </div>
-          <div style={{ fontSize: '20px', fontWeight: 900, color: '#f59e0b', marginTop: '4px' }}>
+          <div style={{ fontSize: '20px', fontWeight: 900, color: '#d4d4d8', marginTop: '4px' }}>
             {summary?.unverified_phones?.toLocaleString() || '0'}
           </div>
         </div>
@@ -256,7 +256,7 @@ export default function AIDataDoctor() {
           disabled={repairing}
           onClick={() => handlePreviewAction('AUTO_MERGE')}
           style={{
-            background: 'linear-gradient(135deg, #10b981, #059669)',
+            background: 'linear-gradient(135deg, #ffffff, #e4e4e7)',
             border: 'none',
             borderRadius: '6px',
             padding: '8px 16px',
@@ -264,7 +264,7 @@ export default function AIDataDoctor() {
             fontWeight: 700,
             color: '#ffffff',
             cursor: 'pointer',
-            boxShadow: '0 2px 10px rgba(16, 185, 129, 0.3)'
+            boxShadow: '0 2px 10px rgba(255, 255, 255, 0.08)'
           }}
         >
           {repairing ? 'Diagnosing...' : 'Fix Safe Issues (Auto-Merge)'}
@@ -308,7 +308,7 @@ export default function AIDataDoctor() {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <div style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: '#10b981' }}>
+                <div style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: '#ffffff' }}>
                   Safety Gate Preview
                 </div>
                 <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
@@ -349,7 +349,7 @@ export default function AIDataDoctor() {
                     <span style={{ fontSize: '10px', textTransform: 'uppercase', opacity: 0.7, display: 'block' }}>Before:</span>
                     {item.before.status} (Trust: {item.before.trust_score})
                   </div>
-                  <div style={{ color: '#10b981' }}>
+                  <div style={{ color: '#ffffff' }}>
                     <span style={{ fontSize: '10px', textTransform: 'uppercase', opacity: 0.7, display: 'block' }}>After:</span>
                     {item.after.status} (Trust: {item.after.trust_score})
                   </div>
@@ -375,7 +375,7 @@ export default function AIDataDoctor() {
               <button
                 onClick={handleCommitAction}
                 style={{
-                  background: 'linear-gradient(135deg, #10b981, #e4e4e7)',
+                  background: 'linear-gradient(135deg, #ffffff, #d4d4d8)',
                   border: 'none',
                   borderRadius: '6px',
                   padding: '8px 18px',

@@ -28,6 +28,7 @@ export function useRecruiters(page = 1, search = '', filters = {}) {
       if (filters.needs_review === 'yes') params.append('needs_review', 'true')
       if (filters.state_status) params.append('state_status', filters.state_status)
       if (filters.email_inference_status) params.append('email_inference_status', filters.email_inference_status)
+      if (filters.data_source) params.append('data_source', filters.data_source)
       if (filters.sort_by) params.append('sort_by', filters.sort_by)
       if (filters.sort_desc) params.append('sort_desc', filters.sort_desc === 'true' ? 'true' : 'false')
 

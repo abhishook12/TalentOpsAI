@@ -56,8 +56,8 @@ export default function LiveVisitorsTab() {
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <div style={{ 
-                  background: s.status === 'Active' ? 'rgba(74, 222, 128, 0.1)' : 'rgba(250, 204, 21, 0.1)',
-                  color: s.status === 'Active' ? '#4ade80' : '#facc15',
+                  background: s.status === 'Active' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(250, 204, 21, 0.1)',
+                  color: s.status === 'Active' ? '#ffffff' : '#d4d4d8',
                   padding: '4px 8px', borderRadius: 4, fontSize: 11, fontWeight: 700
                 }}>
                   {s.status}

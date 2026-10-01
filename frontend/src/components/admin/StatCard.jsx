@@ -1,4 +1,4 @@
-export default function StatCard({ icon, label, value, sub, color = '#185FA5', glow }) {
+export default function StatCard({ icon, label, value, sub, color = 'var(--text-primary)', glow }) {
   return (
     <div style={{
       background: 'var(--card-bg)', border: `1px solid ${glow ? color : 'var(--card-border)'}`,

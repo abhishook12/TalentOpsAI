@@ -58,7 +58,7 @@ export default function OperationsConsole() {
         <ShellCard title="Fleet Queue Backlog">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
-              <div style={{ fontSize: 26, fontWeight: 800, color: data?.queue_backlog_depth > 50 ? '#f59e0b' : '#e4e4e7' }}>
+              <div style={{ fontSize: 26, fontWeight: 800, color: data?.queue_backlog_depth > 50 ? '#d4d4d8' : '#e4e4e7' }}>
                 <AnimatedNumber value={data?.queue_backlog_depth || 0} />
               </div>
               <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>
@@ -74,14 +74,14 @@ export default function OperationsConsole() {
         <ShellCard title="Sync Success Rate">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
-              <div style={{ fontSize: 26, fontWeight: 800, color: '#10b981' }}>
+              <div style={{ fontSize: 26, fontWeight: 800, color: '#ffffff' }}>
                 {data?.sync_success_rate || 99.1}%
               </div>
               <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>
                 Acknowledged delta packets
               </div>
             </div>
-            <div style={{ width: 42, height: 42, borderRadius: 10, background: 'rgba(16, 185, 129, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}>
+            <div style={{ width: 42, height: 42, borderRadius: 10, background: 'rgba(255, 255, 255, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff' }}>
               <CheckCircle2 size={20} />
             </div>
           </div>
@@ -122,7 +122,7 @@ export default function OperationsConsole() {
 
       {/* Remote Kill Switches Card */}
       <div style={{
-        background: '#0b1329',
+        background: '#09090b',
         border: '1px solid #232326',
         borderRadius: 12,
         padding: 20,
@@ -148,7 +148,7 @@ export default function OperationsConsole() {
           {/* Switch 1: Capture Engine */}
           <div style={{
             background: '#070d1e',
-            border: `1px solid ${killSwitches.capture_engine_enabled ? '#1e3a8a' : '#7f1d1d'}`,
+            border: `1px solid ${killSwitches.capture_engine_enabled ? '#27272a' : '#7f1d1d'}`,
             borderRadius: 10,
             padding: 16,
             display: 'flex',
@@ -162,8 +162,8 @@ export default function OperationsConsole() {
                   fontSize: 10,
                   padding: '1px 6px',
                   borderRadius: 4,
-                  background: killSwitches.capture_engine_enabled ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)',
-                  color: killSwitches.capture_engine_enabled ? '#10b981' : '#ef4444',
+                  background: killSwitches.capture_engine_enabled ? 'rgba(255, 255, 255, 0.08)' : 'rgba(239,68,68,0.2)',
+                  color: killSwitches.capture_engine_enabled ? '#ffffff' : '#ef4444',
                   fontWeight: 800,
                 }}>
                   {killSwitches.capture_engine_enabled ? 'ENABLED' : 'PAUSED'}
@@ -180,7 +180,7 @@ export default function OperationsConsole() {
                 padding: '6px 14px',
                 borderRadius: 6,
                 border: 'none',
-                background: killSwitches.capture_engine_enabled ? '#dc2626' : '#16a34a',
+                background: killSwitches.capture_engine_enabled ? '#dc2626' : '#ffffff',
                 color: '#fff',
                 fontSize: 11,
                 fontWeight: 700,
@@ -194,7 +194,7 @@ export default function OperationsConsole() {
           {/* Switch 2: Sync & Ingestion */}
           <div style={{
             background: '#070d1e',
-            border: `1px solid ${killSwitches.sync_enabled ? '#1e3a8a' : '#7f1d1d'}`,
+            border: `1px solid ${killSwitches.sync_enabled ? '#27272a' : '#7f1d1d'}`,
             borderRadius: 10,
             padding: 16,
             display: 'flex',
@@ -208,8 +208,8 @@ export default function OperationsConsole() {
                   fontSize: 10,
                   padding: '1px 6px',
                   borderRadius: 4,
-                  background: killSwitches.sync_enabled ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)',
-                  color: killSwitches.sync_enabled ? '#10b981' : '#ef4444',
+                  background: killSwitches.sync_enabled ? 'rgba(255, 255, 255, 0.08)' : 'rgba(239,68,68,0.2)',
+                  color: killSwitches.sync_enabled ? '#ffffff' : '#ef4444',
                   fontWeight: 800,
                 }}>
                   {killSwitches.sync_enabled ? 'ENABLED' : 'PAUSED'}
@@ -226,7 +226,7 @@ export default function OperationsConsole() {
                 padding: '6px 14px',
                 borderRadius: 6,
                 border: 'none',
-                background: killSwitches.sync_enabled ? '#dc2626' : '#16a34a',
+                background: killSwitches.sync_enabled ? '#dc2626' : '#ffffff',
                 color: '#fff',
                 fontSize: 11,
                 fontWeight: 700,
@@ -240,7 +240,7 @@ export default function OperationsConsole() {
           {/* Switch 3: AI Signals & Enrichment */}
           <div style={{
             background: '#070d1e',
-            border: `1px solid ${killSwitches.ai_signals_enabled ? '#1e3a8a' : '#7f1d1d'}`,
+            border: `1px solid ${killSwitches.ai_signals_enabled ? '#27272a' : '#7f1d1d'}`,
             borderRadius: 10,
             padding: 16,
             display: 'flex',
@@ -254,8 +254,8 @@ export default function OperationsConsole() {
                   fontSize: 10,
                   padding: '1px 6px',
                   borderRadius: 4,
-                  background: killSwitches.ai_signals_enabled ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)',
-                  color: killSwitches.ai_signals_enabled ? '#10b981' : '#ef4444',
+                  background: killSwitches.ai_signals_enabled ? 'rgba(255, 255, 255, 0.08)' : 'rgba(239,68,68,0.2)',
+                  color: killSwitches.ai_signals_enabled ? '#ffffff' : '#ef4444',
                   fontWeight: 800,
                 }}>
                   {killSwitches.ai_signals_enabled ? 'ENABLED' : 'PAUSED'}
@@ -272,7 +272,7 @@ export default function OperationsConsole() {
                 padding: '6px 14px',
                 borderRadius: 6,
                 border: 'none',
-                background: killSwitches.ai_signals_enabled ? '#dc2626' : '#16a34a',
+                background: killSwitches.ai_signals_enabled ? '#dc2626' : '#ffffff',
                 color: '#fff',
                 fontSize: 11,
                 fontWeight: 700,
@@ -287,8 +287,8 @@ export default function OperationsConsole() {
 
       {/* Security, DLP & Zero Secrets Architecture Card */}
       <div style={{
-        background: 'linear-gradient(135deg, #121214 0%, #1e1b4b 100%)',
-        border: '1px solid #312e81',
+        background: 'linear-gradient(135deg, #121214 0%, #161618 100%)',
+        border: '1px solid var(--card-border)',
         borderRadius: 12,
         padding: 18,
         display: 'flex',
@@ -310,7 +310,7 @@ export default function OperationsConsole() {
           <ShieldCheck size={20} />
         </div>
         <div>
-          <div style={{ fontWeight: 800, fontSize: 13, color: '#e0e7ff' }}>
+          <div style={{ fontWeight: 800, fontSize: 13, color: 'var(--text-primary)' }}>
             Scout 2.0 Enterprise Privacy & Boundary Guardrails
           </div>
           <div style={{ fontSize: 11, color: '#d4d4d8', marginTop: 4, lineHeight: 1.5 }}>

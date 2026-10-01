@@ -176,10 +176,10 @@ export default function AdminSettings() {
                     <input value={settings.email_defaultSender} onChange={e => handleChange('email_defaultSender', e.target.value)} style={{ padding: '10px 14px', borderRadius: 8, background: 'var(--bg-surface)', border: '1px solid var(--card-border)', color: 'var(--text-primary)', outline: 'none' }} />
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 16, background: 'rgba(16, 185, 129, 0.1)', borderRadius: 8, border: '1px solid rgba(16, 185, 129, 0.3)', marginTop: 16 }}>
-                    <ShieldCheck size={20} color="#10b981" />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 16, background: 'rgba(255, 255, 255, 0.08)', borderRadius: 8, border: '1px solid rgba(255, 255, 255, 0.08)', marginTop: 16 }}>
+                    <ShieldCheck size={20} color="#ffffff" />
                     <div>
-                      <div style={{ fontWeight: 600, color: '#10b981' }}>SMTP Connected</div>
+                      <div style={{ fontWeight: 600, color: '#ffffff' }}>SMTP Connected</div>
                       <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>The email gateway is functioning normally.</div>
                     </div>
                     <button style={{ marginLeft: 'auto', padding: '6px 12px', background: 'var(--brand-bg)', border: 'none', borderRadius: 6, color: 'var(--text-primary)', cursor: 'pointer', fontSize: 12 }}>Send Test Email</button>

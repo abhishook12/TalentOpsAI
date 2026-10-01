@@ -60,9 +60,9 @@ export default function LiveIngestionPipeline() {
 
   // Status badge styling
   const statusConfig = {
-    RECEIVING_DATA: { tone: 'success', text: 'RECEIVING DATA', color: '#10b981', bg: 'rgba(16,185,129,0.15)' },
+    RECEIVING_DATA: { tone: 'success', text: 'RECEIVING DATA', color: '#ffffff', bg: 'rgba(255, 255, 255, 0.08)' },
     PROCESSING: { tone: 'warning', text: 'BATCH PROCESSING', color: '#d4d4d8', bg: 'rgba(212, 212, 216,0.15)' },
-    IDLE: { tone: 'neutral', text: 'IDLE', color: '#f59e0b', bg: 'rgba(245,158,11,0.15)' },
+    IDLE: { tone: 'neutral', text: 'IDLE', color: '#d4d4d8', bg: 'rgba(255, 255, 255, 0.05)' },
     NO_INGESTION_WARNING: { tone: 'danger', text: 'NO INGESTION (>10m)', color: '#ef4444', bg: 'rgba(239,68,68,0.15)' },
   }[derivedStatus] || { tone: 'neutral', text: 'STANDBY', color: '#9ca3af', bg: 'rgba(156,163,175,0.15)' }
 
@@ -129,7 +129,7 @@ export default function LiveIngestionPipeline() {
           {/* Stage 3 */}
           <div style={{ textAlign: 'center', flex: 1 }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 2 }}>3. VALIDATED</div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: '#10b981' }}><AnimatedNumber value={metrics.useful_discoveries} /></div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#ffffff' }}><AnimatedNumber value={metrics.useful_discoveries} /></div>
             <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>Grounded Evidence</div>
           </div>
           <i className="ti ti-arrow-right" style={{ color: 'var(--text-secondary)', fontSize: 16 }} />
@@ -137,7 +137,7 @@ export default function LiveIngestionPipeline() {
           {/* Stage 4 */}
           <div style={{ textAlign: 'center', flex: 1 }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 2 }}>4. IDENTITY MATCHED</div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: '#f59e0b' }}><AnimatedNumber value={metrics.existing_people_enriched + metrics.new_people_created} /></div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#d4d4d8' }}><AnimatedNumber value={metrics.existing_people_enriched + metrics.new_people_created} /></div>
             <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>Clustered Persons</div>
           </div>
           <i className="ti ti-arrow-right" style={{ color: 'var(--text-secondary)', fontSize: 16 }} />
@@ -153,7 +153,7 @@ export default function LiveIngestionPipeline() {
           {/* Stage 6 */}
           <div style={{ textAlign: 'center', flex: 1 }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 2 }}>6. MASTER DB INSERTS</div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: '#ec4899' }}>+<AnimatedNumber value={metrics.new_people_created} /></div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#ffffff' }}>+<AnimatedNumber value={metrics.new_people_created} /></div>
             <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>New Canonical People</div>
           </div>
         </div>
@@ -173,7 +173,7 @@ export default function LiveIngestionPipeline() {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: 'var(--text-secondary)' }}>Useful Discoveries:</span>
-              <span style={{ fontWeight: 700, color: '#10b981' }}><AnimatedNumber value={metrics.useful_discoveries} /></span>
+              <span style={{ fontWeight: 700, color: '#ffffff' }}><AnimatedNumber value={metrics.useful_discoveries} /></span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: 'var(--text-secondary)' }}>Companies Discovered:</span>
@@ -202,11 +202,11 @@ export default function LiveIngestionPipeline() {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: 'var(--text-secondary)' }}>Fields Added Today:</span>
-              <span style={{ fontWeight: 800, color: '#10b981' }}>+<AnimatedNumber value={metrics.fields_added} /></span>
+              <span style={{ fontWeight: 800, color: '#ffffff' }}>+<AnimatedNumber value={metrics.fields_added} /></span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: 'var(--text-secondary)' }}>New Canonical People:</span>
-              <span style={{ fontWeight: 800, color: '#ec4899' }}>+<AnimatedNumber value={metrics.new_people_created} /></span>
+              <span style={{ fontWeight: 800, color: '#ffffff' }}>+<AnimatedNumber value={metrics.new_people_created} /></span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: 'var(--text-secondary)' }}>Duplicates Ignored:</span>
@@ -243,7 +243,7 @@ export default function LiveIngestionPipeline() {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: 'var(--text-secondary)' }}>Last Master DB Update:</span>
-              <span style={{ fontWeight: 700, fontFamily: 'var(--mono)', color: '#10b981' }}>{timestamps.last_master_db_update}</span>
+              <span style={{ fontWeight: 700, fontFamily: 'var(--mono)', color: '#ffffff' }}>{timestamps.last_master_db_update}</span>
             </div>
           </div>
         </div>
@@ -304,13 +304,13 @@ export default function LiveIngestionPipeline() {
                             diff.decision === 'ENRICHED'
                               ? 'rgba(212, 212, 216,0.15)'
                               : diff.decision === 'NEW_DISCOVERY'
-                              ? 'rgba(236,72,153,0.15)'
+                              ? 'rgba(255,255,255,0.08)'
                               : 'rgba(156,163,175,0.15)',
                           color:
                             diff.decision === 'ENRICHED'
                               ? '#d4d4d8'
                               : diff.decision === 'NEW_DISCOVERY'
-                              ? '#ec4899'
+                              ? '#ffffff'
                               : '#9ca3af',
                         }}
                       >
@@ -320,7 +320,7 @@ export default function LiveIngestionPipeline() {
                     <td style={{ padding: '10px 14px' }}>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                         {diff.fields_added.map((f, fi) => (
-                          <span key={fi} style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981', padding: '1px 6px', borderRadius: 4, fontSize: 10, fontWeight: 700 }}>
+                          <span key={fi} style={{ background: 'rgba(255, 255, 255, 0.08)', color: '#ffffff', padding: '1px 6px', borderRadius: 4, fontSize: 10, fontWeight: 700 }}>
                             +{f}
                           </span>
                         ))}
@@ -329,7 +329,7 @@ export default function LiveIngestionPipeline() {
                     <td style={{ padding: '10px 14px', fontFamily: 'var(--mono)', color: 'var(--text-secondary)' }}>
                       {diff.capture_id}
                     </td>
-                    <td style={{ padding: '10px 14px', fontWeight: 700, color: '#10b981' }}>
+                    <td style={{ padding: '10px 14px', fontWeight: 700, color: '#ffffff' }}>
                       {diff.db_status}
                     </td>
                   </tr>

@@ -25,7 +25,7 @@ const LiveRecruiterRow = memo(function LiveRecruiterRow({ r, isSelected, toggleS
       <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{r.company_name || 'Independent / Unlisted'}</td>
       <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{r.location || r.state || '—'}</td>
       <td style={{ padding: '10px 12px' }}>
-        <Badge color={r.is_active ? '#22c55e' : '#f87171'}>{r.is_active ? 'Active' : 'Inactive'}</Badge>
+        <Badge color={r.is_active ? '#ffffff' : '#f87171'}>{r.is_active ? 'Active' : 'Inactive'}</Badge>
       </td>
       <td style={{ padding: '10px 12px' }}>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -712,10 +712,10 @@ export default function AdminTerminal() {
           <button onClick={loadAll} style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text-secondary)', padding: '7px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
             <i className="ti ti-refresh" /> Refresh
           </button>
-          <button onClick={runCleanup} style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: '#f59e0b', padding: '7px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button onClick={runCleanup} style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: '#d4d4d8', padding: '7px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
             <i className="ti ti-trash" /> Shrink Storage
           </button>
-          {cacheMsg && <span style={{ fontSize: 12, color: '#22c55e' }}>{cacheMsg}</span>}
+          {cacheMsg && <span style={{ fontSize: 12, color: '#ffffff' }}>{cacheMsg}</span>}
           <button onClick={doLogout} style={{ background: '#300', border: '1px solid #7f1d1d', color: '#f87171', padding: '7px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
             <i className="ti ti-logout" /> Logout
           </button>
@@ -744,9 +744,9 @@ export default function AdminTerminal() {
           margin: '14px 28px 0',
           padding: '10px 14px',
           borderRadius: 10,
-          border: `1px solid ${actionNotice.type === 'success' ? 'rgba(34,197,94,0.28)' : 'rgba(248,113,113,0.28)'}`,
-          background: actionNotice.type === 'success' ? 'rgba(34,197,94,0.08)' : 'rgba(248,113,113,0.08)',
-          color: actionNotice.type === 'success' ? '#22c55e' : '#f87171',
+          border: `1px solid ${actionNotice.type === 'success' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(248,113,113,0.28)'}`,
+          background: actionNotice.type === 'success' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(248,113,113,0.08)',
+          color: actionNotice.type === 'success' ? '#ffffff' : '#f87171',
           fontSize: 12.5,
           fontWeight: 600,
         }}>
@@ -764,16 +764,16 @@ export default function AdminTerminal() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14, marginBottom: 16 }}>
               <StatCard icon="ti-users" label="Total Recruiters" value={opsKpis?.total_recruiters != null ? fmt(opsKpis.total_recruiters) : 'No Data Available'} color="#e4e4e7" glow />
               <StatCard icon="ti-building" label="Total Companies" value={opsKpis?.total_companies != null ? fmt(opsKpis.total_companies) : 'No Data Available'} color="#e4e4e7" />
-              <StatCard icon="ti-map" label="Total States" value={opsKpis?.total_states != null ? fmt(opsKpis.total_states) : 'No Data Available'} color="#34d399" />
-              <StatCard icon="ti-search" label="Searches Today" value={opsKpis?.searches_today != null ? fmt(opsKpis.searches_today) : 'No Data Available'} color="#fb923c" />
+              <StatCard icon="ti-map" label="Total States" value={opsKpis?.total_states != null ? fmt(opsKpis.total_states) : 'No Data Available'} color="#e4e4e7" />
+              <StatCard icon="ti-search" label="Searches Today" value={opsKpis?.searches_today != null ? fmt(opsKpis.searches_today) : 'No Data Available'} color="#d4d4d8" />
 
-              <StatCard icon="ti-database" label="Database Size" value={opsKpis?.database_size != null ? opsKpis.database_size : 'No Data Available'} color="#f472b6" glow />
+              <StatCard icon="ti-database" label="Database Size" value={opsKpis?.database_size != null ? opsKpis.database_size : 'No Data Available'} color="#ffffff" glow />
             </div>
 
             {stats && (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14, marginBottom: 24 }}>
-                <StatCard icon="ti-mail" label="With Email" value={fmt(stats.with_email)} sub={`${pct(stats.with_email, stats.total_recruiters)}% coverage`} color="#fbbf24" />
-                <StatCard icon="ti-phone" label="With Phone" value={fmt(stats.with_phone)} sub={`${pct(stats.with_phone, stats.total_recruiters)}% coverage`} color="#22c55e" />
+                <StatCard icon="ti-mail" label="With Email" value={fmt(stats.with_email)} sub={`${pct(stats.with_email, stats.total_recruiters)}% coverage`} color="#d4d4d8" />
+                <StatCard icon="ti-phone" label="With Phone" value={fmt(stats.with_phone)} sub={`${pct(stats.with_phone, stats.total_recruiters)}% coverage`} color="#ffffff" />
                 <StatCard icon="ti-map-pin" label="Unique Locations" value={fmt(stats.unique_locations)} color="#e4e4e7" />
                 <StatCard icon="ti-calendar-plus" label="Added Today" value={fmt(stats.added_today)} sub={`${fmt(stats.added_week)} this week`} color="#e4e4e7" glow={stats.added_today > 0} />
               </div>
@@ -830,8 +830,8 @@ export default function AdminTerminal() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {(Array.isArray(alerts) ? alerts : []).slice(0, 4).map((a, i) => (
                       <div key={i} style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 6, padding: 12, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                        <div style={{ width: 34, height: 34, borderRadius: 10, background: a.severity === 'critical' ? 'rgba(239,68,68,0.18)' : 'rgba(245,158,11,0.16)', border: `1px solid ${a.severity === 'critical' ? 'rgba(239,68,68,0.35)' : 'rgba(245,158,11,0.28)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <i className={`ti ${a.severity === 'critical' ? 'ti-alert-triangle' : 'ti-alert-circle'}`} style={{ color: a.severity === 'critical' ? '#f87171' : '#fbbf24' }} />
+                        <div style={{ width: 34, height: 34, borderRadius: 10, background: a.severity === 'critical' ? 'rgba(239,68,68,0.18)' : 'rgba(255, 255, 255, 0.05)', border: `1px solid ${a.severity === 'critical' ? 'rgba(239,68,68,0.35)' : 'rgba(255, 255, 255, 0.05)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <i className={`ti ${a.severity === 'critical' ? 'ti-alert-triangle' : 'ti-alert-circle'}`} style={{ color: a.severity === 'critical' ? '#f87171' : '#d4d4d8' }} />
                         </div>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-primary)' }}>{a.title}</div>
@@ -902,8 +902,8 @@ export default function AdminTerminal() {
               <>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14, marginBottom: 20 }}>
                   <StatCard icon="ti-copy" label="Duplicate Groups" value={fmt(dataOps.counts?.duplicate_email_groups)} sub={`${fmt(dataOps.counts?.duplicate_email_rows)} rows involved`} color="#f87171" glow={(dataOps.counts?.duplicate_email_groups || 0) > 0} />
-                  <StatCard icon="ti-mail-off" label="Missing Emails" value={fmt(dataOps.counts?.missing_emails)} color="#fbbf24" glow={(dataOps.counts?.missing_emails || 0) > 0} />
-                  <StatCard icon="ti-phone-off" label="Missing Phones" value={fmt(dataOps.counts?.missing_phones)} color="#fb923c" glow={(dataOps.counts?.missing_phones || 0) > 0} />
+                  <StatCard icon="ti-mail-off" label="Missing Emails" value={fmt(dataOps.counts?.missing_emails)} color="#d4d4d8" glow={(dataOps.counts?.missing_emails || 0) > 0} />
+                  <StatCard icon="ti-phone-off" label="Missing Phones" value={fmt(dataOps.counts?.missing_phones)} color="#d4d4d8" glow={(dataOps.counts?.missing_phones || 0) > 0} />
                   <StatCard icon="ti-map-pin-off" label="Missing Locations" value={fmt(dataOps.counts?.missing_locations)} color="#e4e4e7" glow={(dataOps.counts?.missing_locations || 0) > 0} />
                   <StatCard icon="ti-building-off" label="Unknown Companies" value={fmt(dataOps.counts?.unknown_companies)} color="#f4f4f5" glow={(dataOps.counts?.unknown_companies || 0) > 0} />
                   <StatCard icon="ti-map-question" label="Unmapped States" value={fmt(dataOps.counts?.unmapped_states)} color="#e4e4e7" glow={(dataOps.counts?.unmapped_states || 0) > 0} />
@@ -928,16 +928,16 @@ export default function AdminTerminal() {
                       <tr key={f.id} style={{ borderBottom: '1px solid var(--card-border)' }}>
                         <td style={{ padding: '10px 12px', color: 'var(--text-primary)' }}>{f.name}</td>
                         <td style={{ padding: '10px 12px' }}>
-                          <Badge color={f.status.includes('Verified') ? '#22c55e' : f.status.includes('Failed') ? '#ef4444' : '#fbbf24'}>
+                          <Badge color={f.status.includes('Verified') ? '#ffffff' : f.status.includes('Failed') ? '#ef4444' : '#d4d4d8'}>
                             {f.status.toUpperCase()}
                           </Badge>
                         </td>
                         <td style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>{f.last_tested ? new Date(f.last_tested).toLocaleDateString() : 'Never'}</td>
                         <td style={{ padding: '10px 12px' }}>
                           <div style={{ display: 'flex', gap: 6 }}>
-                            <button onClick={() => verifyFeature(f.id, 'Verified')} style={{ background: 'var(--card-bg)', border: '1px solid #22c55e', color: '#22c55e', padding: '4px 8px', borderRadius: 6, fontSize: 11, cursor: 'pointer' }}>Verify</button>
+                            <button onClick={() => verifyFeature(f.id, 'Verified')} style={{ background: 'var(--card-bg)', border: '1px solid #ffffff', color: '#ffffff', padding: '4px 8px', borderRadius: 6, fontSize: 11, cursor: 'pointer' }}>Verify</button>
                             <button onClick={() => verifyFeature(f.id, 'Failed Verification')} style={{ background: 'var(--card-bg)', border: '1px solid #ef4444', color: '#ef4444', padding: '4px 8px', borderRadius: 6, fontSize: 11, cursor: 'pointer' }}>Fail</button>
-                            <button onClick={() => verifyFeature(f.id, 'Pending Verification')} style={{ background: 'var(--card-bg)', border: '1px solid #fbbf24', color: '#fbbf24', padding: '4px 8px', borderRadius: 6, fontSize: 11, cursor: 'pointer' }}>Retest</button>
+                            <button onClick={() => verifyFeature(f.id, 'Pending Verification')} style={{ background: 'var(--card-bg)', border: '1px solid #d4d4d8', color: '#d4d4d8', padding: '4px 8px', borderRadius: 6, fontSize: 11, cursor: 'pointer' }}>Retest</button>
                           </div>
                         </td>
                       </tr>
@@ -952,7 +952,7 @@ export default function AdminTerminal() {
                 <Section title="Data Operations" icon="ti-tools" action={
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <Badge color="#e4e4e7">DB-driven</Badge>
-                    <Badge color="#22c55e">No fake values</Badge>
+                    <Badge color="#ffffff">No fake values</Badge>
                   </div>
                 }>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
@@ -1063,10 +1063,10 @@ export default function AdminTerminal() {
                       <button onClick={() => setSelectedRecruiters([])} disabled={!selectedRecruiters.length} style={{ background: 'var(--bg-hover)', border: '1px solid var(--card-border)', color: 'var(--text-secondary)', padding: '7px 12px', borderRadius: 8, fontSize: 12, cursor: selectedRecruiters.length ? 'pointer' : 'not-allowed', opacity: selectedRecruiters.length ? 1 : 0.55 }}>
                         Clear Selected
                       </button>
-                      <button onClick={() => batchUpdateRecruiters({ is_active: true })} disabled={!selectedRecruiters.length} style={{ background: 'var(--bg-hover)', border: '1px solid var(--card-border)', color: '#22c55e', padding: '7px 12px', borderRadius: 8, fontSize: 12, cursor: selectedRecruiters.length ? 'pointer' : 'not-allowed', opacity: selectedRecruiters.length ? 1 : 0.55 }}>
+                      <button onClick={() => batchUpdateRecruiters({ is_active: true })} disabled={!selectedRecruiters.length} style={{ background: 'var(--bg-hover)', border: '1px solid var(--card-border)', color: '#ffffff', padding: '7px 12px', borderRadius: 8, fontSize: 12, cursor: selectedRecruiters.length ? 'pointer' : 'not-allowed', opacity: selectedRecruiters.length ? 1 : 0.55 }}>
                         Activate Selected
                       </button>
-                      <button onClick={() => batchUpdateRecruiters({ is_active: false })} disabled={!selectedRecruiters.length} style={{ background: 'var(--bg-hover)', border: '1px solid var(--card-border)', color: '#f59e0b', padding: '7px 12px', borderRadius: 8, fontSize: 12, cursor: selectedRecruiters.length ? 'pointer' : 'not-allowed', opacity: selectedRecruiters.length ? 1 : 0.55 }}>
+                      <button onClick={() => batchUpdateRecruiters({ is_active: false })} disabled={!selectedRecruiters.length} style={{ background: 'var(--bg-hover)', border: '1px solid var(--card-border)', color: '#d4d4d8', padding: '7px 12px', borderRadius: 8, fontSize: 12, cursor: selectedRecruiters.length ? 'pointer' : 'not-allowed', opacity: selectedRecruiters.length ? 1 : 0.55 }}>
                         Deactivate Selected
                       </button>
                       <button onClick={exportSelectedRecruiters} disabled={!selectedRecruiters.length} style={{ background: 'var(--bg-hover)', border: '1px solid var(--card-border)', color: '#e4e4e7', padding: '7px 12px', borderRadius: 8, fontSize: 12, cursor: selectedRecruiters.length ? 'pointer' : 'not-allowed', opacity: selectedRecruiters.length ? 1 : 0.55 }}>
@@ -1170,7 +1170,7 @@ export default function AdminTerminal() {
                   {Object.entries(fieldAudit.fields || {}).map(([field, info]) => {
                     const filled = fieldAudit.total - info.missing
                     const coverage = 100 - info.pct
-                    const color = coverage > 80 ? '#22c55e' : coverage > 50 ? '#f59e0b' : '#ef4444'
+                    const color = coverage > 80 ? '#ffffff' : coverage > 50 ? '#d4d4d8' : '#ef4444'
                     return (
                       <div key={field} style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 10, padding: 16 }}>
                         <div style={{ fontSize: 10.5, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>{field.replace('missing_', '')}</div>
@@ -1197,7 +1197,7 @@ export default function AdminTerminal() {
                 <>
                   <div style={{ marginBottom: 14, display: 'flex', gap: 14 }}>
                     <div style={{ background: 'var(--panel-bg)', borderRadius: 10, padding: '12px 20px', textAlign: 'center' }}>
-                      <div style={{ fontSize: 28, fontWeight: 700, color: dupes.total_duplicate_groups > 0 ? '#f87171' : '#22c55e', fontFamily: "'DM Mono', monospace" }}>{dupes.total_duplicate_groups}</div>
+                      <div style={{ fontSize: 28, fontWeight: 700, color: dupes.total_duplicate_groups > 0 ? '#f87171' : '#ffffff', fontFamily: "'DM Mono', monospace" }}>{dupes.total_duplicate_groups}</div>
                       <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>duplicate groups</div>
                     </div>
                   </div>
@@ -1211,7 +1211,7 @@ export default function AdminTerminal() {
                         </div>
                       </div>
                     ))}
-                    {dupes.duplicates.length === 0 && <span style={{ fontSize: 12.5, color: '#22c55e' }}>✓ No duplicate emails found. Database is clean!</span>}
+                    {dupes.duplicates.length === 0 && <span style={{ fontSize: 12.5, color: '#ffffff' }}>✓ No duplicate emails found. Database is clean!</span>}
                   </div>
                 </>
               )}
@@ -1227,7 +1227,7 @@ export default function AdminTerminal() {
                       <span style={{ color: 'var(--text-muted)' }}>{c.location || '—'}</span>
                     </div>
                   ))}
-                  {orphans.count === 0 && <span style={{ color: '#22c55e', fontSize: 12.5 }}>✓ All companies have linked recruiters.</span>}
+                  {orphans.count === 0 && <span style={{ color: '#ffffff', fontSize: 12.5 }}>✓ All companies have linked recruiters.</span>}
                 </div>
               </Section>
             )}
@@ -1264,7 +1264,7 @@ export default function AdminTerminal() {
                 {(searchIntel?.most_searched_recruiters || []).slice(0, 12).map((r, i) => (
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: 'var(--panel-bg)', borderRadius: 10, border: '1px solid var(--card-border)', marginBottom: 8 }}>
                     <span style={{ color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.key}</span>
-                    <span style={{ color: '#22c55e', fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{fmt(r.count)}</span>
+                    <span style={{ color: '#ffffff', fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{fmt(r.count)}</span>
                   </div>
                 ))}
                 {!(searchIntel?.most_searched_recruiters?.length) && <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>No Data Available</div>}
@@ -1279,14 +1279,14 @@ export default function AdminTerminal() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14, marginBottom: 20 }}>
               <StatCard icon="ti-file-export" label="Exports (Last 24h)" value={exportIntel?.exports != null ? fmt(exportIntel.exports) : 'No Data Available'} color="#e4e4e7" glow />
               <StatCard icon="ti-building" label="Top Exported Company" value={exportIntel?.most_exported_companies?.[0]?.key || 'No Data Available'} sub={exportIntel?.most_exported_companies?.[0] ? `${fmt(exportIntel.most_exported_companies[0].count)} exports` : null} color="#e4e4e7" />
-              <StatCard icon="ti-map" label="Top Exported State" value={exportIntel?.most_exported_states?.[0]?.key || 'No Data Available'} sub={exportIntel?.most_exported_states?.[0] ? `${fmt(exportIntel.most_exported_states[0].count)} exports` : null} color="#22c55e" />
+              <StatCard icon="ti-map" label="Top Exported State" value={exportIntel?.most_exported_states?.[0]?.key || 'No Data Available'} sub={exportIntel?.most_exported_states?.[0] ? `${fmt(exportIntel.most_exported_states[0].count)} exports` : null} color="#ffffff" />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
               <Section title="Most Exported States" icon="ti-map-2" style={{ marginBottom: 0 }}>
                 {(exportIntel?.most_exported_states || []).slice(0, 15).map((r, i) => (
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: 'var(--panel-bg)', borderRadius: 10, border: '1px solid var(--card-border)', marginBottom: 8 }}>
                     <span style={{ color: 'var(--text-secondary)', fontFamily: "'DM Mono', monospace" }}>{r.key}</span>
-                    <span style={{ color: '#22c55e', fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{fmt(r.count)}</span>
+                    <span style={{ color: '#ffffff', fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{fmt(r.count)}</span>
                   </div>
                 ))}
                 {!(exportIntel?.most_exported_states?.length) && <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>No Data Available</div>}
@@ -1315,9 +1315,9 @@ export default function AdminTerminal() {
           <div style={{ animation: 'fadeUp 0.25s ease' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14, marginBottom: 24 }}>
               <StatCard icon="ti-database" label="Database Size" value={sysInfo.database_size} color="#e4e4e7" glow />
-              <StatCard icon="ti-clock" label="PG Uptime" value={sysInfo.uptime} color="#34d399" />
-              <StatCard icon="ti-users-group" label="Connections" value={sysInfo.active_connections} color="#fb923c" />
-              <StatCard icon="ti-alert-triangle" label="Slow Queries" value={sysInfo.slow_queries} color={sysInfo.slow_queries > 0 ? '#ef4444' : '#22c55e'} glow={sysInfo.slow_queries > 0} />
+              <StatCard icon="ti-clock" label="PG Uptime" value={sysInfo.uptime} color="#e4e4e7" />
+              <StatCard icon="ti-users-group" label="Connections" value={sysInfo.active_connections} color="#d4d4d8" />
+              <StatCard icon="ti-alert-triangle" label="Slow Queries" value={sysInfo.slow_queries} color={sysInfo.slow_queries > 0 ? '#ef4444' : '#ffffff'} glow={sysInfo.slow_queries > 0} />
             </div>
 
             <Section title="PostgreSQL Version" icon="ti-server">
@@ -1388,9 +1388,9 @@ export default function AdminTerminal() {
                   <StatCard icon="ti-eye" label="Page Views"
                     value={fmt(visitorLogs?.total_visits ?? visitorSummary.daily.reduce((s, d) => s + Number(d.page_views), 0))} color="#e4e4e7" />
                   <StatCard icon="ti-mail" label="Unique Users"
-                    value={fmt(visitorSummary.top_users?.length ?? 0)} color="#34d399" />
+                    value={fmt(visitorSummary.top_users?.length ?? 0)} color="#e4e4e7" />
                   <StatCard icon="ti-chart-bar" label="Top Page"
-                    value={visitorSummary.top_pages?.[0]?.page || '—'} color="#f472b6" />
+                    value={visitorSummary.top_pages?.[0]?.page || '—'} color="#ffffff" />
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
@@ -1477,7 +1477,7 @@ export default function AdminTerminal() {
               }}>
                 {logLines.length === 0 && <span style={{ color: 'var(--card-border)' }}>— No activity yet —</span>}
                 {logLines.map((l, i) => (
-                  <div key={i} style={{ color: l.type === 'error' ? '#f87171' : l.type === 'warn' ? '#fbbf24' : l.type === 'ok' ? '#4ade80' : 'var(--text-muted)' }}>
+                  <div key={i} style={{ color: l.type === 'error' ? '#f87171' : l.type === 'warn' ? '#d4d4d8' : l.type === 'ok' ? '#ffffff' : 'var(--text-muted)' }}>
                     <span style={{ color: 'var(--card-border)', userSelect: 'none' }}>[{l.ts}] </span>{l.msg}
                   </div>
                 ))}
@@ -1542,7 +1542,7 @@ export default function AdminTerminal() {
                 </div>
                 <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 6, padding: 14 }}>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Status</div>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: reviewQueueError ? '#f87171' : (reviewQueueLoading ? '#fbbf24' : '#22c55e'), marginTop: 8 }}>{reviewQueueError ? 'Unavailable' : (reviewQueueLoading ? 'Loading' : 'Ready')}</div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: reviewQueueError ? '#f87171' : (reviewQueueLoading ? '#d4d4d8' : '#ffffff'), marginTop: 8 }}>{reviewQueueError ? 'Unavailable' : (reviewQueueLoading ? 'Loading' : 'Ready')}</div>
                 </div>
               </div>
 

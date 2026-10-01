@@ -18,7 +18,7 @@ import logging
 import math
 import random
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from sqlalchemy.orm import Session
 import requests
 import concurrent.futures
@@ -405,6 +405,39 @@ async def _send_email_via_provider(sender_account_id: int, user_id: int, payload
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(request_executor, _do_request)
 
+def _advance_recipient_to_next_step(db, cr, campaign_id):
+    """After successful delivery, advance recipient to next sequence step or mark complete."""
+    from ..models.campaigns import Campaign, SequenceStep, CampaignRecruiterStatus
+    try:
+        if not cr.current_step_id:
+            return
+        current_step = db.query(SequenceStep).filter(
+            SequenceStep.step_id == cr.current_step_id
+        ).first()
+        if not current_step:
+            return
+        # Find next active step
+        next_step = db.query(SequenceStep).filter(
+            SequenceStep.campaign_id == campaign_id,
+            SequenceStep.is_active == True,
+            SequenceStep.step_order > current_step.step_order
+        ).order_by(SequenceStep.step_order.asc()).first()
+        
+        now = datetime.now(timezone.utc)
+        if next_step:
+            cr.current_step_id = next_step.step_id
+            delay = timedelta(days=next_step.delay_days or 0, hours=next_step.delay_hours or 0)
+            cr.next_send_at = now + delay if delay.total_seconds() > 0 else now
+            # Don't change status yet - the scheduler will pick this up
+            logger.info(f"[SEQUENCE] Recipient {cr.campaign_recruiter_id} advanced to step {next_step.step_order} (send at {cr.next_send_at})")
+        else:
+            # No more steps - sequence complete for this recipient
+            cr.completed_at = now
+            logger.info(f"[SEQUENCE] Recipient {cr.campaign_recruiter_id} completed all steps")
+        db.flush()
+    except Exception as e:
+        logger.error(f"[SEQUENCE] Error advancing recipient {cr.campaign_recruiter_id}: {e}")
+
 def _check_and_finalize_campaign(campaign_id: int):
     from ..database import SessionLocal
     from ..models.campaigns import Campaign, CampaignStatus, CampaignRecruiter, CampaignRecruiterStatus
@@ -426,6 +459,21 @@ def _check_and_finalize_campaign(campaign_id: int):
             ])
         ).count()
 
+        # Multi-touch: also check for recipients waiting for next sequence step
+        awaiting_next_step = db.query(CampaignRecruiter).filter(
+            CampaignRecruiter.campaign_id == campaign_id,
+            CampaignRecruiter.next_send_at.isnot(None),
+            CampaignRecruiter.completed_at.is_(None),
+            CampaignRecruiter.status.in_([
+                CampaignRecruiterStatus.delivered.value,
+                'Delivered', 'delivered'
+            ])
+        ).count()
+        
+        if active_count == 0 and awaiting_next_step > 0:
+            logger.info(f"Campaign {campaign_id}: {awaiting_next_step} recipients awaiting next sequence step")
+            return  # Don't finalize yet
+
         if active_count == 0:
             failed_count = db.query(CampaignRecruiter).filter(
                 CampaignRecruiter.campaign_id == campaign_id,
@@ -440,7 +488,7 @@ def _check_and_finalize_campaign(campaign_id: int):
             campaign.status = new_status
             db.commit()
 
-async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, signature_html: str, template: dict, from_email: str, user_id: int, sender_account_id: int, cancel_event: asyncio.Event = None, failure_counter: dict = None):
+async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, signature_html: str, template: dict, from_email: str, user_id: int, sender_account_id: int, cancel_event: asyncio.Event = None, failure_counter: dict = None, step_templates: dict = None):
     from ..models.auth_models import ConnectedEmailAccount, User
     logger.info(f"Worker {worker_id} started for campaign {campaign_id}")
 
@@ -527,8 +575,14 @@ async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, s
                     db.add(log)
                     
                     camp = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
-                    subject_template = template.get("subject", "No Subject")
-                    body_template = template.get("body", "")
+                    
+                    # Multi-touch: resolve template from recipient's current step
+                    rec_template = template  # fallback
+                    if step_templates and recipient.current_step_id and recipient.current_step_id in step_templates:
+                        rec_template = step_templates[recipient.current_step_id]
+                        
+                    subject_template = rec_template.get("subject", "No Subject")
+                    body_template = rec_template.get("body", "")
                     if camp:
                         subject_template, body_template, _ = resolve_ab_variant_for_recipient(
                             camp, recipient_id, subject_template, body_template, db
@@ -577,6 +631,8 @@ async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, s
                                 cr.status = CampaignRecruiterStatus.delivered.value
                                 cr.last_sent_at = now
                                 cr.sent_count = (cr.sent_count or 0) + 1
+                                # Multi-touch: advance to next sequence step
+                                _advance_recipient_to_next_step(db, cr, campaign_id)
                         else:
                             if log:
                                 log.status = EmailLogStatus.failed.value
@@ -653,13 +709,19 @@ async def process_campaign_queue(campaign_id: int):
                 signature_html = sig.html_content
         
         active_steps = sorted([s for s in campaign.sequence_steps if s.is_active], key=lambda s: s.step_order)
-        if active_steps and active_steps[0].template:
-            template = {
-                "subject": active_steps[0].template.subject or campaign.name,
-                "body": active_steps[0].template.body or ""
-            }
-        else:
-            template = {"subject": campaign.name or "No Subject", "body": ""}
+        # Build step lookup for multi-touch: {step_id: {subject, body}}
+        step_templates = {}
+        for step in active_steps:
+            if step.template:
+                step_templates[step.step_id] = {
+                    "subject": step.template.subject or campaign.name,
+                    "body": step.template.body or ""
+                }
+        # Fallback template for recipients without a step assignment
+        fallback_template = {"subject": campaign.name or "No Subject", "body": ""}
+        if active_steps and active_steps[0].step_id in step_templates:
+            fallback_template = step_templates[active_steps[0].step_id]
+        template = fallback_template  # Keep for backward compatibility
         
         pending_recipients = db.query(CampaignRecruiter).filter(
             CampaignRecruiter.campaign_id == campaign_id,
@@ -714,7 +776,7 @@ async def process_campaign_queue(campaign_id: int):
         assigned_account = account_pool_ids[i % len(account_pool_ids)] if account_pool_ids else sender_account_id
         task = asyncio.create_task(_worker_task(
             i, campaign_id, queue, signature_html, template, from_email, user_id, assigned_account,
-            cancel_event=cancel_event, failure_counter=failure_counter
+            cancel_event=cancel_event, failure_counter=failure_counter, step_templates=step_templates
         ))
         workers.append(task)
     

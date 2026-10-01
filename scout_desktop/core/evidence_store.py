@@ -172,11 +172,13 @@ class EvidenceStore:
         change_score: float = 1.0,
     ) -> CaptureItem:
         """Saves screenshot to disk and registers in evidence store."""
-        filepath = os.path.join(self.storage_dir, f"{capture_id}.jpg")
+        filepath = os.path.join(self.storage_dir, f"{capture_id}.png")
         try:
-            # Save as optimized JPEG to minimize memory & disk
+            # Save as lossless PNG to preserve crisp letter edges for OCR.
+            # JPEG's DCT compression creates ringing artifacts around high-contrast
+            # black/white text boundaries, causing WinRT OCR to misread characters.
             rgb_img = img.convert("RGB")
-            rgb_img.save(filepath, format="JPEG", quality=85, optimize=True)
+            rgb_img.save(filepath, format="PNG", optimize=True)
         except Exception as e:
             logger.error("Failed to save capture %s to disk: %s", capture_id, e)
 

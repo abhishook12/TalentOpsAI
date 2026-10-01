@@ -53,7 +53,7 @@ export default function SystemHealth() {
             <span style={{ fontWeight: 600 }}>API Server</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12 }}>
-            <div style={{ fontSize: 32, fontWeight: 800, color: health?.status === 'healthy' ? '#10b981' : (health?.status === 'warning' ? '#f59e0b' : '#ef4444') }}>
+            <div style={{ fontSize: 32, fontWeight: 800, color: health?.status === 'healthy' ? '#ffffff' : (health?.status === 'warning' ? '#d4d4d8' : '#ef4444') }}>
               {health?.status === 'healthy' ? 'Online' : (health?.status === 'warning' ? 'Warning' : 'Degraded')}
             </div>
           </div>
@@ -67,7 +67,7 @@ export default function SystemHealth() {
             <span style={{ fontWeight: 600 }}>Database (PostgreSQL)</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12 }}>
-            <div style={{ fontSize: 32, fontWeight: 800, color: health?.components?.database?.status === 'healthy' ? '#10b981' : '#ef4444' }}>
+            <div style={{ fontSize: 32, fontWeight: 800, color: health?.components?.database?.status === 'healthy' ? '#ffffff' : '#ef4444' }}>
               {health?.components?.database?.status === 'healthy' ? 'Connected' : 'Error'}
             </div>
           </div>
@@ -77,7 +77,7 @@ export default function SystemHealth() {
         {/* CPU */}
         <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 6, padding: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-            <Cpu size={20} color="#f59e0b" />
+            <Cpu size={20} color="#d4d4d8" />
             <span style={{ fontWeight: 600 }}>Disk Usage</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12 }}>
@@ -86,14 +86,14 @@ export default function SystemHealth() {
             </div>
           </div>
           <div style={{ width: '100%', height: 6, background: 'var(--brand-bg)', borderRadius: 4, marginTop: 12, overflow: 'hidden' }}>
-            <div style={{ width: `${health?.components?.disk?.percent ?? 0}%`, height: '100%', background: '#f59e0b', borderRadius: 4 }} />
+            <div style={{ width: `${health?.components?.disk?.percent ?? 0}%`, height: '100%', background: '#d4d4d8', borderRadius: 4 }} />
           </div>
         </div>
 
         {/* Memory */}
         <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 6, padding: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-            <HardDrive size={20} color="#10b981" />
+            <HardDrive size={20} color="#ffffff" />
             <span style={{ fontWeight: 600 }}>Memory Usage</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12 }}>
@@ -102,7 +102,7 @@ export default function SystemHealth() {
             </div>
           </div>
           <div style={{ width: '100%', height: 6, background: 'var(--brand-bg)', borderRadius: 4, marginTop: 12, overflow: 'hidden' }}>
-            <div style={{ width: `${health?.components?.memory?.percent ?? 0}%`, height: '100%', background: '#10b981', borderRadius: 4 }} />
+            <div style={{ width: `${health?.components?.memory?.percent ?? 0}%`, height: '100%', background: '#ffffff', borderRadius: 4 }} />
           </div>
         </div>
 

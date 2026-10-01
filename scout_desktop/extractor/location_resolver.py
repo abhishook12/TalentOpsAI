@@ -72,6 +72,15 @@ class LocationResolver:
                 confidence=0.15,
             )
 
+        # Clean bullets, connection degree markers, "Contact info" suffixes, or leading icons
+        # MUST happen BEFORE the bad_chars check so that valid separators (·, •, |, –, —)
+        # on LinkedIn location lines (e.g. "New York, United States · Contact info") are
+        # stripped first and do not trigger a false corruption rejection.
+        cleaned = re.sub(r"\s*Contact\s*info.*$", "", cleaned, flags=re.IGNORECASE)
+        cleaned = re.sub(r"\s*[·•\u00B7\u2022\u2219\u25E6\u2013\u2014|].*$", "", cleaned)
+        cleaned = re.sub(r"^[·•\u00B7\u2022\u2219\u25E6\u2013\u2014|,\s]+", "", cleaned)
+        cleaned = cleaned.strip()
+
         # Check for unreadable symbols or corrupted ASCII fragments
         bad_chars_count = sum(1 for c in cleaned if not (c.isalnum() or c in " ,.-'/"))
         if bad_chars_count > 0:
@@ -82,12 +91,6 @@ class LocationResolver:
                 status="LOCATION_UNCERTAIN",
                 confidence=0.20,
             )
-
-        # Clean bullets, connection degree markers, or leading icons
-        cleaned = re.sub(r"^[·•\u00B7\u2022\u2219\u25E6\u2013\u2014|,\s]+", "", cleaned)
-        cleaned = re.sub(r"\s*[·•\u00B7\u2022\u2219\u25E6\u2013\u2014|].*$", "", cleaned)
-        cleaned = re.sub(r"\s*Contact\s*info.*$", "", cleaned, flags=re.IGNORECASE)
-        cleaned = cleaned.strip()
 
         if len(cleaned) < 3 or len(cleaned) > 90:
             return ResolvedLocation(raw_text=raw_location, status="LOCATION_UNCERTAIN", confidence=0.0)

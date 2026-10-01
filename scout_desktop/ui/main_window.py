@@ -698,10 +698,10 @@ class MainWindow(QMainWindow):
         self.page_scan._current_candidate_id = cand_id
 
         fc = kwargs.get("field_confidence") or {}
-        name_conf = _to_pct(fc.get("name"), 95 if cand_name else 0)
-        title_conf = _to_pct(fc.get("title"), 90 if cand_title else 0)
-        comp_conf = _to_pct(fc.get("company"), 90 if cand_company else 0)
-        loc_conf = _to_pct(fc.get("location"), 85 if cand_loc else 0)
+        name_conf = _to_pct(fc.get("name"), 85 if cand_name else 0)
+        title_conf = _to_pct(fc.get("title"), 75 if cand_title else 0)
+        comp_conf = _to_pct(fc.get("company"), 70 if cand_company else 0)
+        loc_conf = _to_pct(fc.get("location"), 70 if cand_loc else 0)
 
         # Hard boundary: if field is missing or invalid, confidence MUST be 0
         if not cand_company:

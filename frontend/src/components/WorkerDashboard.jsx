@@ -76,7 +76,7 @@ export default function WorkerDashboard() {
   };
 
   return (
-    <div style={{ padding: '24px', background: 'linear-gradient(135deg, #111827, #1f2937, #374151)', borderRadius: '8px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)', minHeight: '400px' }}>
+    <div style={{ padding: '24px', background: 'linear-gradient(135deg, #121214, #161618, #374151)', borderRadius: '8px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)', minHeight: '400px' }}>
       <h2 style={{ fontSize: '24px', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '16px' }}>Worker Dashboard</h2>
       {loading ? (
         <div style={{ color: '#9ca3af' }}>Loading...</div>
@@ -97,7 +97,7 @@ export default function WorkerDashboard() {
                 <tr
                   style={{
                     borderBottom: '1px solid var(--card-border)',
-                    backgroundColor: w.status === 'running' ? 'rgba(16, 185, 129, 0.1)' : 'transparent',
+                    backgroundColor: w.status === 'running' ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
                     transition: 'background-color 0.2s'
                   }}
                 >
@@ -116,7 +116,7 @@ export default function WorkerDashboard() {
                     ) : (
                       <button
                         onClick={() => toggle(w.name, "start")}
-                        style={{ padding: '6px 12px', background: '#059669', color: '#ffffff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '14px' }}
+                        style={{ padding: '6px 12px', background: '#e4e4e7', color: '#ffffff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '14px' }}
                       >
                         Start
                       </button>
@@ -139,7 +139,7 @@ export default function WorkerDashboard() {
                       <td colSpan="5" style={{ padding: 0 }}>
                         <div style={{
                           background: '#000', padding: '16px', fontFamily: 'monospace', fontSize: '13px',
-                          color: '#34d399', height: '300px', overflowY: 'auto', margin: '0 16px 16px 16px',
+                          color: '#e4e4e7', height: '300px', overflowY: 'auto', margin: '0 16px 16px 16px',
                           borderRadius: '6px', border: '1px solid #374151'
                         }}>
                           {logs.length === 0 ? (

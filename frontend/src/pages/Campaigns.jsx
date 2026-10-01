@@ -732,7 +732,7 @@ export default function Campaigns() {
         <div className="grid grid-cols-3 gap-4">
           {[
             { label: 'ACTIVE', value: kpis.active, color: 'var(--text-primary)' },
-            { label: 'SENT', value: kpis.sent, color: '#4ade80' },
+            { label: 'SENT', value: kpis.sent, color: '#ffffff' },
             { label: 'FAILED', value: kpis.failures, color: kpis.failures > 0 ? '#f87171' : 'var(--text-muted)' },
           ].map(k => (
             <div key={k.label} style={{ background: 'var(--bg-surface)', border: '1px solid var(--card-border)', borderRadius: 6, padding: '16px 20px' }}>
@@ -900,7 +900,7 @@ export default function Campaigns() {
           {isSaving ? (
             <><Loader2 size={11} className="animate-spin" /> Saving</>
           ) : lastSaved ? (
-            <><CheckCircle2 size={11} style={{ color: '#4ade80' }} /> Saved {lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</>
+            <><CheckCircle2 size={11} style={{ color: '#ffffff' }} /> Saved {lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</>
           ) : (
             <><Clock size={11} /> Unsaved</>
           )}
@@ -945,7 +945,7 @@ export default function Campaigns() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                     <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>From (Sending Account)</label>
                     {selectedAccount && (
-                      <span style={{ fontSize: 11, fontWeight: 600, color: selectedAccount.is_shadow_alias ? '#f59e0b' : '#10b981', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: selectedAccount.is_shadow_alias ? '#d4d4d8' : '#ffffff', display: 'flex', alignItems: 'center', gap: 4 }}>
                         {selectedAccount.is_shadow_alias ? (
                           <>
                             <AlertCircle size={12} /> Personal Alias Detected
@@ -966,7 +966,7 @@ export default function Campaigns() {
                           const acc = accounts.find(a => a.account_id === Number(e.target.value));
                           if (acc) { setSenderAccountId(acc.account_id); setFromEmail(acc.email_address); }
                         }}
-                        style={{ flex: 1, background: 'var(--bg-surface)', border: selectedAccount?.is_shadow_alias ? '1px solid rgba(245, 158, 11, 0.5)' : '1px solid var(--card-border)', borderRadius: 6, padding: '8px 12px', fontSize: 14, color: 'var(--text-primary)', outline: 'none' }}>
+                        style={{ flex: 1, background: 'var(--bg-surface)', border: selectedAccount?.is_shadow_alias ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid var(--card-border)', borderRadius: 6, padding: '8px 12px', fontSize: 14, color: 'var(--text-primary)', outline: 'none' }}>
                         <option value="">Select official sending account…</option>
                         {accounts.map(acc => {
                           const label = acc.display_name 
@@ -995,9 +995,9 @@ export default function Campaigns() {
 
                   {/* Shadow Alias Warning Alert */}
                   {selectedAccount?.is_shadow_alias && (
-                    <div style={{ marginTop: 8, padding: '10px 12px', borderRadius: 6, background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                      <AlertCircle size={15} style={{ color: '#f59e0b', shrink: 0, marginTop: 1 }} />
-                      <div style={{ fontSize: 12, color: '#fcd34d', lineHeight: 1.4 }}>
+                    <div style={{ marginTop: 8, padding: '10px 12px', borderRadius: 6, background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.05)', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                      <AlertCircle size={15} style={{ color: '#ef4444', shrink: 0, marginTop: 1 }} />
+                      <div style={{ fontSize: 12, color: '#ef4444', lineHeight: 1.4 }}>
                         <strong>Bot-looking sender address detected:</strong> Microsoft assigns shadow addresses like <code style={{ background: 'rgba(0,0,0,0.3)', padding: '1px 4px', borderRadius: 3 }}>{selectedAccount.email_address}</code> when a Microsoft account was registered using a Gmail/third-party email.
                         <div style={{ marginTop: 4, color: 'var(--text-secondary)' }}>
                           👉 <strong>Fix:</strong> Switch to your connected <strong>Google (Gmail)</strong> account above to send directly with your clean official email address.
@@ -1009,7 +1009,7 @@ export default function Campaigns() {
                   {/* Official Sender Confirmation Pill */}
                   {selectedAccount && !selectedAccount.is_shadow_alias && (
                     <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted)' }}>
-                      <CheckCircle2 size={13} style={{ color: '#10b981' }} />
+                      <CheckCircle2 size={13} style={{ color: '#ffffff' }} />
                       <span>Recipients will see: <strong style={{ color: 'var(--text-primary)' }}>{selectedAccount.display_name ? `${selectedAccount.display_name} <${selectedAccount.email_address}>` : selectedAccount.email_address}</strong></span>
                     </div>
                   )}
@@ -1073,7 +1073,7 @@ export default function Campaigns() {
 
                     {isABTest && (
                       <div style={{ position: 'relative' }}>
-                        <span style={{ position: 'absolute', left: 8, top: 9, fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 4, background: 'rgba(236, 72, 153, 0.15)', color: '#f472b6', border: '1px solid rgba(236, 72, 153, 0.25)' }}>
+                        <span style={{ position: 'absolute', left: 8, top: 9, fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 4, background: 'rgba(255, 255, 255, 0.1)', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.2)' }}>
                           B
                         </span>
                         <input
@@ -1129,7 +1129,7 @@ export default function Campaigns() {
                   <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--card-border)', borderRadius: 6, padding: '10px 14px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: deliverability.suggestions?.length > 0 ? 6 : 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <ShieldCheck size={14} color={deliverability.badge_color === 'green' ? '#10b981' : deliverability.badge_color === 'yellow' ? '#f59e0b' : '#ef4444'} />
+                        <ShieldCheck size={14} color={deliverability.badge_color === 'green' ? '#ffffff' : deliverability.badge_color === 'yellow' ? '#d4d4d8' : '#ef4444'} />
                         <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>Deliverability & Spam Guard</span>
                       </div>
                       <span style={{
@@ -1137,8 +1137,8 @@ export default function Campaigns() {
                         fontWeight: 700,
                         padding: '2px 8px',
                         borderRadius: 4,
-                        background: deliverability.badge_color === 'green' ? 'rgba(16,185,129,0.12)' : deliverability.badge_color === 'yellow' ? 'rgba(245,158,11,0.12)' : 'rgba(239,68,68,0.12)',
-                        color: deliverability.badge_color === 'green' ? '#10b981' : deliverability.badge_color === 'yellow' ? '#f59e0b' : '#ef4444'
+                        background: deliverability.badge_color === 'green' ? 'rgba(255, 255, 255, 0.08)' : deliverability.badge_color === 'yellow' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(239,68,68,0.12)',
+                        color: deliverability.badge_color === 'green' ? '#ffffff' : deliverability.badge_color === 'yellow' ? '#d4d4d8' : '#ef4444'
                       }}>
                         {deliverability.rating} ({deliverability.deliverability_score}/100)
                       </span>
@@ -1146,7 +1146,7 @@ export default function Campaigns() {
                     {deliverability.suggestions?.length > 0 && (
                       <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: 3, marginTop: 4 }}>
                         {deliverability.suggestions.map((s, idx) => (
-                          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#f59e0b' }}>
+                          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#d4d4d8' }}>
                             <span>•</span>
                             <span>{s}</span>
                           </div>
@@ -1182,19 +1182,19 @@ export default function Campaigns() {
                       <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: 'rgba(161, 161, 170, 0.1)', color: '#d4d4d8', border: '1px solid rgba(161, 161, 170, 0.2)' }}>
                         ET: {timezoneStats.ET} leads
                       </span>
-                      <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: 'rgba(16, 185, 129, 0.1)', color: '#6ee7b7', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                      <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: 'rgba(255, 255, 255, 0.08)', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.15)' }}>
                         CT: {timezoneStats.CT} leads
                       </span>
-                      <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: 'rgba(245, 158, 11, 0.1)', color: '#fcd34d', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
+                      <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: 'rgba(255, 255, 255, 0.06)', color: '#e4e4e7', border: '1px solid rgba(255, 255, 255, 0.12)' }}>
                         MT: {timezoneStats.MT} leads
                       </span>
-                      <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: 'rgba(236, 72, 153, 0.1)', color: '#f9a8d4', border: '1px solid rgba(236, 72, 153, 0.2)' }}>
+                      <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: 'rgba(255, 255, 255, 0.05)', color: '#d4d4d8', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
                         PT: {timezoneStats.PT} leads
                       </span>
                     </div>
                   )}
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingTop: 6, borderTop: '1px solid var(--border)', fontSize: 11, color: '#34d399' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingTop: 6, borderTop: '1px solid var(--border)', fontSize: 11, color: '#e4e4e7' }}>
                     <ShieldCheck size={13} />
                     <span><strong>Reputation Shield Armed:</strong> 2.0% bounce circuit breaker & automatic warm-up rate limits.</span>
                   </div>
@@ -1266,7 +1266,7 @@ export default function Campaigns() {
                 <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--card-border)', display: 'flex', gap: 16, flexShrink: 0 }}>
                   {[
                     { label: 'Total', value: validatedRecipients.recipients.length, color: 'var(--text-primary)' },
-                    { label: 'Valid', value: validatedRecipients.valid_count, color: '#4ade80' },
+                    { label: 'Valid', value: validatedRecipients.valid_count, color: '#ffffff' },
                     { label: 'Invalid', value: validatedRecipients.recipients.filter(r => r.status !== 'valid').length, color: '#f87171' },
                   ].map(item => (
                     <div key={item.label} style={{ textAlign: 'center' }}>
@@ -1418,9 +1418,9 @@ function StatusBadge({ status }) {
     active: { bg: 'rgba(212, 212, 216,0.15)', text: '#d4d4d8', dot: '#d4d4d8', border: '1px solid rgba(212, 212, 216,0.3)' },
     sending: { bg: 'rgba(212, 212, 216,0.15)', text: '#d4d4d8', dot: '#d4d4d8', border: '1px solid rgba(212, 212, 216,0.3)' },
     queued: { bg: 'rgba(212, 212, 216,0.15)', text: '#f4f4f5', dot: '#d4d4d8', border: '1px solid rgba(212, 212, 216,0.3)' },
-    retrying: { bg: 'rgba(245,158,11,0.15)', text: '#fbbf24', dot: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)' },
-    paused: { bg: '#3b2a0c', text: '#fcd34d', dot: '#f59e0b' },
-    completed: { bg: '#0f3d24', text: '#86efac', dot: '#22c55e' },
+    retrying: { bg: 'rgba(255, 255, 255, 0.05)', text: '#d4d4d8', dot: '#d4d4d8', border: '1px solid rgba(255, 255, 255, 0.05)' },
+    paused: { bg: 'rgba(255, 255, 255, 0.05)', text: '#d4d4d8', dot: '#a1a1aa', border: '1px solid rgba(255, 255, 255, 0.1)' },
+    completed: { bg: 'rgba(255, 255, 255, 0.08)', text: '#ffffff', dot: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.2)' },
     cancelled: { bg: 'rgba(107,114,128,0.15)', text: '#9ca3af', dot: '#6b7280', border: '1px solid rgba(107,114,128,0.3)' },
     archived: { bg: 'rgba(107,114,128,0.15)', text: '#9ca3af', dot: '#6b7280', border: '1px solid rgba(107,114,128,0.3)' },
     draft: { bg: 'transparent', text: 'var(--text-muted)', dot: '#6b7280', border: '1px solid var(--card-border)' },

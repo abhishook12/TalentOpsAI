@@ -275,6 +275,7 @@ COMPANY_NOISE_PATTERNS = {
     'houstadt', 'caudting', 'javiles', 'supertsi', 'stcu', 'malik', 'jain',
     'hdlstadt ca-aating', 'hdlstadt', 'paladininc',
 }
+BOGUS_COMPANIES = COMPANY_NOISE_PATTERNS
 
 def validate_company_for_person(company_name: Optional[str], person_name: Optional[str] = None) -> Tuple[bool, Optional[str]]:
     """
@@ -343,6 +344,16 @@ def validate_company_for_person(company_name: Optional[str], person_name: Option
         company_clean = re.sub(r'^\(\d+\)\s*', '', lower).strip()
         if company_clean == person_clean:
             return False, f"Company name is same as person name: '{raw}'"
+
+    # Reject imperative UI action verb + noun phrases (e.g. "Find companies", "Search people",
+    # "Browse jobs", "View all candidates", "Add connections", "Get leads", "Explore profiles")
+    if re.match(
+        r"^(?:find|search|browse|explore|filter|view|see|show|get|add|save|export|reveal|suggest|import|manage|create|edit|remove|delete|download|upload|sort|select|request|send|copy|paste|join|leave|open|close|track|monitor|compare|match|assign|update|refresh|clear|reset|apply|submit|try|start|discover|access)\s+"
+        r"(?:(?:all|my|the|new|more|your|our|recent|available|other|these|those|some|any|every)\s+)?"
+        r"(?:companies|company|people|persons?|jobs?|leads?|profiles?|candidates?|contacts?|connections?|members?|teams?|projects?|accounts?|lists?|groups?|results?|emails?|numbers?|data|records?|reports?|sources?|industries?|skills?|roles?|titles?|searches?|filters?|alerts?|notes?|tags?|files?|documents?|folders?|templates?|tasks?|bookmarks?|tabs?|windows?|pages?|shortcuts?|items?|tools?|apps?)\b",
+        lower,
+    ):
+        return False, f"Company is an imperative UI action phrase: '{raw}'"
 
     # Reject known noise patterns
     for noise in COMPANY_NOISE_PATTERNS:
@@ -722,7 +733,10 @@ def clean_location_text(text: Optional[str]) -> Optional[str]:
     """Cleans punctuation, bullets, timestamps, and contact info triggers from location strings."""
     if not text:
         return None
-    cleaned = re.sub(r"\bcontact\s*info\b", "", text, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\s*[·•\u00B7\u2022\u2219\u25E6\u2013\u2014|]+\s*[Cc]ontact\s*[Ii]nfo.*$", "", text).strip()
+    cleaned = re.sub(r"\bcontact\s*info\b.*$", "", cleaned, flags=re.IGNORECASE).strip()
+    # Strip trailing degree badges (· 2nd, • 1st, · 3rd+)
+    cleaned = re.sub(r"\s*[·•\u00B7\u2022\u2219\u25E6\u2013\u2014|]+\s*(?:1st|2nd|3rd\+?).*$", "", cleaned, flags=re.IGNORECASE).strip()
     # Strip relative timestamps e.g. "4 minutes ago 0", "2 hours ago", "3d ago"
     cleaned = re.sub(r"\b\d+\s*(?:seconds?|secs?|minutes?|mins?|hours?|hrs?|days?|weeks?|months?|years?)\s*ago\b.*$", "", cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r"\b\d+\s*(?:m|min|h|hr|d|w|mo|y)\s*ago\b.*$", "", cleaned, flags=re.IGNORECASE)

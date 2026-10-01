@@ -15,6 +15,22 @@ Orchestrates:
 import os
 import sys
 
+# ── Per-Monitor DPI Awareness ─────────────────────────────────────────────────
+# MUST be called before ANY Win32 (GetWindowRect, ImageGrab) or Qt calls.
+# Without this, on 125-150% scaled displays, GetWindowRect returns logical
+# coordinates that mismatch physical pixels, causing blurry/misaligned screen
+# captures and catastrophic OCR degradation.
+if sys.platform == "win32":
+    try:
+        import ctypes
+        # PROCESS_PER_MONITOR_DPI_AWARE_V2 = 2 (best for Win10 1703+)
+        ctypes.windll.shcore.SetProcessDpiAwareness(2)
+    except Exception:
+        try:
+            ctypes.windll.user32.SetProcessDPIAware()
+        except Exception:
+            pass
+
 class NullWriter:
     def write(self, text): pass
     def flush(self): pass
@@ -44,6 +60,7 @@ from .core.browser_tracker import BrowserTracker
 from .core.visual_sampler import VisualSampler
 from .core.evidence_store import EvidenceStore
 from .core.ocr_engine import OcrEngine
+from .core.uia_text_reader import UIATextReader
 from .core.updater import AutoUpdater, CURRENT_VERSION
 from .core.intelligence_levels import IntelligenceRouter, FrameQueue, FrameContext
 from .core.context_memory import ContextMemory
@@ -212,6 +229,7 @@ class ScoutDesktopApp:
         self.browser_tracker = BrowserTracker()
         self.evidence_store = EvidenceStore()
         self.ocr_engine = OcrEngine()
+        self.uia_text_reader = UIATextReader()
         self.entity_extractor = EntityExtractor()
         self.extraction_engine = ScoutExtractionEngine()
         self.local_queue = LocalQueue()
@@ -1391,9 +1409,50 @@ class ScoutDesktopApp:
         self.cnt_analyzed += 1
         self.bridge.event_logged.emit("ANALYSIS_STARTED", f"Scanning frame {capture_id} on {win_info.process_name}")
 
-        # 2. Extract visible text via offline Windows Media OCR
+        # 2. Extract visible text — UIA DIRECT (primary) then OCR (fallback)
+        # UIA reads text directly from browser's accessibility DOM tree.
+        # Zero character errors, <10ms latency, zero CPU for image processing.
         ocr_lines = []
-        if capture_item and os.path.exists(capture_item.file_path):
+        uia_used = False
+        is_browser = win_info.process_name.lower() in (
+            "chrome.exe", "msedge.exe", "brave.exe", "firefox.exe",
+            "opera.exe", "vivaldi.exe", "chromium.exe",
+        )
+
+        # Layer 1: Try UIA direct text & structured candidate extraction for browser windows
+        uia_candidate = None
+        if is_browser and self.uia_text_reader.is_available() and win_info.hwnd:
+            try:
+                # 1. Attempt structured DOM candidate extraction directly from accessibility tree
+                uia_candidate = self.uia_text_reader.extract_semantic_candidate_from_window(
+                    hwnd=win_info.hwnd,
+                    browser_hint=win_info.process_name,
+                    source_url=page_url,
+                )
+                if uia_candidate and uia_candidate.get("canonical_name"):
+                    logger.info("🎯 UIA direct DOM extracted candidate: %s | Title='%s' | Co='%s' (conf=%.2f)",
+                                uia_candidate.get("canonical_name"),
+                                uia_candidate.get("title"),
+                                uia_candidate.get("company"),
+                                uia_candidate.get("confidence", 0.0))
+
+                uia_lines = self.uia_text_reader.extract_text_from_window(
+                    hwnd=win_info.hwnd,
+                    browser_hint=win_info.process_name,
+                )
+                # Accept UIA result if it returned meaningful content (>= 3 lines) or structured candidate
+                if len(uia_lines) >= 3:
+                    ocr_lines = uia_lines
+                    uia_used = True
+                    logger.info("✅ UIA direct text: %d lines from %s (zero-error mode)", len(uia_lines), win_info.process_name)
+                elif uia_candidate and uia_candidate.get("raw_lines"):
+                    ocr_lines = uia_candidate["raw_lines"]
+                    uia_used = True
+            except Exception as uia_err:
+                logger.debug("UIA text extraction failed: %s (falling back to OCR)", uia_err)
+
+        # Layer 2: Fall back to OCR with image preprocessing
+        if not uia_used and capture_item and os.path.exists(capture_item.file_path):
             ocr_target_path = capture_item.file_path
             if bbox:
                 bx1, by1, bx2, by2 = bbox
@@ -1402,8 +1461,13 @@ class ScoutDesktopApp:
                 if total_area > 0 and 0.10 <= (box_area / total_area) <= 0.85:
                     try:
                         crop_img = img.crop(bbox)
-                        crop_path = capture_item.file_path.replace(".jpg", "_crop.jpg")
-                        crop_img.save(crop_path, "JPEG", quality=85)
+                        # 2x upscale for OCR: at 1080p, letters are 5-7px tall.
+                        # Doubling gives 10-14px glyphs — dramatically better recognition.
+                        upscale_w = crop_img.width * 2
+                        upscale_h = crop_img.height * 2
+                        crop_img = crop_img.resize((upscale_w, upscale_h), Image.Resampling.LANCZOS)
+                        crop_path = capture_item.file_path.replace(".png", "_crop.png")
+                        crop_img.save(crop_path, "PNG")
                         ocr_target_path = crop_path
                         logger.debug("Running OCR on regional delta crop (%s)", bbox)
                     except Exception as ce:
@@ -1427,6 +1491,7 @@ class ScoutDesktopApp:
             source_url=page_url,
             platform=target_type,
             capture_id=capture_id,
+            uia_candidate=uia_candidate,
         )
 
         clusters = [c.raw_cluster for c in canonical_cands if c.raw_cluster]

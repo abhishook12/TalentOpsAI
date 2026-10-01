@@ -31,8 +31,8 @@ export default function ScoutNodesPanel() {
   const streamingNodes = data?.active_nodes_streaming_data || 0
 
   const statusColors = {
-    LIVE_STREAMING: { text: '● LIVE STREAMING', color: '#10b981', bg: 'rgba(16,185,129,0.15)' },
-    CONNECTED_IDLE: { text: '● CONNECTED (IDLE)', color: '#f59e0b', bg: 'rgba(245,158,11,0.15)' },
+    LIVE_STREAMING: { text: '● LIVE STREAMING', color: '#ffffff', bg: 'rgba(255, 255, 255, 0.08)' },
+    CONNECTED_IDLE: { text: '● CONNECTED (IDLE)', color: '#d4d4d8', bg: 'rgba(255, 255, 255, 0.05)' },
     IDLE_NO_INGESTION: { text: '⚠ NO INGESTION (>5m)', color: '#ef4444', bg: 'rgba(239,68,68,0.15)' },
     PREVIOUSLY_ACTIVE: { text: '○ HISTORICAL (OFFLINE)', color: '#9ca3af', bg: 'rgba(156,163,175,0.15)' },
     AWAITING_CONNECTION: { text: '○ AWAITING PAIRING', color: '#71717a', bg: 'rgba(100,116,139,0.15)' },
@@ -110,10 +110,10 @@ export default function ScoutNodesPanel() {
           <button
             onClick={() => setShowAddModal(true)}
             style={{
-              padding: '8px 16px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              padding: '8px 16px', background: 'linear-gradient(135deg, #ffffff 0%, #e4e4e7 100%)',
               color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700,
               cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
-              boxShadow: '0 2px 8px rgba(16, 185, 129, 0.35)'
+              boxShadow: '0 2px 8px rgba(255, 255, 255, 0.08)'
             }}
           >
             <Plus size={14} />
@@ -129,9 +129,9 @@ export default function ScoutNodesPanel() {
           style={{
             padding: '8px 16px',
             borderRadius: 8,
-            border: activeTab === 'updates' ? '1px solid #10b981' : '1px solid var(--border)',
-            background: activeTab === 'updates' ? 'rgba(16, 185, 129, 0.15)' : 'transparent',
-            color: activeTab === 'updates' ? '#10b981' : 'var(--text-secondary)',
+            border: activeTab === 'updates' ? '1px solid #ffffff' : '1px solid var(--border)',
+            background: activeTab === 'updates' ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+            color: activeTab === 'updates' ? '#ffffff' : 'var(--text-secondary)',
             fontWeight: 700,
             fontSize: 13,
             cursor: 'pointer',
@@ -141,7 +141,7 @@ export default function ScoutNodesPanel() {
           }}
         >
           <span>🚀 Fleet Updates & Rollouts</span>
-          <span style={{ fontSize: 10, background: 'rgba(16, 185, 129, 0.2)', color: '#10b981', padding: '1px 6px', borderRadius: 4, fontWeight: 800 }}>CIRCUIT BREAKER</span>
+          <span style={{ fontSize: 10, background: 'rgba(255, 255, 255, 0.08)', color: '#ffffff', padding: '1px 6px', borderRadius: 4, fontWeight: 800 }}>CIRCUIT BREAKER</span>
         </button>
 
         <button
@@ -203,7 +203,7 @@ export default function ScoutNodesPanel() {
 
         <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 18px' }}>
           <div style={{ fontSize: 11, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 2 }}>ACTIVE CONNECTED</div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: '#10b981' }}><AnimatedNumber value={activeConnected} /></div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: '#ffffff' }}><AnimatedNumber value={activeConnected} /></div>
           <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>Heartbeat &lt; 45s Recency</div>
         </div>
 
@@ -215,7 +215,7 @@ export default function ScoutNodesPanel() {
 
         <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 18px' }}>
           <div style={{ fontSize: 11, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 2 }}>IDLE / NO INGESTION</div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: '#f59e0b' }}><AnimatedNumber value={Math.max(0, activeConnected - streamingNodes)} /></div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: '#d4d4d8' }}><AnimatedNumber value={Math.max(0, activeConnected - streamingNodes)} /></div>
           <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>Connected but idle browsing</div>
         </div>
       </div>
@@ -266,7 +266,7 @@ export default function ScoutNodesPanel() {
                     <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
                       <span>Device: <strong>{node.device_name}</strong></span>
                       <span>•</span>
-                      <span>Heartbeat: <strong style={{ color: node.heartbeat_seconds_ago < 60 ? '#10b981' : '#f59e0b' }}>{node.heartbeat_formatted}</strong></span>
+                      <span>Heartbeat: <strong style={{ color: node.heartbeat_seconds_ago < 60 ? '#ffffff' : '#d4d4d8' }}>{node.heartbeat_formatted}</strong></span>
                       {node.cpu_percent !== undefined && node.cpu_percent !== null && (
                         <>
                           <span>•</span>
@@ -274,9 +274,9 @@ export default function ScoutNodesPanel() {
                             style={{
                               padding: '1px 6px',
                               borderRadius: 4,
-                              background: node.load_level === 'OPTIMAL' ? 'rgba(16,185,129,0.12)' : (node.load_level === 'ACTIVE' ? 'rgba(56,189,248,0.12)' : 'rgba(245,158,11,0.12)'),
-                              border: `1px solid ${node.load_level === 'OPTIMAL' ? 'rgba(16,185,129,0.3)' : (node.load_level === 'ACTIVE' ? 'rgba(56,189,248,0.3)' : 'rgba(245,158,11,0.3)')}`,
-                              color: node.load_level === 'OPTIMAL' ? '#10b981' : (node.load_level === 'ACTIVE' ? '#38bdf8' : '#f59e0b'),
+                              background: node.load_level === 'OPTIMAL' ? 'rgba(255, 255, 255, 0.08)' : (node.load_level === 'ACTIVE' ? 'rgba(255, 255, 255, 0.06)' : 'rgba(255, 255, 255, 0.05)'),
+                              border: `1px solid ${node.load_level === 'OPTIMAL' ? 'rgba(255, 255, 255, 0.08)' : (node.load_level === 'ACTIVE' ? 'rgba(255, 255, 255, 0.06)' : 'rgba(255, 255, 255, 0.05)')}`,
+                              color: node.load_level === 'OPTIMAL' ? '#ffffff' : (node.load_level === 'ACTIVE' ? '#ffffff' : '#d4d4d8'),
                               fontSize: 10,
                               fontFamily: 'var(--mono)',
                               fontWeight: 700,
@@ -346,11 +346,11 @@ export default function ScoutNodesPanel() {
                 </div>
                 <div>
                   <div style={{ color: 'var(--text-secondary)', fontSize: 11, marginBottom: 2 }}>LAST MASTER DB UPDATE</div>
-                  <div style={{ fontWeight: 700, fontFamily: 'var(--mono)', color: '#10b981' }}>{node.last_db_write}</div>
+                  <div style={{ fontWeight: 700, fontFamily: 'var(--mono)', color: '#ffffff' }}>{node.last_db_write}</div>
                 </div>
                 <div>
                   <div style={{ color: 'var(--text-secondary)', fontSize: 11, marginBottom: 2 }}>SYNC RESULT</div>
-                  <div style={{ fontWeight: 700, color: '#10b981' }}>{node.db_successes} Success / {node.db_failures} Fail</div>
+                  <div style={{ fontWeight: 700, color: '#ffffff' }}>{node.db_successes} Success / {node.db_failures} Fail</div>
                 </div>
               </div>
 
@@ -359,8 +359,8 @@ export default function ScoutNodesPanel() {
                 <div style={{ display: 'flex', gap: 16 }}>
                   <span>Captures: <strong>{node.captures_today}</strong></span>
                   <span>Enriched Today: <strong style={{ color: '#d4d4d8' }}>+{node.records_enriched}</strong></span>
-                  <span>New People: <strong style={{ color: '#ec4899' }}>+{node.new_records_created}</strong></span>
-                  <span>Fields Added: <strong style={{ color: '#10b981' }}>+{node.fields_added}</strong></span>
+                  <span>New People: <strong style={{ color: '#ffffff' }}>+{node.new_records_created}</strong></span>
+                  <span>Fields Added: <strong style={{ color: '#ffffff' }}>+{node.fields_added}</strong></span>
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--text-secondary)', maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   Last URL: {node.last_page_observed}
@@ -380,7 +380,7 @@ export default function ScoutNodesPanel() {
             <button
               onClick={() => setShowAddModal(true)}
               style={{
-                padding: '9px 18px', background: '#10b981', color: '#fff', border: 'none',
+                padding: '9px 18px', background: '#ffffff', color: '#fff', border: 'none',
                 borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer'
               }}
             >

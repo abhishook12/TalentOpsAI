@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
+import SourceProvenanceBadge from '../common/SourceProvenanceBadge';
+import { classifyCandidateSource } from '../../utils/sourceProvenance';
 
 function ColleaguesSection({ recruiterId, company, onSelectRecruiter }) {
   const [colleagues, setColleagues] = useState([]);
@@ -304,6 +306,11 @@ export default function RecruiterProfileDrawer({
                     >
                       {seniority}
                     </span>
+                    <SourceProvenanceBadge
+                      source={recruiter.data_source || recruiter.source || meta?.source || meta?.data_source}
+                      size="xs"
+                      detailed={false}
+                    />
                   </div>
                   <h2 className="text-base font-bold tracking-tight truncate m-0" style={{ color: 'var(--text-primary, #ffffff)' }}>{name}</h2>
                   <p className="text-xs truncate mt-0.5 flex items-center gap-1" style={{ color: 'var(--text-secondary, #a1a1aa)' }}>
@@ -331,7 +338,7 @@ export default function RecruiterProfileDrawer({
                     href={linkedin}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl bg-[#0a66c2] hover:bg-[#004182] text-white text-xs font-semibold no-underline transition-all shadow-md"
+                    className="flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl bg-white hover:bg-zinc-200 text-black text-xs font-semibold no-underline transition-all shadow-md"
                   >
                     <ExternalLink className="w-3.5 h-3.5" /> LinkedIn Profile
                   </a>
@@ -345,14 +352,14 @@ export default function RecruiterProfileDrawer({
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium uppercase tracking-wider flex items-center gap-1.5" style={{ color: 'var(--text-muted, #71717a)' }}>
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> MailIntel Deliverability
+                    <ShieldCheck className="w-3.5 h-3.5 text-white" /> MailIntel Deliverability
                   </span>
-                  <span className="text-xs font-bold text-emerald-500 font-mono">{confidence}% Safe</span>
+                  <span className="text-xs font-bold text-white font-mono">{confidence}% Safe</span>
                 </div>
 
                 <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--card-border, #27272a)' }}>
                   <div
-                    className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full"
+                    className="h-full bg-gradient-to-r from-white to-zinc-400 rounded-full"
                     style={{ width: `${Math.min(100, confidence)}%` }}
                   />
                 </div>
@@ -362,7 +369,7 @@ export default function RecruiterProfileDrawer({
                   style={{ color: 'var(--text-secondary, #a1a1aa)', borderTop: '1px solid var(--card-border, #27272a)' }}
                 >
                   <span>Status: <strong className="capitalize" style={{ color: 'var(--text-primary, #ffffff)' }}>{emailStatus.replace('_', ' ')}</strong></span>
-                  <span><strong style={{ color: recruiter.email_generated ? '#818cf8' : 'var(--text-primary, #ffffff)' }}>{recruiter.email_generated ? '⚡ AI Inferred' : 'Corporate Active'}</strong></span>
+                  <span><strong style={{ color: 'var(--text-primary, #ffffff)' }}>{recruiter.email_generated ? '⚡ AI Inferred' : 'Corporate Active'}</strong></span>
                 </div>
               </div>
 
@@ -389,12 +396,12 @@ export default function RecruiterProfileDrawer({
                         key={idx}
                         className="px-2 py-0.5 rounded-md text-[11px] font-medium border flex items-center gap-1"
                         style={{
-                          background: `${t.badge_color || '#3b82f6'}18`,
-                          borderColor: `${t.badge_color || '#3b82f6'}40`,
-                          color: t.badge_color || '#60a5fa'
+                          background: `${t.badge_color || '#e4e4e7'}18`,
+                          borderColor: `${t.badge_color || '#e4e4e7'}40`,
+                          color: t.badge_color || '#d4d4d8'
                         }}
                       >
-                        <span className="w-1.5 h-1.5 rounded-full" style={{ background: t.badge_color || '#60a5fa' }} />
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ background: t.badge_color || '#d4d4d8' }} />
                         {t.label || t.name}
                       </span>
                     ))}
@@ -466,9 +473,9 @@ export default function RecruiterProfileDrawer({
                     <div
                       className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-semibold tracking-wider uppercase"
                       style={{
-                        background: 'rgba(16, 185, 129, 0.08)',
-                        border: '1px solid rgba(16, 185, 129, 0.25)',
-                        color: '#34d399'
+                        background: 'rgba(255, 255, 255, 0.08)',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        color: '#e4e4e7'
                       }}
                       title="Autonomous Engine: Continuously scans and enriches DNS tech-stack, identity, and NSR verification in background"
                     >
@@ -587,6 +594,48 @@ export default function RecruiterProfileDrawer({
                     Specialization: <strong className="text-emerald-400">{recruiter.specialization}</strong>
                   </div>
                 )}
+              </div>
+
+              {/* Candidate Origin & Data Provenance */}
+              <div
+                className="p-4 rounded-xl space-y-2.5"
+                style={{ background: 'var(--card-bg, #18181c)', border: '1px solid var(--card-border, #27272a)' }}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5" style={{ color: 'var(--text-secondary, #a1a1aa)' }}>
+                    <Sparkles className="w-3.5 h-3.5 text-zinc-300" /> Sourcing Origin
+                  </div>
+                  <SourceProvenanceBadge
+                    source={recruiter.data_source || recruiter.source || meta?.source || meta?.data_source}
+                    size="sm"
+                    detailed={false}
+                  />
+                </div>
+                <div className="text-xs space-y-1.5 pt-1" style={{ color: 'var(--text-muted, #71717a)' }}>
+                  <div className="flex items-center justify-between">
+                    <span>Channel:</span>
+                    <span className="font-mono text-zinc-200">
+                      {classifyCandidateSource(recruiter.data_source || recruiter.source || meta?.source || meta?.data_source).tag}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Attribution:</span>
+                    <span
+                      className="font-mono text-zinc-300 max-w-[200px] truncate"
+                      title={recruiter.data_source || recruiter.source || 'manual'}
+                    >
+                      {recruiter.data_source || recruiter.source || 'Manual Entry'}
+                    </span>
+                  </div>
+                  {recruiter.created_at && (
+                    <div className="flex items-center justify-between">
+                      <span>Ingested At:</span>
+                      <span className="text-zinc-400">
+                        {new Date(recruiter.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Company Colleague Graph */}

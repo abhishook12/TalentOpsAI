@@ -68,7 +68,7 @@ export default function ApprovalProgress({ deviceId, onApproved }) {
         
         {/* Step 1: Identity */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <CheckCircle2 size={20} color="var(--success, #10b981)" />
+          <CheckCircle2 size={20} color="var(--success, #ffffff)" />
           <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-primary)' }}>Google account verified</span>
         </div>
 
@@ -76,7 +76,7 @@ export default function ApprovalProgress({ deviceId, onApproved }) {
 
         {/* Step 2: Synchronization */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <CheckCircle2 size={20} color="var(--success, #10b981)" />
+          <CheckCircle2 size={20} color="var(--success, #ffffff)" />
           <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-primary)' }}>Identity synchronized</span>
         </div>
 
@@ -85,16 +85,16 @@ export default function ApprovalProgress({ deviceId, onApproved }) {
         {/* Step 3: Admin Approval */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {status === 'pending' ? (
-            <Loader2 size={20} color="var(--accent, #c9a84c)" className="animate-spin" />
+            <Loader2 size={20} color="var(--brand, #ffffff)" className="animate-spin" />
           ) : status === 'approved' ? (
-            <CheckCircle2 size={20} color="var(--success, #10b981)" />
+            <CheckCircle2 size={20} color="var(--success, #ffffff)" />
           ) : (
             <XCircle size={20} color="var(--danger, #ef4444)" />
           )}
           <span style={{ 
             fontSize: '14px', 
             fontWeight: 500, 
-            color: status === 'pending' ? 'var(--accent, #c9a84c)' : status === 'rejected' ? 'var(--danger, #ef4444)' : 'var(--text-primary)'
+            color: status === 'pending' ? 'var(--text-muted, #a1a1aa)' : status === 'rejected' ? 'var(--danger, #ef4444)' : 'var(--text-primary)'
           }}>
             {status === 'pending' ? 'Waiting for administrator approval...' : status === 'approved' ? 'Device approved' : 'Access denied by administrator'}
           </span>
@@ -104,7 +104,7 @@ export default function ApprovalProgress({ deviceId, onApproved }) {
           <>
             <div style={{ width: '2px', height: '16px', background: 'var(--card-border)', marginLeft: '9px', marginTop: '-8px', marginBottom: '-8px' }} />
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <Loader2 size={20} color="var(--success, #10b981)" className="animate-spin" />
+              <Loader2 size={20} color="var(--success, #ffffff)" className="animate-spin" />
               <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-primary)' }}>Loading your workspace...</span>
             </div>
           </>

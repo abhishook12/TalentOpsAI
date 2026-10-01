@@ -92,7 +92,7 @@ export default function CompanyIntelligenceWorkspace({ company, onClose }) {
             <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>
               Hiring Momentum
             </div>
-            <div style={{ fontSize: '22px', fontWeight: 900, color: '#10b981', marginTop: '2px' }}>
+            <div style={{ fontSize: '22px', fontWeight: 900, color: '#ffffff', marginTop: '2px' }}>
               🔥 Accelerating
             </div>
             <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>
@@ -179,7 +179,7 @@ export default function CompanyIntelligenceWorkspace({ company, onClose }) {
                   <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{sig.role}</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span style={{ color: '#10b981', fontWeight: 600 }}>{sig.status}</span>
+                  <span style={{ color: '#ffffff', fontWeight: 600 }}>{sig.status}</span>
                   <span style={{ color: 'var(--text-secondary)', fontSize: '11px' }}>{sig.date}</span>
                 </div>
               </div>

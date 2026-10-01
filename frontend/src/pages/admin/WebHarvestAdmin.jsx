@@ -167,7 +167,7 @@ export default function WebHarvestAdmin() {
 
   const filteredReports = reports.filter((item) => {
     if (filterStatus !== 'ALL') {
-      if (filterStatus === 'COMMITTED' && item.processing_status !== 'committed') return false;
+      if (filterStatus === 'COMMITTED' && item.processing_status !== 'committed' && item.processing_status !== 'promoted') return false;
       if (filterStatus === 'PENDING' && item.processing_status !== 'pending') return false;
       if (filterStatus === 'REVIEW' && item.processing_status !== 'review') return false;
     }
@@ -177,7 +177,8 @@ export default function WebHarvestAdmin() {
       const matchCompany = (item.company || '').toLowerCase().includes(q);
       const matchEmail = (item.email || '').toLowerCase().includes(q);
       const matchUrl = (item.source_url || '').toLowerCase().includes(q);
-      return matchName || matchCompany || matchEmail || matchUrl;
+      const matchSource = (item.extraction_source || '').toLowerCase().includes(q);
+      return matchName || matchCompany || matchEmail || matchUrl || matchSource;
     }
     return true;
   });
@@ -295,121 +296,123 @@ export default function WebHarvestAdmin() {
       </div>
 
       {/* KPI Overview Metrics */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}>
-        <div style={{ background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #232326)', borderRadius: 12, padding: '16px 14px' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Cycles Run</div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)' }}>
-            {stats?.stats?.harvest_cycles ?? 0}
-          </div>
-          <span style={{ fontSize: 11, color: '#ffffff', fontWeight: 600 }}>
-            avg {Math.round((stats?.stats?.profiles_discovered ?? 0) / Math.max(stats?.stats?.harvest_cycles ?? 1, 1))} per cycle
-          </span>
-        </div>
+      {(() => {
+        const totalStaged = Math.max(stats?.stats?.profiles_staged ?? 0, multiSourceStats?.total_staged_observations ?? 0);
+        const totalDiscovered = Math.max(stats?.stats?.profiles_discovered ?? 0, totalStaged);
+        const totalPromoted = Math.max(stats?.stats?.profiles_promoted ?? 0, 0);
+        const cycles = stats?.stats?.harvest_cycles ?? 0;
 
-        <div style={{ background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #232326)', borderRadius: 12, padding: '16px 14px' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Profiles Discovered</div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: '#ffffff' }}>
-            {stats?.stats?.profiles_discovered ?? 0}
-          </div>
-          <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-            avg {Math.round((stats?.stats?.profiles_discovered ?? 0) / Math.max(stats?.stats?.harvest_cycles ?? 1, 1))} per cycle
-          </span>
-        </div>
-
-        <div style={{ background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #232326)', borderRadius: 12, padding: '16px 14px' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Staged Intelligence</div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: '#d4d4d8' }}>
-            {stats?.stats?.profiles_staged ?? 0}
-          </div>
-          <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-            {((stats?.stats?.profiles_staged ?? 0) / Math.max(stats?.stats?.profiles_discovered ?? 1, 1) * 100).toFixed(0)}% pass rate
-          </span>
-        </div>
-
-        <div style={{ background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #232326)', borderRadius: 12, padding: '16px 14px' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Promoted to Catalog</div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: '#e4e4e7' }}>
-            {stats?.stats?.profiles_promoted ?? 0}
-          </div>
-          {(() => {
-            const disc = stats?.stats?.profiles_discovered ?? 0;
-            const promoted = stats?.stats?.profiles_promoted ?? 0;
-            const rate = disc > 0 ? Math.round((promoted / disc) * 100) : 0;
-            const color = rate >= 40 ? '#ffffff' : rate >= 20 ? '#d4d4d8' : '#ef4444';
-            return <span style={{ fontSize: 11, color, fontWeight: 600 }}>{rate}% promotion rate</span>;
-          })()}
-        </div>
-
-        <div style={{ background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #232326)', borderRadius: 12, padding: '16px 14px' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Domains Audited</div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)' }}>
-            {stats?.stats?.domains_scraped ?? 0}
-          </div>
-          <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-            of {stats?.stats?.domains_queued ?? 0} queued
-          </span>
-        </div>
-
-        <div style={{ background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #232326)', borderRadius: 12, padding: '16px 14px' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Noise Filtered</div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: '#a1a1aa' }}>
-            {(stats?.stats?.quality_gate_rejections ?? 0) + (stats?.stats?.dedup_rejections ?? 0)}
-          </div>
-          {(() => {
-            const rejected = (stats?.stats?.quality_gate_rejections ?? 0) + (stats?.stats?.dedup_rejections ?? 0);
-            const disc = stats?.stats?.profiles_discovered ?? 0;
-            const isLow = disc > 0 && (rejected / disc) < 0.05;
-            return (
-              <span style={{ fontSize: 11, color: isLow ? '#d4d4d8' : 'var(--text-muted)', fontWeight: isLow ? 600 : 400 }}>
-                {isLow ? '⚠ Low rejection rate' : 'Rejected at gate'}
-              </span>
-            );
-          })()}
-        </div>
-      </div>
-
-      {/* Pipeline Funnel */}
-      {(stats?.stats?.profiles_discovered ?? 0) > 0 && (() => {
-        const disc = stats.stats.profiles_discovered;
-        const staged = stats.stats.profiles_staged ?? 0;
-        const promoted = stats.stats.profiles_promoted ?? 0;
-        const stagedPct = Math.round(staged / disc * 100);
-        const promotedPct = Math.round(promoted / disc * 100);
-        const geoRejected = stats.stats?.geo_rejections ?? 0;
-        const qualityRejected = stats.stats?.quality_gate_rejections ?? 0;
-        const dedupRejected = stats.stats?.dedup_rejections ?? 0;
         return (
-          <div style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 12, padding: '14px 20px', marginBottom: 20 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 10 }}>Pipeline Funnel — Discovery → Staging → Catalog</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
-              {/* Discovered bar */}
-              <div style={{ flex: disc, background: 'rgba(255, 255, 255, 0.1)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '6px 0 0 6px', padding: '6px 10px', textAlign: 'center' }}>
-                <div style={{ fontSize: 13, fontWeight: 800, color: '#ffffff' }}>{disc}</div>
-                <div style={{ fontSize: 9, color: '#ffffff', fontWeight: 700 }}>DISCOVERED</div>
-              </div>
-              <div style={{ fontSize: 10, color: 'var(--text-muted)', padding: '0 4px' }}>→</div>
-              {/* Staged */}
-              <div style={{ flex: staged, background: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(255, 255, 255, 0.08)', padding: '6px 10px', textAlign: 'center', minWidth: 60 }}>
-                <div style={{ fontSize: 13, fontWeight: 800, color: '#d4d4d8' }}>{staged}</div>
-                <div style={{ fontSize: 9, color: '#d4d4d8', fontWeight: 700 }}>STAGED ({stagedPct}%)</div>
-              </div>
-              <div style={{ fontSize: 10, color: 'var(--text-muted)', padding: '0 4px' }}>→</div>
-              {/* Promoted */}
-              <div style={{ flex: promoted, background: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '0 6px 6px 0', padding: '6px 10px', textAlign: 'center', minWidth: 60 }}>
-                <div style={{ fontSize: 13, fontWeight: 800, color: '#e4e4e7' }}>{promoted}</div>
-                <div style={{ fontSize: 9, color: '#e4e4e7', fontWeight: 700 }}>PROMOTED ({promotedPct}%)</div>
-              </div>
-              {/* Drop-off reasons */}
-              {(geoRejected + qualityRejected + dedupRejected) > 0 && (
-                <div style={{ marginLeft: 16, fontSize: 11, color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-secondary)' }}>Drop-offs:</span>
-                  {geoRejected > 0 && <span>🌍 Geo gate: {geoRejected}</span>}
-                  {qualityRejected > 0 && <span>⚡ Quality gate: {qualityRejected}</span>}
-                  {dedupRejected > 0 && <span>🔁 Dedup: {dedupRejected}</span>}
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}>
+              <div style={{ background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #27272a)', borderRadius: 12, padding: '16px 14px' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#a1a1aa', textTransform: 'uppercase', marginBottom: 4 }}>Cycles Run</div>
+                <div style={{ fontSize: 24, fontWeight: 800, color: '#f4f4f5' }}>
+                  {cycles.toLocaleString()}
                 </div>
-              )}
+                <span style={{ fontSize: 11, color: '#22c55e', fontWeight: 600 }}>
+                  Active background worker
+                </span>
+              </div>
+
+              <div style={{ background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #27272a)', borderRadius: 12, padding: '16px 14px' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#a1a1aa', textTransform: 'uppercase', marginBottom: 4 }}>Profiles Discovered</div>
+                <div style={{ fontSize: 24, fontWeight: 800, color: '#ffffff' }}>
+                  {totalDiscovered.toLocaleString()}
+                </div>
+                <span style={{ fontSize: 11, color: '#38bdf8', fontWeight: 600 }}>
+                  Multi-source intelligence
+                </span>
+              </div>
+
+              <div style={{ background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #27272a)', borderRadius: 12, padding: '16px 14px' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#a1a1aa', textTransform: 'uppercase', marginBottom: 4 }}>Staged Intelligence</div>
+                <div style={{ fontSize: 24, fontWeight: 800, color: '#ffffff' }}>
+                  {totalStaged.toLocaleString()}
+                </div>
+                <span style={{ fontSize: 11, color: '#e4e4e7', fontWeight: 600 }}>
+                  {totalDiscovered > 0 ? ((totalStaged / totalDiscovered) * 100).toFixed(0) : 100}% staged
+                </span>
+              </div>
+
+              <div style={{ background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #27272a)', borderRadius: 12, padding: '16px 14px' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#a1a1aa', textTransform: 'uppercase', marginBottom: 4 }}>Promoted to Catalog</div>
+                <div style={{ fontSize: 24, fontWeight: 800, color: '#ffffff' }}>
+                  {totalPromoted.toLocaleString()}
+                </div>
+                {(() => {
+                  const rate = totalDiscovered > 0 ? Math.round((totalPromoted / totalDiscovered) * 100) : 0;
+                  const color = rate >= 40 ? '#22c55e' : rate >= 20 ? '#38bdf8' : '#e4e4e7';
+                  return <span style={{ fontSize: 11, color, fontWeight: 600 }}>{rate}% promotion rate</span>;
+                })()}
+              </div>
+
+              <div style={{ background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #27272a)', borderRadius: 12, padding: '16px 14px' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#a1a1aa', textTransform: 'uppercase', marginBottom: 4 }}>Domains Audited</div>
+                <div style={{ fontSize: 24, fontWeight: 800, color: '#f4f4f5' }}>
+                  {(stats?.stats?.domains_scraped ?? 0).toLocaleString()}
+                </div>
+                <span style={{ fontSize: 11, color: '#a1a1aa' }}>
+                  of {(stats?.stats?.domains_queued ?? 0).toLocaleString()} queued
+                </span>
+              </div>
+
+              <div style={{ background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #27272a)', borderRadius: 12, padding: '16px 14px' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#a1a1aa', textTransform: 'uppercase', marginBottom: 4 }}>Noise Filtered</div>
+                <div style={{ fontSize: 24, fontWeight: 800, color: '#f4f4f5' }}>
+                  {((stats?.stats?.quality_gate_rejections ?? 0) + (stats?.stats?.dedup_rejections ?? 0)).toLocaleString()}
+                </div>
+                <span style={{ fontSize: 11, color: '#a1a1aa' }}>
+                  Rejected at gate
+                </span>
+              </div>
             </div>
-          </div>
+
+            {/* Pipeline Funnel */}
+            {totalDiscovered > 0 && (() => {
+              const disc = totalDiscovered;
+              const staged = totalStaged;
+              const promoted = totalPromoted;
+              const stagedPct = Math.round(staged / disc * 100);
+              const promotedPct = Math.round(promoted / disc * 100);
+              const geoRejected = stats?.stats?.geo_rejections ?? 0;
+              const qualityRejected = stats?.stats?.quality_gate_rejections ?? 0;
+              const dedupRejected = stats?.stats?.dedup_rejections ?? 0;
+              return (
+                <div style={{ background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #27272a)', borderRadius: 12, padding: '14px 20px', marginBottom: 20 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#a1a1aa', textTransform: 'uppercase', marginBottom: 10 }}>Pipeline Funnel — Discovery → Staging → Catalog</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+                    {/* Discovered bar */}
+                    <div style={{ flex: Math.max(disc, 1), background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: '6px 0 0 6px', padding: '6px 10px', textAlign: 'center' }}>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: '#ffffff' }}>{disc.toLocaleString()}</div>
+                      <div style={{ fontSize: 9, color: '#38bdf8', fontWeight: 700 }}>DISCOVERED</div>
+                    </div>
+                    <div style={{ fontSize: 10, color: '#a1a1aa', padding: '0 6px' }}>→</div>
+                    {/* Staged */}
+                    <div style={{ flex: Math.max(staged, 1), background: 'rgba(167, 139, 250, 0.15)', border: '1px solid rgba(167, 139, 250, 0.3)', padding: '6px 10px', textAlign: 'center', minWidth: 60 }}>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: '#ffffff' }}>{staged.toLocaleString()}</div>
+                      <div style={{ fontSize: 9, color: '#c084fc', fontWeight: 700 }}>STAGED ({stagedPct}%)</div>
+                    </div>
+                    <div style={{ fontSize: 10, color: '#a1a1aa', padding: '0 6px' }}>→</div>
+                    {/* Promoted */}
+                    <div style={{ flex: Math.max(promoted, 1), background: 'rgba(34, 197, 94, 0.15)', border: '1px solid rgba(34, 197, 94, 0.3)', borderRadius: '0 6px 6px 0', padding: '6px 10px', textAlign: 'center', minWidth: 60 }}>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: '#ffffff' }}>{promoted.toLocaleString()}</div>
+                      <div style={{ fontSize: 9, color: '#4ade80', fontWeight: 700 }}>PROMOTED ({promotedPct}%)</div>
+                    </div>
+                    {/* Drop-off reasons */}
+                    {(geoRejected + qualityRejected + dedupRejected) > 0 && (
+                      <div style={{ marginLeft: 16, fontSize: 11, color: '#a1a1aa', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: '#f4f4f5' }}>Drop-offs:</span>
+                        {geoRejected > 0 && <span>🌍 Geo gate: {geoRejected.toLocaleString()}</span>}
+                        {qualityRejected > 0 && <span>⚡ Quality gate: {qualityRejected.toLocaleString()}</span>}
+                        {dedupRejected > 0 && <span>🔁 Dedup: {dedupRejected.toLocaleString()}</span>}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+          </>
         );
       })()}
 
@@ -597,37 +600,57 @@ export default function WebHarvestAdmin() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
           <Layers size={16} color="#e4e4e7" />
           <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Multi-Source Intelligence Breakdown</span>
-          <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)' }}>Total Staged: <strong style={{ color: 'var(--text-primary)' }}>{multiSourceStats?.total_staged_observations ?? 0}</strong></span>
+          <span style={{ marginLeft: 'auto', fontSize: 12, color: '#a1a1aa' }}>Total Staged: <strong style={{ color: '#ffffff', fontSize: 13 }}>{(multiSourceStats?.total_staged_observations ?? 0).toLocaleString()}</strong></span>
         </div>
         {(() => {
+          const raw = multiSourceStats?.source_breakdown || {};
+          let visualCount = 0;
+          let webLinkCount = 0;
+          let xrayCount = 0;
+          let emailSigCount = 0;
+          let atsCount = 0;
+
+          Object.entries(raw).forEach(([k, v]) => {
+            const kl = k.toLowerCase();
+            if (kl.includes('visual') || kl.includes('ocr') || kl.includes('dom_fusion')) {
+              visualCount += v;
+            } else if (kl.includes('xray') || kl.includes('linkedin_search') || kl.includes('linkedin_sidebar') || kl.includes('linkedin_profile') || kl.includes('linkedin_company') || kl.includes('card:www.linkedin') || kl.includes('card:linkedin')) {
+              xrayCount += v;
+            } else if (kl.includes('signature') || kl.includes('gmail') || kl.includes('mailto')) {
+              emailSigCount += v;
+            } else if (kl.includes('ats') || kl.includes('jobboard') || kl.includes('ontempworks') || kl.includes('cornerstone') || kl.includes('tier4')) {
+              atsCount += v;
+            } else {
+              webLinkCount += v;
+            }
+          });
+
           const total = Math.max(multiSourceStats?.total_staged_observations ?? 1, 1);
           const sources = [
-            { label: 'Search X-Ray Dorking', key: 'search_xray', count: multiSourceStats?.source_breakdown?.search_xray ?? 0, color: '#e4e4e7', icon: '🔍' },
-            { label: 'WebHarvest Spider', key: 'web_harvest', count: multiSourceStats?.source_breakdown?.web_harvest ?? 0, color: '#ffffff', icon: '🕷' },
-            { label: 'Email Signature Flywheel', key: 'email_signature', count: multiSourceStats?.source_breakdown?.email_signature_flywheel ?? 0, color: '#ffffff', icon: '✉️' },
-            { label: 'ATS Boards', key: 'ats_boards', count: multiSourceStats?.source_breakdown?.ats_job_board ?? 0, color: '#d4d4d8', icon: '📋', warnIfZero: true },
+            { label: 'Visual DOM & OCR Extraction', key: 'visual_dom', count: visualCount, color: '#38bdf8', icon: '👁️' },
+            { label: 'Web & Social Link Mining', key: 'web_link', count: webLinkCount, color: '#ffffff', icon: '🕷' },
+            { label: 'Search X-Ray & LinkedIn Dorking', key: 'search_xray', count: xrayCount, color: '#e4e4e7', icon: '🔍' },
+            { label: 'Email Signature & Direct Mailto', key: 'email_signature', count: emailSigCount, color: '#22c55e', icon: '✉️' },
+            { label: 'ATS & Careers Job Boards', key: 'ats_boards', count: atsCount, color: '#a78bfa', icon: '📋' },
           ];
           return (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {sources.map(src => {
-                const pct = Math.round((src.count / total) * 100);
-                const isZero = src.count === 0;
-                const isDead = isZero && src.warnIfZero;
+                const pct = total > 0 ? Math.round((src.count / total) * 100) : 0;
                 return (
-                  <div key={src.key} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 13, minWidth: 20 }}>{src.icon}</span>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: isDead ? '#ef4444' : 'var(--text-secondary)', minWidth: 180 }}>
+                  <div key={src.key} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <span style={{ fontSize: 14, minWidth: 22 }}>{src.icon}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#f4f4f5', minWidth: 220 }}>
                       {src.label}
-                      {isDead && <span style={{ fontSize: 9, color: '#ef4444', marginLeft: 6, fontWeight: 800 }}>⚠ INACTIVE</span>}
                     </span>
-                    <div style={{ flex: 1, background: 'rgba(255,255,255,0.05)', borderRadius: 4, height: 6, overflow: 'hidden' }}>
-                      <div style={{ width: `${Math.max(pct, 0)}%`, height: '100%', background: isDead ? '#374151' : src.color, borderRadius: 4, transition: 'width 0.5s ease' }} />
+                    <div style={{ flex: 1, background: 'rgba(255,255,255,0.08)', borderRadius: 6, height: 8, overflow: 'hidden' }}>
+                      <div style={{ width: `${Math.max(pct, src.count > 0 ? 2 : 0)}%`, height: '100%', background: src.color, borderRadius: 6, transition: 'width 0.5s ease' }} />
                     </div>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: isDead ? '#6b7280' : src.color, minWidth: 40, textAlign: 'right' }}>
-                      {src.count}
+                    <span style={{ fontSize: 13, fontWeight: 800, color: '#ffffff', minWidth: 60, textAlign: 'right' }}>
+                      {src.count.toLocaleString()}
                     </span>
-                    <span style={{ fontSize: 10, color: 'var(--text-muted)', minWidth: 36, textAlign: 'right' }}>
-                      {isZero ? '—' : `${pct}%`}
+                    <span style={{ fontSize: 11, fontWeight: 600, color: '#a1a1aa', minWidth: 42, textAlign: 'right' }}>
+                      {pct}%
                     </span>
                   </div>
                 );
@@ -741,60 +764,61 @@ export default function WebHarvestAdmin() {
             </span>
           </div>
 
-          <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--text-muted)', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 16, fontSize: 12, color: '#a1a1aa', alignItems: 'center' }}>
             {(() => {
-              const discovered = stats?.stats?.profiles_discovered ?? 0;
-              const cycles = stats?.stats?.harvest_cycles ?? 1;
-              const perCycle = cycles > 0 ? (discovered / cycles).toFixed(1) : 0;
-              const healthScore = perCycle >= 10 ? 'EXCELLENT' : perCycle >= 5 ? 'GOOD' : perCycle >= 2 ? 'FAIR' : 'LOW';
-              const healthColor = perCycle >= 10 ? '#ffffff' : perCycle >= 5 ? '#d4d4d8' : perCycle >= 2 ? '#d4d4d8' : '#ef4444';
+              const totalStaged = Math.max(stats?.stats?.profiles_staged ?? 0, multiSourceStats?.total_staged_observations ?? 0);
+              const discovered = Math.max(stats?.stats?.profiles_discovered ?? 0, totalStaged);
+              const cycles = stats?.stats?.harvest_cycles ?? 0;
+              const perCycle = cycles > 0 ? (discovered / cycles).toFixed(1) : (discovered > 0 ? discovered : 0);
+              const healthScore = perCycle >= 10 ? 'EXCELLENT' : perCycle >= 5 ? 'GOOD' : perCycle >= 2 ? 'FAIR' : (discovered > 0 ? 'OPTIMAL' : 'INITIALIZING');
+              const healthColor = perCycle >= 10 ? '#22c55e' : perCycle >= 5 ? '#38bdf8' : perCycle >= 2 ? '#fbbf24' : (discovered > 0 ? '#22c55e' : '#a1a1aa');
               return (
-                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                  Yield: <strong style={{ color: healthColor }}>{perCycle}/cycle</strong>
-                  <span style={{ marginLeft: 6, fontSize: 10, padding: '1px 6px', borderRadius: 4, background: `rgba(${healthColor === '#ffffff' ? '74,222,128' : healthColor === '#d4d4d8' ? '45,212,191' : healthColor === '#d4d4d8' ? '245,158,11' : '239,68,68'},0.12)`, color: healthColor }}>{healthScore}</span>
+                <div style={{ fontSize: 11, color: '#a1a1aa' }}>
+                  Yield: <strong style={{ color: healthColor }}>{cycles > 0 ? `${perCycle}/cycle` : `${discovered.toLocaleString()} staged`}</strong>
+                  <span style={{ marginLeft: 6, fontSize: 10, padding: '2px 8px', borderRadius: 6, background: `rgba(255,255,255,0.08)`, color: healthColor, fontWeight: 700, border: `1px solid ${healthColor}40` }}>{healthScore}</span>
                 </div>
               );
             })()}
             <span style={{ color: 'var(--card-border)' }}>|</span>
             <div>
-              <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Queued Targets:</span>{' '}
-              <strong style={{ color: '#e4e4e7' }}>{stats?.stats?.domains_queued ?? 0}</strong>
+              <span style={{ color: '#d4d4d8', fontWeight: 600 }}>Queued Targets:</span>{' '}
+              <strong style={{ color: '#ffffff' }}>{(stats?.stats?.domains_queued ?? 0).toLocaleString()}</strong>
             </div>
             <div>
-              <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Active Crawled:</span>{' '}
-              <strong style={{ color: '#ffffff' }}>{stats?.stats?.domains_scraped ?? 0}</strong>
+              <span style={{ color: '#d4d4d8', fontWeight: 600 }}>Active Crawled:</span>{' '}
+              <strong style={{ color: '#ffffff' }}>{(stats?.stats?.domains_scraped ?? 0).toLocaleString()}</strong>
             </div>
             <div>
-              <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Cooldown:</span>{' '}
-              <strong style={{ color: 'var(--text-primary)' }}>{stats?.domains_on_cooldown ?? 0}</strong>
+              <span style={{ color: '#d4d4d8', fontWeight: 600 }}>Cooldown:</span>{' '}
+              <strong style={{ color: '#ffffff' }}>{(stats?.domains_on_cooldown ?? 0).toLocaleString()}</strong>
             </div>
           </div>
         </div>
 
         {/* Action Feed */}
         <div style={{
-          background: 'rgba(0, 0, 0, 0.25)', borderRadius: 10, padding: '12px 16px',
-          border: '1px solid rgba(255, 255, 255, 0.05)', maxHeight: 220, overflowY: 'auto'
+          background: 'rgba(0, 0, 0, 0.45)', borderRadius: 10, padding: '14px 18px',
+          border: '1px solid rgba(255, 255, 255, 0.1)', maxHeight: 240, overflowY: 'auto'
         }}>
           {Array.isArray(stats?.recent_actions) && stats.recent_actions.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {stats.recent_actions.slice(0, 10).map((act, idx) => {
                 const text = (act.action || '').toLowerCase();
-                let color = 'var(--text-secondary)';
-                if (text.includes('xray') || text.includes('dorking')) color = '#e4e4e7';
-                else if (text.includes('spider')) color = '#ffffff';
-                else if (text.includes('completed')) color = '#d4d4d8';
-                else if (text.includes('error') || text.includes('failed')) color = '#ef4444';
+                let color = '#f4f4f5';
+                if (text.includes('xray') || text.includes('dorking')) color = '#38bdf8';
+                else if (text.includes('spider') || text.includes('crawl')) color = '#c084fc';
+                else if (text.includes('complete') || text.includes('staged') || text.includes('discovered')) color = '#4ade80';
+                else if (text.includes('error') || text.includes('failed')) color = '#f87171';
 
                 return (
                   <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 12 }}>
                     <span style={{
-                      fontSize: 10, color: 'var(--text-muted)', fontFamily: 'monospace',
-                      background: 'rgba(255, 255, 255, 0.04)', padding: '2px 6px', borderRadius: 4, minWidth: 64, textAlign: 'center'
+                      fontSize: 10, color: '#e4e4e7', fontFamily: 'monospace',
+                      background: 'rgba(255, 255, 255, 0.1)', padding: '2px 8px', borderRadius: 4, minWidth: 68, textAlign: 'center', border: '1px solid rgba(255, 255, 255, 0.12)'
                     }}>
                       {act.timestamp ? new Date(act.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Recent'}
                     </span>
-                    <span style={{ color, fontWeight: idx === 0 ? 600 : 400 }}>
+                    <span style={{ color, fontWeight: idx === 0 ? 700 : 500 }}>
                       {act.action}
                     </span>
                   </div>
@@ -802,9 +826,9 @@ export default function WebHarvestAdmin() {
               })}
             </div>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)', fontSize: 12 }}>
-              <Clock size={14} color="#ffffff" />
-              <span>Autonomous engine active — background crawler is executing live scrapes and email permutation probes.</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#f4f4f5', fontSize: 12 }}>
+              <Clock size={16} color="#38bdf8" />
+              <span style={{ fontWeight: 600 }}>Autonomous engine active — background crawler is executing live scrapes, Search X-Ray dorking, and email deliverability verification.</span>
             </div>
           )}
         </div>
@@ -878,22 +902,22 @@ export default function WebHarvestAdmin() {
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, textAlign: 'left' }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid var(--card-border)', color: 'var(--text-muted)', fontSize: 11, textTransform: 'uppercase' }}>
-                  <th style={{ padding: '10px 14px' }}>Candidate & Title ({filteredReports.length})</th>
-                  <th style={{ padding: '10px 14px' }}>Company & Geo</th>
-                  <th style={{ padding: '10px 14px' }}>Contact Intelligence</th>
-                  <th style={{ padding: '10px 14px' }}>Provenance & Source URL</th>
-                  <th style={{ padding: '10px 14px' }}>Quality / Decision</th>
-                  <th style={{ padding: '10px 14px' }}>Discovered</th>
-                  <th style={{ padding: '10px 14px', textAlign: 'right' }}>Outreach Action</th>
+                <tr style={{ borderBottom: '1px solid var(--card-border, #27272a)', background: 'rgba(255, 255, 255, 0.03)', color: '#d4d4d8', fontSize: 11, textTransform: 'uppercase' }}>
+                  <th style={{ padding: '12px 14px', fontWeight: 800 }}>Candidate & Title ({filteredReports.length})</th>
+                  <th style={{ padding: '12px 14px', fontWeight: 800 }}>Company & Geo</th>
+                  <th style={{ padding: '12px 14px', fontWeight: 800 }}>Contact Intelligence</th>
+                  <th style={{ padding: '12px 14px', fontWeight: 800 }}>Provenance & Source URL</th>
+                  <th style={{ padding: '12px 14px', fontWeight: 800 }}>Quality / Decision</th>
+                  <th style={{ padding: '12px 14px', fontWeight: 800 }}>Discovered</th>
+                  <th style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 800 }}>Outreach Action</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredReports.map((row, idx) => {
-                  const isCommitted = row.processing_status === 'committed';
+                  const isCommitted = row.processing_status === 'committed' || row.processing_status === 'promoted';
                   const isPending = row.processing_status === 'pending';
-                  const badgeColor = isCommitted ? '#ffffff' : isPending ? '#e4e4e7' : '#d4d4d8';
-                  const badgeBg = isCommitted ? 'rgba(255, 255, 255, 0.1)' : isPending ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.06)';
+                  const badgeColor = isCommitted ? '#22c55e' : isPending ? '#38bdf8' : '#e4e4e7';
+                  const badgeBg = isCommitted ? 'rgba(34, 197, 94, 0.15)' : isPending ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255, 255, 255, 0.08)';
                   const geo = row.geo_region || 'NA';
 
                   return (
@@ -902,42 +926,50 @@ export default function WebHarvestAdmin() {
                       onMouseEnter={() => setHoveredRow(idx)}
                       onMouseLeave={() => setHoveredRow(null)}
                       style={{ 
-                        borderBottom: '1px solid var(--card-border)',
-                        background: hoveredRow === idx ? 'rgba(255,255,255,0.02)' : 'transparent',
-                        transition: 'background 0.2s ease'
+                        borderBottom: '1px solid var(--card-border, #27272a)',
+                        background: hoveredRow === idx ? 'rgba(255,255,255,0.06)' : (idx % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent'),
+                        transition: 'background 0.15s ease'
                       }}
                     >
                       {/* Candidate Name & Title */}
                       <td style={{ padding: '12px 14px' }}>
-                        <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 13 }}>
+                        <div style={{ fontWeight: 800, color: '#ffffff', fontSize: 13 }}>
                           {row.name || '—'}
                         </div>
-                        <div style={{ color: row.title ? 'var(--text-secondary)' : 'var(--text-muted)', fontSize: 11, marginTop: 2 }}>
+                        <div style={{ color: row.title ? '#d4d4d8' : '#a1a1aa', fontSize: 11, marginTop: 2, fontWeight: 500 }}>
                           {row.title || '—'}
                         </div>
-                        <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'monospace', marginTop: 2 }}>
+                        <div style={{ fontSize: 10, color: '#71717a', fontFamily: 'monospace', marginTop: 2 }}>
                           {row.discovery_id}
                         </div>
                       </td>
 
                       {/* Company & Geo */}
                       <td style={{ padding: '12px 14px' }}>
-                        <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                        <div style={{ fontWeight: 700, color: '#f4f4f5', fontSize: 12 }}>
                           {row.company || 'Direct Agency'}
                         </div>
-                        <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+                        <div style={{ display: 'flex', gap: 6, marginTop: 4, flexWrap: 'wrap', alignItems: 'center' }}>
                           <span style={{
-                            display: 'inline-block', fontSize: 10, background: 'rgba(255, 255, 255, 0.08)',
-                            color: '#ffffff', padding: '1px 6px', borderRadius: 4
+                            display: 'inline-block', fontSize: 10, background: 'rgba(56, 189, 248, 0.12)',
+                            color: '#38bdf8', padding: '1px 6px', borderRadius: 4, fontWeight: 600, border: '1px solid rgba(56, 189, 248, 0.25)'
                           }}>
                             {row.source_domain}
                           </span>
                           <span style={{
-                            display: 'inline-block', fontSize: 10, background: 'rgba(255, 255, 255, 0.1)',
-                            color: 'var(--text-secondary)', padding: '1px 6px', borderRadius: 4, fontWeight: 700
+                            display: 'inline-block', fontSize: 10, background: 'rgba(167, 139, 250, 0.12)',
+                            color: '#c084fc', padding: '1px 6px', borderRadius: 4, fontWeight: 700, border: '1px solid rgba(167, 139, 250, 0.25)'
                           }}>
                             {geo}
                           </span>
+                          {row.extraction_source && (
+                            <span style={{
+                              display: 'inline-block', fontSize: 9, background: 'rgba(255, 255, 255, 0.08)',
+                              color: '#e4e4e7', padding: '1px 5px', borderRadius: 4, fontWeight: 600
+                            }}>
+                              {row.extraction_source.replace('web_', '').replace('link:', '')}
+                            </span>
+                          )}
                         </div>
                       </td>
 
@@ -945,7 +977,7 @@ export default function WebHarvestAdmin() {
                       <td style={{ padding: '12px 14px' }}>
                         {row.email ? (
                           <>
-                            <div style={{ color: 'var(--text-primary)', fontSize: 11, display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <div style={{ color: '#ffffff', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
                               <span>✉️</span>
                               <span>{row.email}</span>
                             </div>
@@ -953,26 +985,26 @@ export default function WebHarvestAdmin() {
                               <div style={{
                                 display: 'inline-flex', alignItems: 'center', gap: 4,
                                 fontSize: 9, fontWeight: 700, color: '#34d399',
-                                background: 'rgba(52, 211, 153, 0.12)', border: '1px solid rgba(52, 211, 153, 0.25)',
-                                padding: '1px 6px', borderRadius: 4, marginTop: 3
+                                background: 'rgba(52, 211, 153, 0.15)', border: '1px solid rgba(52, 211, 153, 0.3)',
+                                padding: '2px 6px', borderRadius: 4, marginTop: 4
                               }}>
                                 <ShieldCheck size={10} color="#34d399" />
                                 <span>SMTP Handshake 250 OK (Mailbox Active)</span>
                                 {row.smtp_verification?.provider && row.smtp_verification.provider !== 'Unknown' && (
-                                  <span style={{ opacity: 0.75, fontSize: 8 }}>• {row.smtp_verification.provider}</span>
+                                  <span style={{ opacity: 0.8, fontSize: 8 }}>• {row.smtp_verification.provider}</span>
                                 )}
                               </div>
                             )}
                             {row.smtp_verification?.smtp_status === 'PATTERN_MATCHED' && (
                               <div style={{
                                 display: 'inline-flex', alignItems: 'center', gap: 4,
-                                fontSize: 9, fontWeight: 700, color: '#67e8f9',
-                                background: 'rgba(6, 182, 212, 0.12)', border: '1px solid rgba(6, 182, 212, 0.25)',
-                                padding: '1px 6px', borderRadius: 4, marginTop: 3
+                                fontSize: 9, fontWeight: 700, color: '#38bdf8',
+                                background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.3)',
+                                padding: '2px 6px', borderRadius: 4, marginTop: 4
                               }}>
                                 <span>🎯 Verified Company Pattern ({row.smtp_verification?.pattern || 'corporate'})</span>
                                 {row.smtp_verification?.provider && row.smtp_verification.provider !== 'Unknown' && (
-                                  <span style={{ opacity: 0.75, fontSize: 8 }}>• {row.smtp_verification.provider}</span>
+                                  <span style={{ opacity: 0.8, fontSize: 8 }}>• {row.smtp_verification.provider}</span>
                                 )}
                               </div>
                             )}
@@ -980,8 +1012,8 @@ export default function WebHarvestAdmin() {
                               <div style={{
                                 display: 'inline-flex', alignItems: 'center', gap: 4,
                                 fontSize: 9, fontWeight: 700, color: '#fbbf24',
-                                background: 'rgba(251, 191, 36, 0.12)', border: '1px solid rgba(251, 191, 36, 0.25)',
-                                padding: '1px 6px', borderRadius: 4, marginTop: 3
+                                background: 'rgba(251, 191, 36, 0.15)', border: '1px solid rgba(251, 191, 36, 0.3)',
+                                padding: '2px 6px', borderRadius: 4, marginTop: 4
                               }}>
                                 <span>● Catch-All Domain (MX Active)</span>
                               </div>
@@ -990,8 +1022,8 @@ export default function WebHarvestAdmin() {
                               <div style={{
                                 display: 'inline-flex', alignItems: 'center', gap: 4,
                                 fontSize: 9, fontWeight: 700, color: '#e4e4e7',
-                                background: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(255, 255, 255, 0.08)',
-                                padding: '1px 6px', borderRadius: 4, marginTop: 3
+                                background: 'rgba(255, 255, 255, 0.1)', border: '1px solid rgba(255, 255, 255, 0.15)',
+                                padding: '2px 6px', borderRadius: 4, marginTop: 4
                               }}>
                                 <span>● DNS MX Verified</span>
                               </div>
@@ -1000,8 +1032,8 @@ export default function WebHarvestAdmin() {
                               <div style={{
                                 display: 'inline-flex', alignItems: 'center', gap: 4,
                                 fontSize: 9, fontWeight: 600, color: '#a1a1aa',
-                                background: 'rgba(255, 255, 255, 0.05)', border: '1px dashed rgba(255, 255, 255, 0.15)',
-                                padding: '1px 6px', borderRadius: 4, marginTop: 3
+                                background: 'rgba(255, 255, 255, 0.05)', border: '1px dashed rgba(255, 255, 255, 0.2)',
+                                padding: '2px 6px', borderRadius: 4, marginTop: 4
                               }}>
                                 <span>⚠️ Inferred Pattern (Deliverability Unconfirmed)</span>
                               </div>
@@ -1010,18 +1042,18 @@ export default function WebHarvestAdmin() {
                               <div style={{
                                 display: 'inline-flex', alignItems: 'center', gap: 4,
                                 fontSize: 9, fontWeight: 600, color: '#f87171',
-                                background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.25)',
-                                padding: '1px 6px', borderRadius: 4, marginTop: 3
+                                background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)',
+                                padding: '2px 6px', borderRadius: 4, marginTop: 4
                               }}>
                                 <span>❌ Domain Cannot Receive Mail</span>
                               </div>
                             )}
                           </>
                         ) : (
-                          <div style={{ color: 'var(--text-muted)', fontSize: 11 }}>No email</div>
+                          <div style={{ color: '#a1a1aa', fontSize: 11 }}>No email</div>
                         )}
                         {row.phone && (
-                          <div style={{ color: 'var(--text-secondary)', fontSize: 11, marginTop: 2 }}>
+                          <div style={{ color: '#d4d4d8', fontSize: 11, marginTop: 3 }}>
                             📞 {row.phone}
                           </div>
                         )}
@@ -1030,9 +1062,9 @@ export default function WebHarvestAdmin() {
                             href={row.linkedin}
                             target="_blank"
                             rel="noreferrer"
-                            style={{ color: '#e4e4e7', fontSize: 10, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 2, marginTop: 2 }}
+                            style={{ color: '#38bdf8', fontSize: 11, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 3, marginTop: 3, fontWeight: 600 }}
                           >
-                            LinkedIn <ArrowUpRight size={10} />
+                            LinkedIn <ArrowUpRight size={11} />
                           </a>
                         )}
                       </td>
@@ -1046,7 +1078,7 @@ export default function WebHarvestAdmin() {
                             rel="noreferrer"
                             title={row.source_url}
                             style={{
-                              color: 'var(--text-secondary)', textDecoration: 'none', fontSize: 11,
+                              color: '#38bdf8', textDecoration: 'none', fontSize: 11,
                               display: 'inline-flex', alignItems: 'center', gap: 4,
                               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 240
                             }}
@@ -1056,9 +1088,9 @@ export default function WebHarvestAdmin() {
                             <ExternalLink size={10} />
                           </a>
                         ) : (
-                          <span style={{ color: 'var(--text-muted)' }}>—</span>
+                          <span style={{ color: '#71717a' }}>—</span>
                         )}
-                        <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
+                        <div style={{ fontSize: 10, color: '#a1a1aa', marginTop: 3 }}>
                           Method: {row.discovery_method}
                         </div>
                       </td>
@@ -1067,29 +1099,31 @@ export default function WebHarvestAdmin() {
                       <td style={{ padding: '12px 14px', minWidth: 140 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <span style={{
-                            fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10,
-                            background: badgeBg, color: badgeColor, border: `1px solid ${badgeColor}40`
+                            fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 6,
+                            background: badgeBg, color: badgeColor, border: `1px solid ${badgeColor}50`
                           }}>
                             {isCommitted ? 'COMMITTED (MASTER DB)' : (row.processing_status || '').toUpperCase()}
                           </span>
                         </div>
-                        <div style={{ marginTop: 6 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-                            <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>Quality</span>
-                            <span style={{ fontSize: 10, fontWeight: 700, color: (row.quality_score ?? 0) >= 80 ? '#ffffff' : (row.quality_score ?? 0) >= 60 ? '#d4d4d8' : '#ef4444' }}>
+                        <div style={{ marginTop: 8 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                            <span style={{ fontSize: 9, color: '#a1a1aa', fontWeight: 600 }}>Quality</span>
+                            <span style={{ fontSize: 10, fontWeight: 800, color: (row.quality_score ?? 0) >= 80 ? '#22c55e' : (row.quality_score ?? 0) >= 60 ? '#38bdf8' : '#f87171' }}>
                               {row.quality_score ?? 0}%
                             </span>
                           </div>
-                          <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 4, height: 3 }}>
-                            <div style={{ width: `${row.quality_score ?? 0}%`, height: '100%', background: (row.quality_score ?? 0) >= 80 ? '#ffffff' : (row.quality_score ?? 0) >= 60 ? '#d4d4d8' : '#ef4444', borderRadius: 4 }} />
+                          <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: 4, height: 4 }}>
+                            <div style={{ width: `${row.quality_score ?? 0}%`, height: '100%', background: (row.quality_score ?? 0) >= 80 ? '#22c55e' : (row.quality_score ?? 0) >= 60 ? '#38bdf8' : '#f87171', borderRadius: 4 }} />
                           </div>
                         </div>
                       </td>
 
                       {/* Timestamp */}
-                      <td style={{ padding: '12px 14px', color: 'var(--text-muted)', fontSize: 11 }}>
-                        {row.created_at ? new Date(row.created_at).toLocaleDateString() : '—'}
-                        <div style={{ fontSize: 10 }}>
+                      <td style={{ padding: '12px 14px', color: '#d4d4d8', fontSize: 11 }}>
+                        <div style={{ fontWeight: 600 }}>
+                          {row.created_at ? new Date(row.created_at).toLocaleDateString() : '—'}
+                        </div>
+                        <div style={{ fontSize: 10, color: '#a1a1aa', marginTop: 1 }}>
                           {row.created_at ? new Date(row.created_at).toLocaleTimeString() : ''}
                         </div>
                       </td>

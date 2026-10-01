@@ -1381,16 +1381,13 @@ class WebHarvestEngine:
             from ..models.staging_models import DiscoveryStaging
             with SessionLocal() as db_session:
                 real_staged = db_session.query(DiscoveryStaging).count()
-                web_staged = db_session.query(DiscoveryStaging).filter(
-                    DiscoveryStaging.extraction_source.in_(["web_harvest", "search_xray", "ats_job_board", "email_signature_flywheel"])
-                ).count()
                 promoted_count = db_session.query(DiscoveryStaging).filter(
-                    DiscoveryStaging.processing_status == "promoted"
+                    DiscoveryStaging.processing_status.in_(["promoted", "committed"])
                 ).count()
                 enriched_count = db_session.query(DiscoveryStaging).filter(
                     DiscoveryStaging.processing_status == "enriched"
                 ).count()
-                stats_copy["profiles_staged"] = max(stats_copy.get("profiles_staged", 0), web_staged)
+                stats_copy["profiles_staged"] = max(stats_copy.get("profiles_staged", 0), real_staged)
                 stats_copy["profiles_discovered"] = max(stats_copy.get("profiles_discovered", 0), real_staged)
                 stats_copy["profiles_promoted"] = max(stats_copy.get("profiles_promoted", 0), promoted_count)
                 stats_copy["profiles_enriched"] = max(stats_copy.get("profiles_enriched", 0), enriched_count)

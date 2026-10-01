@@ -390,26 +390,21 @@ def trigger_offline_buffer_flush(
 @router.get("/web-harvest-reports")
 def get_web_harvest_reports(
     limit: int = Query(50, ge=1, le=200),
+    source: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_from_request),
 ) -> Dict[str, Any]:
     """
     Returns granular forensic reports of all profiles and companies discovered
-    by the 24/7 autonomous WebHarvest background crawler.
+    by autonomous background crawlers and multi-source pipelines.
     Includes exact source URLs, extraction confidence, and database commit status.
     """
     from ..models.staging_models import DiscoveryStaging
-    valid_sources = [
-        "web_harvest", "search_xray", "ats_job_board",
-        "git_commit_mine", "email_signature_flywheel"
-    ]
-    records = (
-        db.query(DiscoveryStaging)
-        .filter(DiscoveryStaging.extraction_source.in_(valid_sources))
-        .order_by(DiscoveryStaging.id.desc())
-        .limit(limit)
-        .all()
-    )
+    query = db.query(DiscoveryStaging)
+    if source and source.upper() != "ALL":
+        query = query.filter(DiscoveryStaging.extraction_source.ilike(f"%{source}%"))
+    
+    records = query.order_by(DiscoveryStaging.id.desc()).limit(limit).all()
     
     reports = []
     for r in records:
@@ -432,8 +427,11 @@ def get_web_harvest_reports(
             "location": r.raw_location,
             "source_url": r.source_url,
             "source_domain": meta.get("source_domain") or (r.source_url.split('/')[2] if r.source_url and '/' in r.source_url else "—"),
+            "extraction_source": r.extraction_source or "web_harvest",
             "quality_score": r.quality_score,
             "dom_confidence": r.dom_confidence,
+            "geo_region": getattr(r, "geo_region", None) or "NA",
+            "geo_confidence": getattr(r, "geo_confidence", None),
             "processing_status": r.processing_status,
             "decision": r.decision,
             "decision_reason": r.decision_reason,

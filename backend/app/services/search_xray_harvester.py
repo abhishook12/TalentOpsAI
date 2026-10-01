@@ -348,12 +348,70 @@ class SearchXRayHarvester:
             with self._cache_lock:
                 self._dork_cache[query_key] = (results, time.time())
         except Exception as e:
-            logger.warning("[SEARCH_XRAY] Query failed for '%s': %s", query, e)
-            self.stats["errors"] += 1
-            # Force browser recycle on error on this thread
+            logger.warning("[SEARCH_XRAY] Browser query failed for '%s': %s — switching to lightweight HTTP fallback", query, e)
             self._shutdown_browser()
+            results = self._execute_dork_http(query, max_results)
+            if results:
+                logger.info("[SEARCH_XRAY] HTTP fallback recovered %d search results for '%s'", len(results), query)
+            else:
+                self.stats["errors"] += 1
+
+        if not results:
+            results = self._execute_dork_http(query, max_results)
 
         self.stats["total_dorks_executed"] += 1
+        return results
+
+    def _execute_dork_http(self, query: str, max_results: int = 10) -> List[Dict[str, Any]]:
+        """Lightweight HTTP search fallback using public search indexes when headless browser is unavailable."""
+        import requests
+        import base64
+        from bs4 import BeautifulSoup
+        results = []
+        try:
+            headers = {
+                "User-Agent": self.user_agent,
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.9",
+            }
+            url = f"https://www.bing.com/search?q={urllib.parse.quote(query)}"
+            r = requests.get(url, headers=headers, timeout=8)
+            if r.status_code == 200:
+                soup = BeautifulSoup(r.text, "html.parser")
+                cards = soup.find_all("li", class_="b_algo")
+                for c in cards:
+                    try:
+                        text_val = c.get_text(separator=" ").strip()
+                        a_tags = c.find_all("a", href=True)
+                        href = ""
+                        for a in a_tags:
+                            h = a["href"]
+                            if "bing.com/ck/a?" in h and "&u=" in h:
+                                try:
+                                    u_match = re.search(r'[?&]u=a1([^&]+)', h)
+                                    if u_match:
+                                        raw_b64 = u_match.group(1)
+                                        pad = len(raw_b64) % 4
+                                        if pad:
+                                            raw_b64 += "=" * (4 - pad)
+                                        decoded = base64.urlsafe_b64decode(raw_b64).decode("utf-8", errors="ignore")
+                                        if "http" in decoded:
+                                            h = decoded
+                                except Exception:
+                                    pass
+                            if "linkedin.com/in/" in h:
+                                href = h
+                                break
+                            elif "http" in h and not href:
+                                href = h
+                        if text_val and href:
+                            results.append({"text": text_val, "link": href})
+                            if len(results) >= max_results:
+                                break
+                    except Exception:
+                        pass
+        except Exception as e:
+            logger.debug("[SEARCH_XRAY] HTTP dork fallback note: %s", e)
         return results
 
     def harvest_company(

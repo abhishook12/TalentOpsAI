@@ -577,6 +577,9 @@ class RecruiterStore:
         meaningful_tokens = [t for t in raw_tokens if t not in stop_words]
         tokens = meaningful_tokens if meaningful_tokens else raw_tokens
 
+        clean_q_safe = clean_q
+        q_lower_safe = (query or "").lower().strip().replace("'", "''")
+
         if state and state.upper() != "ALL":
             where = ["state_upper = ?"]
             params = [state.upper()]
@@ -590,19 +593,22 @@ class RecruiterStore:
                         token_conds.append("(LOWER(cs.company_key) LIKE ? OR LOWER(COALESCE(co.dominant_domain, '')) LIKE ?)")
                         params.extend([f"%{t}%", f"%{t}%"])
                     
-                    fuzzy_sql = f"""(
-                        ({' AND '.join(token_conds)})
-                        OR LOWER(REPLACE(REPLACE(cs.company_key, ' ', ''), '-', '')) LIKE '%{clean_q}%'
-                        OR LOWER(REPLACE(REPLACE(COALESCE(co.dominant_domain, ''), ' ', ''), '-', '')) LIKE '%{clean_q}%'
-                        OR jaro_winkler_similarity(LOWER(REPLACE(REPLACE(cs.company_key, ' ', ''), '-', '')), '{clean_q}') > 0.80
-                        OR jaro_winkler_similarity(LOWER(REPLACE(REPLACE(COALESCE(co.dominant_domain, ''), ' ', ''), '-', '')), '{clean_q}') > 0.80
-                    )"""
-                    sub_conds.append(fuzzy_sql)
+                    match_parts = []
+                    if token_conds:
+                        match_parts.append(f"({' AND '.join(token_conds)})")
+                    if clean_q:
+                        match_parts.append(f"LOWER(REPLACE(REPLACE(cs.company_key, ' ', ''), '-', '')) LIKE '%{clean_q_safe}%'")
+                        match_parts.append(f"LOWER(REPLACE(REPLACE(COALESCE(co.dominant_domain, ''), ' ', ''), '-', '')) LIKE '%{clean_q_safe}%'")
+                        if len(clean_q) >= 4:
+                            match_parts.append(f"jaro_winkler_similarity(LOWER(REPLACE(REPLACE(cs.company_key, ' ', ''), '-', '')), '{clean_q_safe}') > 0.82")
+                    sub_conds.append(f"({' OR '.join(match_parts)})")
                     order_by = f"""
-                        GREATEST(
-                            jaro_winkler_similarity(LOWER(REPLACE(REPLACE(cs.company_key, ' ', ''), '-', '')), '{clean_q}'),
-                            jaro_winkler_similarity(LOWER(REPLACE(REPLACE(COALESCE(co.dominant_domain, ''), ' ', ''), '-', '')), '{clean_q}')
-                        ) DESC,
+                        CASE
+                            WHEN LOWER(cs.company_key) = '{q_lower_safe}' THEN 300
+                            WHEN LOWER(cs.company_key) LIKE '{q_lower_safe}%' THEN 200
+                            WHEN LOWER(COALESCE(co.dominant_domain, '')) LIKE '{clean_q_safe}%' THEN 150
+                            ELSE 0
+                        END DESC,
                         recruiter_count DESC,
                         cs.company_key ASC
                     """
@@ -637,19 +643,22 @@ class RecruiterStore:
                         token_conds.append("(LOWER(company_key) LIKE ? OR LOWER(COALESCE(dominant_domain, '')) LIKE ?)")
                         params.extend([f"%{t}%", f"%{t}%"])
                     
-                    fuzzy_sql = f"""(
-                        ({' AND '.join(token_conds)})
-                        OR LOWER(REPLACE(REPLACE(company_key, ' ', ''), '-', '')) LIKE '%{clean_q}%'
-                        OR LOWER(REPLACE(REPLACE(COALESCE(dominant_domain, ''), ' ', ''), '-', '')) LIKE '%{clean_q}%'
-                        OR jaro_winkler_similarity(LOWER(REPLACE(REPLACE(company_key, ' ', ''), '-', '')), '{clean_q}') > 0.80
-                        OR jaro_winkler_similarity(LOWER(REPLACE(REPLACE(COALESCE(dominant_domain, ''), ' ', ''), '-', '')), '{clean_q}') > 0.80
-                    )"""
-                    sub_conds.append(fuzzy_sql)
+                    match_parts = []
+                    if token_conds:
+                        match_parts.append(f"({' AND '.join(token_conds)})")
+                    if clean_q:
+                        match_parts.append(f"LOWER(REPLACE(REPLACE(company_key, ' ', ''), '-', '')) LIKE '%{clean_q_safe}%'")
+                        match_parts.append(f"LOWER(REPLACE(REPLACE(COALESCE(dominant_domain, ''), ' ', ''), '-', '')) LIKE '%{clean_q_safe}%'")
+                        if len(clean_q) >= 4:
+                            match_parts.append(f"jaro_winkler_similarity(LOWER(REPLACE(REPLACE(company_key, ' ', ''), '-', '')), '{clean_q_safe}') > 0.82")
+                    sub_conds.append(f"({' OR '.join(match_parts)})")
                     order_by = f"""
-                        GREATEST(
-                            jaro_winkler_similarity(LOWER(REPLACE(REPLACE(company_key, ' ', ''), '-', '')), '{clean_q}'),
-                            jaro_winkler_similarity(LOWER(REPLACE(REPLACE(COALESCE(dominant_domain, ''), ' ', ''), '-', '')), '{clean_q}')
-                        ) DESC,
+                        CASE
+                            WHEN LOWER(company_key) = '{q_lower_safe}' THEN 300
+                            WHEN LOWER(company_key) LIKE '{q_lower_safe}%' THEN 200
+                            WHEN LOWER(COALESCE(dominant_domain, '')) LIKE '{clean_q_safe}%' THEN 150
+                            ELSE 0
+                        END DESC,
                         recruiter_count DESC,
                         company_key ASC
                     """

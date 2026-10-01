@@ -473,6 +473,12 @@ def search_recruiters(
     sen_str = seniority_level if isinstance(seniority_level, str) and seniority_level.strip() else None
     lim_int = limit if isinstance(limit, int) else 50
 
+    data_version = recruiter_store.data_version
+    cache_key = f"rec_search_{data_version}_{q}_{comp_str or ''}_{loc_str or ''}_{spec_str or ''}_{sen_str or ''}_{lim_int}"
+    cached = analytics_cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     from sqlalchemy import or_
 
     results = []
@@ -796,6 +802,7 @@ def search_recruiters(
         except Exception:
             pass
 
+    analytics_cache.set(cache_key, final_results, ttl=180)
     return final_results
 
 from sqlalchemy.orm import load_only
@@ -844,7 +851,7 @@ def get_recruiters(
 ):
     # Cache ALL recruiter list queries aggressively
     data_version = recruiter_store.data_version
-    cache_key = f"rec_list_duckdb_{data_version}_{current_user.id}_{page}_{limit}_{search or ''}_{state or ''}_{metro_hub or ''}_{company_id or ''}_{company_key or ''}_{sort_by}_{sort_desc}_{needs_review}_{has_phone}_{is_active}_{is_deliverable}_{specialization_sector or ''}_{seniority_level or ''}_{timezone_code or ''}_{company_scale or ''}_{data_source or ''}"
+    cache_key = f"rec_list_duckdb_{data_version}_{page}_{limit}_{search or ''}_{state or ''}_{metro_hub or ''}_{company_id or ''}_{company_key or ''}_{sort_by}_{sort_desc}_{needs_review}_{has_phone}_{is_active}_{is_deliverable}_{specialization_sector or ''}_{seniority_level or ''}_{timezone_code or ''}_{company_scale or ''}_{data_source or ''}"
     cached = analytics_cache.get(cache_key)
     if cached is not None:
         return cached
@@ -888,7 +895,11 @@ def get_recruiters(
             if str(eff_company).isdigit():
                 pg_filters.append(Recruiter.company_id == int(eff_company))
             else:
-                matched_cids = [c[0] for c in db.query(Company.company_id).filter(Company.company_name.ilike(f"%{eff_company}%")).limit(50).all()]
+                c_key_cache = f"cids_by_name_{eff_company.lower().strip()}"
+                matched_cids = analytics_cache.get(c_key_cache)
+                if matched_cids is None:
+                    matched_cids = [c[0] for c in db.query(Company.company_id).filter(Company.company_name.ilike(f"%{eff_company}%")).limit(50).all()]
+                    analytics_cache.set(c_key_cache, matched_cids, ttl=600)
                 if matched_cids:
                     pg_filters.append(Recruiter.company_id.in_(matched_cids))
                 else:
@@ -1205,7 +1216,7 @@ def get_recruiters(
         "results": formatted_results,
         "items": formatted_results,
     }
-    cache_ttl = 60 if (page == 1 and not search) else 120
+    cache_ttl = 120 if (page == 1 and not search) else 180
     analytics_cache.set(cache_key, ret_data, ttl=cache_ttl)
     return ret_data
 

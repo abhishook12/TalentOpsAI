@@ -458,7 +458,7 @@ def company_states(
             if UNKNOWN_STATE_SENTINEL in state_map and state_map[UNKNOWN_STATE_SENTINEL] > 0:
                 result.append({"state": UNKNOWN_STATE_SENTINEL, "count": state_map[UNKNOWN_STATE_SENTINEL]})
 
-            analytics_cache.set(cache_key, result, ttl=60)
+            analytics_cache.set(cache_key, result, ttl=300)
             return result
     except Exception as e:
         logger.warning(f"DuckDB company-states failed: {e}")
@@ -488,7 +488,7 @@ def companies_search(
     # version in the cache key so Directory never mixes old company metadata
     # with the current recruiter file.
     data_version = recruiter_store.data_version
-    cache_key = f"companies_search_{data_version}_{current_user.id}_{q or ''}_{state or ''}_{min_recruiters}_{limit}_{skip}"
+    cache_key = f"companies_search_{data_version}_{q or ''}_{state or ''}_{min_recruiters}_{limit}_{skip}"
     cached = analytics_cache.get(cache_key)
     if cached is not None:
         response.headers["X-Total-Count"] = str(cached["total_count"])
@@ -536,10 +536,30 @@ def companies_search(
                 Recruiter.location.ilike(f"%{state}%")
             ))
         pg_counts = dict(db.query(Recruiter.company_id, sqlfunc.count(Recruiter.recruiter_id)).filter(*pg_query_filter).group_by(Recruiter.company_id).all())
+        
+        # Batch-fetch all missing companies in a single SQL query instead of N+1 sequential loop
+        missing_cids = [cid for cid, cnt in pg_counts.items() if str(cid) not in existing_keys and cnt > 0]
+        missing_comp_map = {}
+        if missing_cids:
+            uncached_missing = []
+            for cid in missing_cids:
+                cached_c = analytics_cache.get(f"comp_obj_{cid}")
+                if cached_c:
+                    missing_comp_map[cid] = cached_c
+                else:
+                    uncached_missing.append(cid)
+            if uncached_missing:
+                try:
+                    for c_obj in db.query(Company).filter(Company.company_id.in_(uncached_missing)).all():
+                        missing_comp_map[c_obj.company_id] = c_obj
+                        analytics_cache.set(f"comp_obj_{c_obj.company_id}", c_obj, ttl=600)
+                except Exception as ex_fetch:
+                    logger.warning("Error batch fetching missing companies: %s", ex_fetch)
+
         for cid, cnt in pg_counts.items():
             cid_str = str(cid)
             if cid_str not in existing_keys and cnt > 0:
-                c_obj = db.query(Company).filter(Company.company_id == cid).first()
+                c_obj = missing_comp_map.get(cid)
                 if c_obj and (c_obj.company_name or '').strip().lower() not in BOGUS_COMPANY_NAMES:
                     active_companies.insert(0, {
                         'company_key': cid_str,
@@ -583,15 +603,24 @@ def companies_search(
             
     metadata = {}
     if numeric_ids:
-        try:
-            for company in db.query(Company).filter(Company.company_id.in_(numeric_ids)).all():
-                metadata[str(company.company_id)] = company
-        except Exception as e:
-            logger.warning(f"Failed to fetch PostgreSQL metadata for companies: {e}")
+        uncached_num_ids = []
+        for nid in numeric_ids:
+            c_cached = analytics_cache.get(f"comp_obj_{nid}")
+            if c_cached:
+                metadata[str(nid)] = c_cached
+            else:
+                uncached_num_ids.append(nid)
+        if uncached_num_ids:
             try:
-                db.rollback()
-            except Exception:
-                pass
+                for company in db.query(Company).filter(Company.company_id.in_(uncached_num_ids)).all():
+                    metadata[str(company.company_id)] = company
+                    analytics_cache.set(f"comp_obj_{company.company_id}", company, ttl=600)
+            except Exception as e:
+                logger.warning(f"Failed to fetch PostgreSQL metadata for companies: {e}")
+                try:
+                    db.rollback()
+                except Exception:
+                    pass
 
     enriched_results = []
     for row in paginated_companies:
@@ -648,7 +677,7 @@ def companies_search(
         })
     
     final_result = {"total_count": total_count, "rows": enriched_results}
-    analytics_cache.set(cache_key, final_result, ttl=60)
+    analytics_cache.set(cache_key, final_result, ttl=300)
     response.headers["X-Total-Count"] = str(total_count)
     return enriched_results
 

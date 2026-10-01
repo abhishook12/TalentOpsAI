@@ -44,7 +44,7 @@ class LinkedInParser(BasePlatformParser):
 
         if "/jobs/" in u or "about the job" in text_low or "job details" in text_low:
             return "JOB_POSTING"
-        if "/company/" in u or "/school/" in u:
+        if "/company/" in u or "/school/" in u or ": people" in t or ": overview" in t or ": about" in t or ": jobs" in t or ": life" in t:
             return "COMPANY_PAGE"
         if "/messaging/" in u or "- messaging" in t:
             return "MESSAGING_THREAD"
@@ -140,6 +140,15 @@ class LinkedInParser(BasePlatformParser):
 
         if not name:
             return None
+
+        # Hard Invariant: A person's job title cannot be identical to their own name
+        if title and name and title.strip().lower() == name.strip().lower():
+            title = None
+
+        # Hard Invariant: A candidate's employer cannot be LinkedIn or a job platform
+        from scout_desktop.extractor.patterns import PLATFORM_NAMES
+        if company and company.strip().lower() in PLATFORM_NAMES:
+            company = None
 
         return {
             "recruiter_name": name,

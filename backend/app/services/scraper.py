@@ -102,6 +102,15 @@ def is_human_name(name: str, company_name: str = "", existing_email: str = "") -
 
     if lower_name in ('unknown', 'no answer', 'n/a', 'na'):
         return False
+
+    # Reject email greetings, email sign-offs, email action verbs, and web navigation prefixes
+    if lower_name.startswith((
+        'hi ', 'hello ', 'dear ', 'hey ', 'greetings ', 'good morning ', 'good afternoon ',
+        'thanks ', 'thank you', 'regards ', 'best regards', 'warm regards', 'kind regards',
+        'with regards', 'sincerely', 'cheers', 'delete ', 'archive ', 'sent ', 'flagged ',
+        'unread ', 'distance from', 'directions to', 'date added', 'tell me '
+    )):
+        return False
         
     parts = lower_name.replace('.', ' ').split()
     
@@ -135,7 +144,12 @@ def is_human_name(name: str, company_name: str = "", existing_email: str = "") -
         'data', 'cloud', 'centers', 'applied', 'logistics', 'manufacturing',
         'blog', 'impact', 'functions', 'expense', 'approval', 'energy',
         'policies', 'policy', 'internal', 'connect', 'thought', 'newsroom',
-        'resume', 'guidelines', 'statement', 'overview', 'mission', 'vision'
+        'resume', 'guidelines', 'statement', 'overview', 'mission', 'vision',
+        # Email boilerplate, sign-offs, greetings, and UI action noise
+        'thanks', 'regards', 'sincerely', 'cheers', 'thank', 'delete', 'archive',
+        'sent', 'items', 'flagged', 'unread', 'subject', 'drafts', 'trash', 'junk',
+        'folder', 'folders', 'distance', 'directions', 'transit', 'added', 'posted',
+        'urgently', 'urgent', 'tell', 'tellme', 'hi', 'hello', 'dear', 'hey'
     }
     if any(p in strict_roles for p in parts):
         return False

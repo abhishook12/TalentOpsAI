@@ -467,8 +467,8 @@ def validate_human_name(raw_name: Optional[str]) -> Tuple[bool, Optional[str], O
     name = re.sub(r'\b\d+(?:st|nd|rd|th)\b', '', name, flags=re.IGNORECASE)
     # Clean mashed ordinal suffixes attached to words (e.g. "2ndManaging" -> "Managing", "1stEngineer" -> "Engineer")
     name = re.sub(r'\b\d+(?:st|nd|rd|th)\s*([A-Z])', r' \1', name, flags=re.IGNORECASE)
-    name = re.sub(r'\((?:he\/him|she\/her|they\/them|she\/they|he\/they|any)\)', '', name, flags=re.IGNORECASE)
-    name = re.sub(r'\b(?:MBA|SHRM-CP|SHRM-SCP|PHR|SPHR|PRC|CIR|CMVR|PMP|CPA|MD|JD|PhD|BSc|MSc|BA|BS|MA|MS)\b', '', name, flags=re.IGNORECASE)
+    name = re.sub(r'(?:,\s*|\s+)(?:MBA|SHRM-CP|SHRM-SCP|PHR|SPHR|PRC|CIR|CMVR|PMP|CPA|MD|JD|PhD|BSc|MSc|BA|BS|MA|MS)\b', '', name)
+    name = re.sub(r'\b(?:SHRM-CP|SHRM-SCP|PHR|SPHR|PMP|CPA|PhD)\b', '', name, flags=re.IGNORECASE)
     # Split on title/descriptor separators with spaces (e.g. "John Smith - Recruiter", "Jane Doe | AI")
     parts = re.split(r'\s+[-–—]\s+|[|,]', name)[0]
     cleaned = re.sub(r'[^\w\s\'.\-]', ' ', parts).strip()
@@ -508,9 +508,39 @@ def validate_human_name(raw_name: Optional[str]) -> Tuple[bool, Optional[str], O
         'message', 'messages', 'filter', 'filters', 'dialog', 'session', 'menu',
         'overview', 'people', 'reason', 'active window', 'active', 'window',
         'cto', 'ceo', 'cfo', 'coo', 'vp', 'hr', 'myridius', 'candidate card',
+        'thanks', 'regards', 'sincerely', 'cheers', 'thank', 'delete', 'archive',
+        'sent', 'items', 'flagged', 'unread', 'subject', 'drafts', 'trash', 'junk',
+        'folder', 'folders', 'distance', 'directions', 'transit', 'added', 'posted',
+        'urgently', 'urgent', 'tell', 'tellme',
     }
     if any(w in SYSTEM_NOISE_TOKENS for w in lower_words):
         return False, None, f"Name contains system or application noise ('{cleaned}')"
+
+    # Reject email greetings, email sign-offs, email action verbs, and web navigation prefixes
+    EMAIL_GREETING_PREFIXES = (
+        "hi ", "hello ", "dear ", "hey ", "greetings ", "good morning ", "good afternoon ", "good evening "
+    )
+    EMAIL_SIGNOFF_PREFIXES = (
+        "thanks ", "thank you", "regards ", "best regards", "warm regards", "kind regards",
+        "with regards", "sincerely", "cheers", "yours truly", "respectfully"
+    )
+    UI_ACTION_PREFIXES = (
+        "the ", "review ", "delete ", "archive ", "sent ", "flagged ", "unread ", "mark ",
+        "reply ", "forward ", "subject ", "re: ", "fw: ", "fwd: ", "date added", "job type",
+        "distance from", "directions to", "web results", "search results", "tell me "
+    )
+    if (
+        lower.startswith(EMAIL_GREETING_PREFIXES)
+        or lower.startswith(EMAIL_SIGNOFF_PREFIXES)
+        or lower.startswith(UI_ACTION_PREFIXES)
+    ):
+        return False, None, f"Name contains email greeting/signoff or UI action prefix ('{cleaned}')"
+
+    if any(lower == p or lower.startswith(p + " ") or lower.endswith(" " + p) for p in [
+        "thanks & regards", "thanks and regards", "delete archive", "sent items", "this week flagged",
+        "date added", "web results", "distance from", "tell me what you want to do"
+    ]):
+        return False, None, f"Name is an email sign-off or UI action phrase ('{cleaned}')"
 
     if lower in SECTION_HEADERS:
         return False, None, f"Name is a resume/profile section header ('{cleaned}')"
@@ -540,9 +570,12 @@ def validate_human_name(raw_name: Optional[str]) -> Tuple[bool, Optional[str], O
         return False, None, f"Name ends in corporate or agency designation ('{cleaned}')"
 
     # Allow single-letter middle initials in 3- or 4-word names (e.g. "David A. Sinclair", "Emily R. Thorne")
+    # or trailing surname initial in 2-word names (e.g. "Santhosh R", "Ritik S", "John D")
     for idx, w in enumerate(words):
         if len(w) < 2:
             if len(words) >= 3 and 0 < idx < len(words) - 1 and w.isupper():
+                continue
+            if len(words) >= 2 and idx == len(words) - 1 and w.isupper() and len(words[0]) >= 3:
                 continue
             return False, None, f"Name contains single-letter token ('{cleaned}')"
 
@@ -894,6 +927,17 @@ def evaluate_evidence_grounding(
             rejections.append(f"Employer company '{raw_company}' is a job platform name, not a real employer")
         if is_ui:
             rejections.append(f"Title '{raw_title}' is a UI action control")
+
+        # Hard Invariant: Candidate title cannot be identical to Person Name (circular self-attribution)
+        # e.g. "Zhou Dongping" -> Title: "Zhou Dongping"
+        if raw_name and raw_title and raw_name.strip().lower() == raw_title.strip().lower():
+            rejections.append(f"Candidate title '{raw_title}' is identical to person name (circular self-attribution)")
+
+        # Candidate title cannot be a person's name (e.g. "Md Tarik", "Wiley Farler" parsed as title)
+        if raw_title:
+            is_title_a_name, _, _ = validate_human_name(raw_title)
+            if is_title_a_name and not is_job_posting_title(raw_title):
+                rejections.append(f"Candidate title '{raw_title}' appears to be a person's name rather than a job title")
 
         # On Job Board search pages, ungrounded person creations are strictly rejected
         if page_type == 'JOB_SEARCH_PAGE' and (not is_valid_name or is_job_posting_title(raw_name)):

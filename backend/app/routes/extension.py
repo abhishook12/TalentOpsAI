@@ -47,7 +47,7 @@ from ..services.auth_service import (
     SECRET_KEY,
     ALGORITHM,
 )
-from ..utils.normalizer import normalize_text, extract_domain
+from ..utils.normalizer import normalize_text, extract_domain, validate_human_name
 
 logger = logging.getLogger("talentops.extension")
 router = APIRouter(prefix="/recruiters/extension", tags=["Extension"])
@@ -372,6 +372,13 @@ def ingest_extension_batch(
             s_canonical_url = contact.canonical_profile_url or contact.linkedin_url or (contact.source_url if contact.source_url and "linkedin.com/in/" in contact.source_url else None)
             if s_canonical_url:
                 s_canonical_url = s_canonical_url[:500]
+
+            # Early Noise Gate: Drop pure email boilerplate / UI actions / search query noise before staging
+            if s_name:
+                is_valid_name, _, name_rej = validate_human_name(s_name)
+                if not is_valid_name and name_rej and any(marker in name_rej.lower() for marker in ['email', 'ui action', 'system', 'section header', 'unnatural']):
+                    logger.debug("Dropping non-candidate noise element '%s': %s", s_name, name_rej)
+                    continue
 
             staging_record = DiscoveryStaging(
                 batch_id=batch_id,

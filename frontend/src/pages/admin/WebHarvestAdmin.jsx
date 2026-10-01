@@ -27,7 +27,7 @@ export default function WebHarvestAdmin() {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [filterStatus, setFilterStatus] = useState('ALL');
+  const [filterStatus, setFilterStatus] = useState('COMMITTED');
   const [searchTerm, setSearchTerm] = useState('');
 
   // Offline buffer state
@@ -170,6 +170,7 @@ export default function WebHarvestAdmin() {
       if (filterStatus === 'COMMITTED' && item.processing_status !== 'committed' && item.processing_status !== 'promoted') return false;
       if (filterStatus === 'PENDING' && item.processing_status !== 'pending') return false;
       if (filterStatus === 'REVIEW' && item.processing_status !== 'review') return false;
+      if (filterStatus === 'REJECTED' && item.processing_status !== 'rejected' && !(item.decision || '').toUpperCase().includes('REJECT')) return false;
     }
     if (searchTerm) {
       const q = searchTerm.toLowerCase();
@@ -871,7 +872,7 @@ export default function WebHarvestAdmin() {
 
             {/* Status Filter */}
             <div style={{ display: 'flex', gap: 4, background: 'var(--panel-bg)', padding: 3, borderRadius: 8, border: '1px solid var(--card-border)' }}>
-              {['ALL', 'COMMITTED', 'PENDING'].map((status) => (
+              {['COMMITTED', 'PENDING', 'REVIEW', 'REJECTED', 'ALL'].map((status) => (
                 <button
                   key={status}
                   onClick={() => setFilterStatus(status)}

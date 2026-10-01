@@ -76,6 +76,16 @@ UI_ACTIONS = re.compile(
     re.IGNORECASE,
 )
 
+PLATFORM_NAMES = frozenset({
+    'simplyhired', 'linkedin', 'indeed', 'glassdoor', 'ziprecruiter',
+    'monster', 'careerbuilder', 'dice', 'handshake', 'wellfound',
+    'angel', 'angellist', 'snagajob', 'lensa', 'jooble', 'adzuna',
+    'nexxt', 'upwork', 'fiverr', 'usajobs', 'linkup', 'greenhouse',
+    'lever', 'workday', 'icims', 'smartrecruiters', 'jobvite',
+    'bamboohr', 'ashby', 'breezy', 'recruitee', 'talentscout',
+    'talentops', 'bing', 'yahoo', 'duckduckgo', 'google'
+})
+
 PRONOUNS = re.compile(
     r"^(?:he/him|she/her|they/them|she/they|he/they)$",
     re.IGNORECASE,
@@ -477,6 +487,9 @@ def is_plausible_degree(text: Optional[str]) -> bool:
     t = text.strip()
     if len(t) < 2 or len(t) > 100:
         return False
+    # Multi-word names starting with Md. or Dr. (e.g. Md Tarik, Dr Watson) are people, not degree lines
+    if re.match(r"^(?:Md\.?|Dr\.?)\s+[A-Z][a-z]+", t):
+        return False
     return bool(DEGREE_KEYWORDS.search(t))
 
 
@@ -725,13 +738,26 @@ def clean_title_and_company(headline: Optional[str], raw_company: Optional[str] 
     # If best_title is still not found, check the first segment if plausible
     if not best_title and segments:
         first_t = clean_job_title(segments[0])
-        if first_t and not is_noise_text(first_t) and not is_valid_location(first_t):
+        if (
+            first_t
+            and not is_noise_text(first_t)
+            and not is_valid_location(first_t)
+            and not is_valid_person_name(first_t)
+            and is_plausible_title(first_t)
+        ):
             best_title = first_t
 
     if best_title:
         best_title = clean_job_title(best_title)
+        # Never allow a person's name or UI control to be returned as their job title
+        if is_valid_person_name(best_title) or not is_plausible_title(best_title):
+            best_title = None
+
     if best_company:
         best_company = clean_company_name(best_company)
+        # Never allow a job board or platform to be returned as an employer
+        if best_company and best_company.lower() in PLATFORM_NAMES:
+            best_company = None
 
     return best_title or None, best_company or None
 
@@ -787,6 +813,8 @@ def clean_company_name(comp: Optional[str]) -> Optional[str]:
     if len(cleaned) < 2:
         return None
     cleaned_lower = cleaned.lower()
+    if cleaned_lower in PLATFORM_NAMES:
+        return None
     if cleaned_lower in BROWSER_CHROME_NOISE or cleaned_lower in QUALIFICATION_AND_REQUIREMENT_WORDS:
         return None
     if re.match(r"^(?:all|every|other|another|any)\s+(?:bookmarks?|tabs?|windows?|files?|profiles?|candidates?|pages?|apps?|tools?|items?|results?|shortcuts?|folders?)$", cleaned_lower):
@@ -844,6 +872,8 @@ def is_valid_company_name(text: Optional[str]) -> bool:
         return False
 
     t_lower = t.lower()
+    if t_lower in PLATFORM_NAMES:
+        return False
 
     # 1. Reject disallowed special characters that never belong in corporate entity names
     disallowed_chars = set(r"{}\|<>+*~`^$%;?")
@@ -1324,8 +1354,30 @@ def is_valid_person_name(text: Optional[str]) -> bool:
     if any(re.search(rf"\b{re.escape(d)}\b", t, re.IGNORECASE) for d in EXPANDED_CORP_DESIGNATORS):
         return False
 
-    # Reject names that start with article 'The ' or UI action 'Review '
-    if t_lower.startswith("the ") or t_lower.startswith("review "):
+    # Reject email greetings, email sign-offs, email action verbs, and web navigation prefixes
+    EMAIL_GREETING_PREFIXES = (
+        "hi ", "hello ", "dear ", "hey ", "greetings ", "good morning ", "good afternoon ", "good evening "
+    )
+    EMAIL_SIGNOFF_PREFIXES = (
+        "thanks ", "thank you", "regards ", "best regards", "warm regards", "kind regards",
+        "with regards", "sincerely", "cheers", "yours truly", "respectfully"
+    )
+    UI_ACTION_PREFIXES = (
+        "the ", "review ", "delete ", "archive ", "sent ", "flagged ", "unread ", "mark ",
+        "reply ", "forward ", "subject ", "re: ", "fw: ", "fwd: ", "date added", "job type",
+        "distance from", "directions to", "web results", "search results", "tell me "
+    )
+    if (
+        t_lower.startswith(EMAIL_GREETING_PREFIXES)
+        or t_lower.startswith(EMAIL_SIGNOFF_PREFIXES)
+        or t_lower.startswith(UI_ACTION_PREFIXES)
+    ):
+        return False
+
+    if any(t_lower == p or t_lower.startswith(p + " ") or t_lower.endswith(" " + p) for p in [
+        "thanks & regards", "thanks and regards", "delete archive", "sent items", "this week flagged",
+        "date added", "web results", "distance from", "tell me what you want to do"
+    ]):
         return False
 
     # Reject names that end in corporate / agency designations (e.g. "Daley Ard Associates", "The Davis Companies")
@@ -1350,9 +1402,12 @@ def is_valid_person_name(text: Optional[str]) -> bool:
         return False
 
     # Allow single-letter middle initials in 3- or 4-word names (e.g. "John F. Kennedy", "David A. Sinclair")
+    # or trailing surname initial (e.g. "Santhosh R", "Ritik S", "John D")
     for idx, w in enumerate(clean_words):
         if len(w) < 2:
             if len(clean_words) >= 3 and 0 < idx < len(clean_words) - 1 and w.isupper():
+                continue
+            if len(clean_words) >= 2 and idx == len(clean_words) - 1 and w.isupper() and len(clean_words[0]) >= 3:
                 continue
             return False
 
@@ -1405,6 +1460,18 @@ def is_valid_person_name(text: Optional[str]) -> bool:
     # Check for non-name title/role/section/system/document words
     lower_words = [w.lower() for w in clean_words]
     blacklisted = {
+        # Email Greetings & Sign-offs
+        "hi", "hello", "dear", "hey", "greetings", "thanks", "regards",
+        "sincerely", "cheers", "thank",
+        # Email & Outlook UI Elements
+        "delete", "archive", "deleted", "archived", "sent", "items", "flagged", "unread", "read",
+        "subject", "drafts", "trash", "junk", "folder", "folders", "categories", "category",
+        "reply", "forward", "respond", "cc", "bcc", "attachment", "attachments",
+        # Web Search, Maps & Navigation Artifacts
+        "distance", "directions", "transit", "subway", "walk", "miles", "km",
+        "maps", "map", "route", "routes",
+        # Job Board Sorting & Column Controls
+        "added", "posted", "urgently", "estimate", "estimated",
         # Navigation & UI
         "experience", "education", "skills", "about", "activity", "interests",
         "recommendations", "people", "results", "search", "connections", "followers",

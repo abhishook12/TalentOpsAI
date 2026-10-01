@@ -391,6 +391,7 @@ def trigger_offline_buffer_flush(
 def get_web_harvest_reports(
     limit: int = Query(50, ge=1, le=200),
     source: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_from_request),
 ) -> Dict[str, Any]:
@@ -398,12 +399,43 @@ def get_web_harvest_reports(
     Returns granular forensic reports of all profiles and companies discovered
     by autonomous background crawlers and multi-source pipelines.
     Includes exact source URLs, extraction confidence, and database commit status.
+    By default, isolates server-side web harvest discoveries and excludes desktop screen captures.
     """
     from ..models.staging_models import DiscoveryStaging
     query = db.query(DiscoveryStaging)
-    if source and source.upper() != "ALL":
+
+    if source and source.upper() == "ALL":
+        # Explicit request for all sources including visual desktop captures
+        pass
+    elif source:
         query = query.filter(DiscoveryStaging.extraction_source.ilike(f"%{source}%"))
-    
+    else:
+        # Default: Show server-side web harvest crawler pipelines; exclude local visual desktop OCR captures
+        query = query.filter(
+            ~DiscoveryStaging.extraction_source.in_(["visual_dom_fusion", "desktop_ocr", "desktop_scout"])
+        )
+
+    if status and status.upper() != "ALL":
+        st = status.upper()
+        if st in ("COMMITTED", "PROMOTED"):
+            query = query.filter(
+                (DiscoveryStaging.processing_status.in_(["committed", "promoted", "COMMITTED", "PROMOTED"])) |
+                (DiscoveryStaging.decision.in_(["ACCEPT", "COMMIT", "COMMITTED", "PROMOTED"]))
+            )
+        elif st in ("REJECTED", "REJECT"):
+            query = query.filter(
+                (DiscoveryStaging.processing_status.in_(["rejected", "REJECTED"])) |
+                (DiscoveryStaging.decision.ilike("%REJECT%"))
+            )
+        elif st in ("REVIEW",):
+            query = query.filter(
+                DiscoveryStaging.processing_status.in_(["review", "REVIEW"])
+            )
+        elif st in ("PENDING",):
+            query = query.filter(
+                DiscoveryStaging.processing_status.in_(["pending", "PENDING"])
+            )
+
     records = query.order_by(DiscoveryStaging.id.desc()).limit(limit).all()
     
     reports = []

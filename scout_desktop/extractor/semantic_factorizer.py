@@ -449,6 +449,16 @@ class SemanticFactorizer:
             window_title=window_title,
         )
 
+        # Hard Invariant: A person's job title cannot be identical to their own name!
+        if cur_title and candidate_name and cur_title.strip().lower() == candidate_name.strip().lower():
+            cur_title = None
+        if prev_title and candidate_name and prev_title.strip().lower() == candidate_name.strip().lower():
+            prev_title = None
+
+        # Hard Invariant: Employer company cannot be identical to candidate name!
+        if cur_comp and candidate_name and cur_comp.strip().lower() == candidate_name.strip().lower():
+            cur_comp = None
+
         # Semantic Title Canonicalization & Seniority Classification
         title_intel = None
         if cur_title:
@@ -720,6 +730,12 @@ class SemanticFactorizer:
                     ):
                         prev_comp = None
                         prev_title = None
+
+        from scout_desktop.extractor.patterns import PLATFORM_NAMES
+        if cur_comp and cur_comp.strip().lower() in PLATFORM_NAMES:
+            cur_comp = None
+        if prev_comp and prev_comp.strip().lower() in PLATFORM_NAMES:
+            prev_comp = None
 
         return cur_title, cur_comp, prev_title, prev_comp, exp_history
 

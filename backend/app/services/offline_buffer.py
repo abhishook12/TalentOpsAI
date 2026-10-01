@@ -765,10 +765,32 @@ class OfflineHarvestBuffer:
 
     # ── Main Watchdog Loop ────────────────────────────────────────────────────
 
+    def _direct_render_flush(self):
+        """When running directly on Render, flush pending SQLite records directly to Postgres without HTTP probing."""
+        try:
+            pending = self.get_pending_count()
+            if pending > 0:
+                logger.info("[SMART_BUFFER] Render direct flush: %d buffered profiles detected. Committing to DB...", pending)
+                self.flush_pending_to_production(throttle_ms=0.0)
+                logger.info("[SMART_BUFFER] Render direct flush complete.")
+        except Exception as e:
+            logger.debug("[SMART_BUFFER] Render direct flush note: %s", e)
+
     def start_watchdog(self):
         """Starts both the watchdog thread and the scheduled wakeup thread."""
         if self._running:
             return
+
+        is_render = bool(os.getenv("RENDER") or os.getenv("RENDER_SERVICE_ID"))
+        if is_render:
+            logger.info(
+                "[SMART_BUFFER] Running directly on Render cloud container — "
+                "deactivating external HTTP self-probing loop. Direct PostgreSQL access active."
+            )
+            self._render_online = True
+            threading.Thread(target=self._direct_render_flush, daemon=True, name="RenderDirectFlush").start()
+            return
+
         self._running = True
 
         # Main watchdog

@@ -148,19 +148,22 @@ class WebHarvestEngine:
         self.running = False
         self._loop_task = None
 
-        # Configuration
-        self.harvest_interval = int(os.getenv("WEB_HARVEST_INTERVAL", "60"))  # 60 seconds between cycles
-        self.batch_size = int(os.getenv("WEB_HARVEST_BATCH_SIZE", "3"))  # current dynamic batch size
-        self.min_batch_size = 3
-        self.max_batch_size = 7
+        # Configuration & Environment Adaptation
+        self.is_render = bool(os.getenv("RENDER") or os.getenv("RENDER_SERVICE_ID") or os.getenv("IS_PRODUCTION", "false").lower() == "true")
+        default_interval = "120" if self.is_render else "60"
+        self.harvest_interval = int(os.getenv("WEB_HARVEST_INTERVAL", default_interval))
+        self.batch_size = int(os.getenv("WEB_HARVEST_BATCH_SIZE", "2" if self.is_render else "3"))
+        self.min_batch_size = 2 if self.is_render else 3
+        self.max_batch_size = 4 if self.is_render else 7
         self.target_cycle_time = 40.0  # target duration buffer per cycle (seconds)
-        self.max_profiles_per_cycle = 50  # safety cap
+        self.max_profiles_per_cycle = 30 if self.is_render else 50  # safety cap
         self.cooldown_hours = 24  # don't re-scrape same domain within this window
-        self.request_delay = (0.5, 1.2)  # optimized delay range between requests (seconds)
+        self.request_delay = (0.8, 1.5) if self.is_render else (0.5, 1.2)  # optimized delay range between requests (seconds)
         self.request_timeout = 4.0  # tighter HTTP timeout per request
 
         # State tracking
         self._scraped_domains: Dict[str, datetime] = {}  # domain -> last_scraped_at
+        self._seed_cache: deque = deque(maxlen=200)
         self._ua_index = 0
 
         # Statistics
@@ -347,7 +350,7 @@ class WebHarvestEngine:
 
         # Phase 2: Parallel target auditing via ThreadPoolExecutor
         all_profiles = []
-        max_workers = min(len(valid_targets), 5)  # Scale up to 5 parallel workers with adaptive batch sizing
+        max_workers = min(len(valid_targets), 2 if self.is_render else 5)  # Constrained workers on Render 0.1 CPU
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             future_to_target = {
@@ -403,6 +406,8 @@ class WebHarvestEngine:
 
         self._log_action(f"Harvest cycle completed: audited {result['domains_scraped']} domains")
         logger.info('[WEB_HARVEST] Geo distribution: %s', quota_tracker.get_stats())
+        import gc
+        gc.collect()
         return result
 
     def _audit_single_target(self, target: Dict[str, Any], quota_tracker: GeoQuotaTracker = None) -> Dict[str, Any]:
@@ -486,84 +491,50 @@ class WebHarvestEngine:
             logger.debug("[WEBHARVEST] Registry seed integration note: %s", seed_err)
 
         try:
-            from .recruiter_store import PARQUET_FILE
-            if not os.path.exists(PARQUET_FILE):
-                logger.debug("[WEBHARVEST] Parquet file not found, skipping secondary seed generation.")
-                return targets
-
-            parquet_path = PARQUET_FILE.replace(os.sep, "/")
-            con = duckdb.connect(database=":memory:", read_only=False)
-
-            # Strategy 1: Find companies with few known contacts (high-value expansion targets)
-            # Extract corporate domains from existing email addresses (strictly excluding multi-email pipe strings)
-            query = f"""
-                SELECT
-                    LOWER(TRIM(SPLIT_PART(email, '@', 2))) as domain,
-                    ANY_VALUE(NULLIF(TRIM(CAST(company_id AS VARCHAR)), '')) as company_name,
-                    COUNT(*) as contact_count
-                FROM read_parquet('{parquet_path}')
-                WHERE email IS NOT NULL
-                    AND email NOT LIKE '%|%'
-                    AND email NOT LIKE '%/%'
-                    AND email NOT LIKE '%,%'
-                    AND email LIKE '%@%.%'
-                    AND email NOT LIKE '%@noemail.talentops%'
-                    AND email NOT LIKE '%@missing.local%'
-                    AND email NOT LIKE '%@example.com%'
-                    AND email NOT LIKE '%@invalid.local%'
-                    AND SPLIT_PART(email, '@', 2) NOT IN (
-                        'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com',
-                        'aol.com', 'icloud.com', 'mail.com', 'protonmail.com',
-                        'yandex.com', 'zoho.com', 'live.com', 'msn.com',
-                        'comcast.net', 'att.net', 'verizon.net', 'cox.net'
-                    )
-                GROUP BY LOWER(TRIM(SPLIT_PART(email, '@', 2)))
-                HAVING COUNT(*) BETWEEN 1 AND 3
-                ORDER BY RANDOM()
-                LIMIT {self.batch_size * 3}
-            """
-            rows = con.execute(query).fetchall()
-            con.close()
-
+            from .recruiter_store import recruiter_store
             from ..utils.normalizer import validate_human_name, BOGUS_COMPANIES
 
-            for row in rows:
-                domain, raw_comp, count = (row[0] or "").strip().lower(), row[1], row[2]
-                if domain and '.' in domain and len(domain) > 4:
-                    # Enforce strict domain format (no spaces, no pipes, valid TLD)
+            # Refill seed cache from pre-aggregated recruiter_store if low
+            if len(self._seed_cache) < (self.batch_size * 2):
+                fresh_domains = recruiter_store.get_expansion_domains(limit=50)
+                for dom, raw_comp, count in fresh_domains:
+                    domain = (dom or "").strip().lower()
+                    if not domain or '.' not in domain or len(domain) <= 4:
+                        continue
                     if not re.match(r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$", domain):
                         continue
-
-                    # Skip blocked domains
                     root_domain = '.'.join(domain.split('.')[-2:])
-                    if root_domain in BLOCKED_DOMAINS:
-                        continue
-                    if self._is_domain_on_cooldown(domain):
+                    if root_domain in BLOCKED_DOMAINS or self._is_domain_on_cooldown(domain):
                         continue
 
                     clean_company_name = None
                     if raw_comp and isinstance(raw_comp, str):
                         cand_name = raw_comp.strip()
-                        # Reject company names that contain emails or pipes
                         if "@" not in cand_name and "|" not in cand_name and "/" not in cand_name:
-                            # Reject if company name is actually an individual human name (e.g. "Yurena Garcia")
                             is_human, _, _ = validate_human_name(cand_name)
                             if not is_human and cand_name.lower() not in BOGUS_COMPANIES:
                                 clean_company_name = cand_name
 
                     if not clean_company_name:
-                        # Derive professional title from domain root (e.g. okeanos.vc -> Okeanos)
                         dom_root = domain.split('.')[0]
                         clean_company_name = re.sub(r"[^a-zA-Z0-9]", " ", dom_root).strip().title()
 
-                    targets.append({
+                    self._seed_cache.append({
                         "domain": domain,
                         "company_name": clean_company_name,
                         "existing_contacts": count,
                         "priority": "high" if count == 1 else "medium",
                     })
 
-            logger.debug("[WEBHARVEST] Generated %d seed targets from Parquet analysis.", len(targets))
+            # Pull up to batch_size * 3 seeds from cached pool
+            pulled = 0
+            while self._seed_cache and pulled < (self.batch_size * 3):
+                item = self._seed_cache.popleft()
+                if not self._is_domain_on_cooldown(item["domain"]):
+                    targets.append(item)
+                    pulled += 1
+
+            logger.debug("[WEBHARVEST] Extracted %d seed targets from cached recruiter intelligence.", len(targets))
 
         except Exception as e:
             logger.warning("[WEBHARVEST] Seed generation error: %s", e)
@@ -1194,20 +1165,12 @@ class WebHarvestEngine:
                 if existing:
                     return True
 
-            # Check 3: Email match in Parquet dataset
+            # Check 3: Email match in Parquet dataset via unified recruiter_store
             if email:
                 try:
-                    from .recruiter_store import PARQUET_FILE
-                    if os.path.exists(PARQUET_FILE):
-                        parquet_path = PARQUET_FILE.replace(os.sep, "/")
-                        con = duckdb.connect(database=":memory:", read_only=False)
-                        result = con.execute(f"""
-                            SELECT COUNT(*) FROM read_parquet('{parquet_path}')
-                            WHERE LOWER(email) = LOWER('{email.replace("'", "''")}')
-                        """).fetchone()
-                        con.close()
-                        if result and result[0] > 0:
-                            return True
+                    from .recruiter_store import recruiter_store
+                    if recruiter_store.has_email(email):
+                        return True
                 except Exception:
                     pass  # Parquet check is best-effort
 

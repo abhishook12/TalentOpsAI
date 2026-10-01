@@ -12,6 +12,7 @@ import sqlite3
 from typing import List, Dict, Any, Generator, Optional
 import pandas as pd
 import duckdb
+from .recruiter_store import safe_duckdb_connect
 
 logger = logging.getLogger("data_harvester")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -273,8 +274,9 @@ class DataHarvester:
 
     def _harvest_parquet(self, file_path: str) -> List[Dict[str, Any]]:
         """Reads Parquet file via DuckDB zero-copy or pandas with <= 15 columns."""
+        con = None
         try:
-            con = duckdb.connect()
+            con = safe_duckdb_connect(memory_limit="64MB", threads=1)
             df = con.execute(f"SELECT * FROM '{file_path}'").df()
             if not df.empty:
                 if len(df.columns) > 15:
@@ -291,6 +293,12 @@ class DataHarvester:
                     return self._standardize_dataframe(df, os.path.basename(file_path))
             except Exception as pe:
                 logger.debug(f"Parquet error on {file_path}: {pe}")
+        finally:
+            if con:
+                try:
+                    con.close()
+                except Exception:
+                    pass
         return []
 
     def _harvest_txt(self, file_path: str) -> List[Dict[str, Any]]:

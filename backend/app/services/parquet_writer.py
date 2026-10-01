@@ -10,9 +10,9 @@ import pandas as pd
 from typing import List, Dict, Any
 
 try:
-    from app.services.recruiter_store import PARQUET_FILE, recruiter_store
+    from app.services.recruiter_store import PARQUET_FILE, recruiter_store, safe_duckdb_connect
 except ImportError:
-    from ..services.recruiter_store import PARQUET_FILE, recruiter_store
+    from ..services.recruiter_store import PARQUET_FILE, recruiter_store, safe_duckdb_connect
 
 logger = logging.getLogger("parquet_writer")
 
@@ -73,7 +73,7 @@ class ParquetWriter:
 
         with self._lock:
             start_time = time.time()
-            con = duckdb.connect()
+            con = safe_duckdb_connect(memory_limit="128MB", threads=1)
             
             schema_cols = self._get_parquet_schema(con)
             
@@ -141,7 +141,7 @@ class ParquetWriter:
             tmp_file = f"{PARQUET_FILE}.{os.getpid()}.update.tmp"
             
             try:
-                con = duckdb.connect()
+                con = safe_duckdb_connect(memory_limit="128MB", threads=1)
                 target_p = PARQUET_FILE.replace(os.sep, "/")
                 
                 # Fetch schema column names

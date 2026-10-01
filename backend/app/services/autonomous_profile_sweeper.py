@@ -43,7 +43,7 @@ from sqlalchemy.orm import Session
 
 from ..database import SessionLocal
 from ..models.models import Recruiter, Company, EnrichmentAudit
-from .recruiter_store import _get_duckdb, PARQUET_FILE, recruiter_store
+from .recruiter_store import _get_duckdb, safe_duckdb_connect, PARQUET_FILE, recruiter_store
 from .parquet_writer import parquet_writer
 from .email_intelligence_service import email_intelligence, FREE_EMAIL_DOMAINS
 from .zero_resource_enricher import zero_resource_enricher
@@ -667,8 +667,7 @@ class AutonomousProfileSweeper:
         4. Synchronizes affected PostgreSQL recruiter records.
         """
         t0 = time.time()
-        duck = _get_duckdb()
-        con = duck.connect()
+        con = safe_duckdb_connect(memory_limit="64MB", threads=1)
         
         target_file = PARQUET_FILE.replace(os.sep, "/")
         

@@ -10,9 +10,9 @@ import duckdb
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.database import SessionLocal
-from app.models.models import Company, Recruiter
+from app.models.models import Company
 from app.services.parquet_writer import ParquetWriter
-from app.services.recruiter_store import PARQUET_FILE
+from app.services.recruiter_store import PARQUET_FILE, safe_duckdb_connect
 from app.utils.normalizer import extract_domain
 
 logger = logging.getLogger("identity_engine")
@@ -74,7 +74,7 @@ class IdentityEngine:
         if not os.path.exists(PARQUET_FILE):
             return []
         try:
-            con = duckdb.connect()
+            con = safe_duckdb_connect(memory_limit="64MB", threads=1)
             # Extract email domains, count recruiters, order by count DESC
             query = f"""
                 SELECT 
@@ -148,7 +148,7 @@ class IdentityEngine:
             return
             
         try:
-            con = duckdb.connect()
+            con = safe_duckdb_connect(memory_limit="64MB", threads=1)
             # Fetch all recruiter_ids for these domains in one go
             domain_list = [d["domain"] for d in domain_updates]
             domain_to_id = {d["domain"]: d["company_id"] for d in domain_updates}

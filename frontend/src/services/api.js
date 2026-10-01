@@ -21,23 +21,50 @@ if (!import.meta.env.DEV) {
   fetch(pingUrl, { method: 'GET' }).catch(() => {})
 }
 
-// Keep backend warm while user has an active tab open (Render free-tier sleeps after 15m of inactivity)
+// Keep backend warm only while user is actively using or recently interacted with the site.
+// Render free-tier sleeps after 15m of inactivity. If user has been idle > 25 minutes,
+// let Render sleep naturally to preserve monthly instance hours.
 if (typeof window !== 'undefined' && !import.meta.env.DEV) {
   let lastWarmTime = 0
+  let lastUserActivity = Date.now()
+  const MAX_IDLE_TIME = 25 * 60 * 1000 // 25 minutes max idle
+
+  const recordActivity = () => {
+    lastUserActivity = Date.now()
+  }
+
+  window.addEventListener('mousemove', recordActivity, { passive: true })
+  window.addEventListener('keydown', recordActivity, { passive: true })
+  window.addEventListener('click', recordActivity, { passive: true })
+  window.addEventListener('scroll', recordActivity, { passive: true })
+  window.addEventListener('touchstart', recordActivity, { passive: true })
+
   const warmBackend = () => {
-    // Never ping if tab is hidden/minimized to save bandwidth
+    // Never ping if tab is hidden/minimized
     if (typeof document !== 'undefined' && document.hidden) return
     const now = Date.now()
-    if (now - lastWarmTime < 5 * 60 * 1000) return // Throttled: at most once every 5 minutes
+    // If user has been idle for > 25 minutes, do not ping; allow Render to rest
+    if (now - lastUserActivity > MAX_IDLE_TIME) return
+    // Throttle: at most once every 5 minutes
+    if (now - lastWarmTime < 5 * 60 * 1000) return
     lastWarmTime = now
     const pingUrl = API.startsWith('http') ? `${API}/ping` : `${API}/ping`
     fetch(pingUrl, { method: 'GET' }).catch(() => {})
   }
-  // 9 minutes interval keeps Render alive (sleeps at 15m) without wasting egress
-  setInterval(warmBackend, 9 * 60 * 1000)
-  window.addEventListener('focus', warmBackend)
+
+  // Check every 8 minutes
+  setInterval(warmBackend, 8 * 60 * 1000)
+
+  // When user returns and focuses the window or tab becomes visible, warm backend immediately
+  window.addEventListener('focus', () => {
+    recordActivity()
+    warmBackend()
+  })
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') warmBackend()
+    if (document.visibilityState === 'visible') {
+      recordActivity()
+      warmBackend()
+    }
   })
 }
 
@@ -131,6 +158,7 @@ const isRetryableError = (error) => {
     || error?.code === 'ERR_NETWORK'
     || error?.code === 'ECONNABORTED'
     || error?.message?.includes('timeout')
+    || status === 429
     || status === 502
     || status === 503
     || status === 504
@@ -226,7 +254,10 @@ async function smartRequest(method, url, data, config = {}) {
         throw error
       }
       if (attempt < maxAttempts && isRetryableError(error)) {
-        await sleep(retryDelayMs)
+        const is429 = error?.response?.status === 429
+        const retryAfterSec = error?.response?.headers?.['retry-after']
+        const delay = is429 ? (retryAfterSec ? Math.min(parseInt(retryAfterSec, 10) * 1000, 5000) : 2500) : retryDelayMs
+        await sleep(delay)
         continue
       }
       

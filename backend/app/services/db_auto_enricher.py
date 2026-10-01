@@ -287,8 +287,7 @@ class DatabaseAutoEnricher:
         """
         try:
             from .parquet_writer import parquet_writer
-            from .recruiter_store import PARQUET_FILE, recruiter_store
-            import duckdb
+            from .recruiter_store import PARQUET_FILE, recruiter_store, safe_duckdb_connect
 
             promoted_recs = db.query(Recruiter).filter(
                 Recruiter.data_source.like("web_intelligence:%")
@@ -297,7 +296,7 @@ class DatabaseAutoEnricher:
             if not promoted_recs:
                 return 0
 
-            con = duckdb.connect()
+            con = safe_duckdb_connect(memory_limit="64MB", threads=1)
             p_path = PARQUET_FILE.replace("\\", "/")
             existing_emails = set()
             existing_ids = set()

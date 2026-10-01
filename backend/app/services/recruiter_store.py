@@ -102,6 +102,29 @@ def _get_duckdb():
     return _duckdb
 
 
+def safe_duckdb_connect(memory_limit: Optional[str] = None, threads: Optional[int] = None, read_only: bool = False):
+    """
+    Spawns a resource-constrained DuckDB connection to prevent Linux OOM exit 137
+    and CPU starvation in constrained environments (Render Free Tier 512MB RAM).
+    """
+    duckdb = _get_duckdb()
+    is_render = bool(os.getenv("RENDER") or os.getenv("RENDER_SERVICE_ID") or os.getenv("IS_PRODUCTION", "false").lower() == "true")
+    
+    if memory_limit is None:
+        memory_limit = "64MB" if is_render else "128MB"
+    if threads is None:
+        threads = 1 if is_render else 2
+
+    con = duckdb.connect(":memory:", read_only=read_only)
+    try:
+        con.execute(f"PRAGMA max_memory='{memory_limit}';")
+        con.execute(f"PRAGMA threads={threads};")
+        con.execute("PRAGMA preserve_insertion_order=false;")
+    except Exception as pragma_err:
+        logger.debug("safe_duckdb_connect PRAGMA note: %s", pragma_err)
+    return con
+
+
 def _parse_boolean_search(query: str, fields: Optional[List[str]] = None) -> Tuple[str, List[Any]]:
     """Parse boolean search expressions with AND, OR, NOT, parentheses, and quoted strings into DuckDB SQL."""
     if fields is None:
@@ -256,6 +279,7 @@ class RecruiterStore:
         self._record_count = 0
         self._last_load_time = None
         self._last_error = None
+        self._email_cache: Dict[str, bool] = {}
 
     def _ensure_loaded(self):
         """Load Parquet into DuckDB if not already loaded, or if local file changed."""
@@ -327,9 +351,14 @@ class RecruiterStore:
         start = time.time()
         self._conn = duckdb.connect(":memory:")
         
+        is_render = bool(os.getenv("RENDER") or os.getenv("RENDER_SERVICE_ID") or os.getenv("IS_PRODUCTION", "false").lower() == "true")
+        max_mem = os.getenv("DUCKDB_MAX_MEMORY", "128MB" if is_render else "256MB")
+        num_threads = int(os.getenv("DUCKDB_THREADS", "1" if is_render else "4"))
+
         try:
-            self._conn.execute("PRAGMA max_memory='256MB';")
-            self._conn.execute("PRAGMA threads=4;")
+            self._conn.execute(f"PRAGMA max_memory='{max_mem}';")
+            self._conn.execute(f"PRAGMA threads={num_threads};")
+            self._conn.execute("PRAGMA preserve_insertion_order=false;")
         except Exception:
             pass
 
@@ -443,6 +472,53 @@ class RecruiterStore:
             return domains_map.get(str(company_key).strip())
         return None
 
+    def has_email(self, email: str) -> bool:
+        """Fast, thread-safe, zero-allocation check whether an email exists in the recruiter dataset."""
+        if not email:
+            return False
+        clean = email.strip().lower()
+        cache = getattr(self, "_email_cache", None)
+        if cache is not None and clean in cache:
+            return cache[clean]
+
+        try:
+            self._ensure_loaded()
+            if not self._conn:
+                return False
+            res = self._conn.execute(
+                "SELECT 1 FROM recruiters WHERE LOWER(email) = ? LIMIT 1",
+                [clean]
+            ).fetchone()
+            found = res is not None
+            if cache is not None:
+                if len(cache) > 5000:
+                    cache.clear()
+                cache[clean] = found
+            return found
+        except Exception as e:
+            logger.debug("has_email lookup note: %s", e)
+            return False
+
+    def get_expansion_domains(self, limit: int = 50) -> List[Tuple[str, str, int]]:
+        """Fast query over pre-aggregated company_overall table to find corporate domains for targeted expansion."""
+        self._ensure_loaded()
+        if not self._conn:
+            return []
+        try:
+            query = """
+                SELECT dominant_domain, company_key, recruiter_count
+                FROM company_overall
+                WHERE dominant_domain IS NOT NULL
+                  AND recruiter_count BETWEEN 1 AND 5
+                ORDER BY RANDOM()
+                LIMIT ?
+            """
+            rows = self._conn.execute(query, [limit]).fetchall()
+            return [(str(r[0]), str(r[1]), int(r[2])) for r in rows if r[0]]
+        except Exception as e:
+            logger.debug("get_expansion_domains note: %s", e)
+            return []
+
     def reload(self):
         """Force reload from Parquet (e.g. after sync)."""
         with self._lock:
@@ -450,6 +526,7 @@ class RecruiterStore:
                 self._conn.close()
             self._conn = None
             self._loaded = False
+            self._email_cache = {}
         self._ensure_loaded()
 
     @property

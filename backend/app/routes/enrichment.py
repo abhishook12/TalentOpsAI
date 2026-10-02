@@ -463,6 +463,37 @@ def get_web_harvest_reports(
             logger.error("[WEBHARVEST] Self-healing schema migration failed: %s", retry_err)
             records = []
     
+    # ── Retroactive Entity Classification ────────────────────────────────
+    # Records without entity_type (legacy data) get classified on-the-fly.
+    # The classification is persisted back to the DB for future queries.
+    try:
+        from ..services.entity_classifier import entity_classifier as _ec
+        records_to_reclassify = [r for r in records if not getattr(r, 'entity_type', None)]
+        if records_to_reclassify:
+            for r in records_to_reclassify:
+                try:
+                    result = _ec.classify(
+                        raw_name=r.raw_name,
+                        raw_title=r.raw_title,
+                        raw_company=r.raw_company,
+                        raw_email=r.raw_email,
+                        raw_phone=r.raw_phone,
+                        source_url=r.source_url,
+                        source_page_title=getattr(r, 'source_page_title', None),
+                        extraction_source=getattr(r, 'extraction_source', None),
+                    )
+                    r.entity_type = result['entity_type']
+                    db.add(r)
+                except Exception:
+                    r.entity_type = 'PERSON'  # Safe fallback
+            try:
+                db.commit()
+                logger.info("[WEBHARVEST] Retroactively classified %d records", len(records_to_reclassify))
+            except Exception:
+                db.rollback()
+    except Exception as ec_err:
+        logger.debug("[WEBHARVEST] Entity classifier not available for retroactive classification: %s", ec_err)
+
     reports = []
     for r in records:
         meta = {}
@@ -526,6 +557,63 @@ async def trigger_web_harvest_cycle(
         "triggered_at": datetime.now(timezone.utc).isoformat()
     }
 
+
+@router.post("/reclassify-entities")
+def reclassify_all_entities(
+    batch_size: int = Query(500, ge=50, le=5000),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+) -> Dict[str, Any]:
+    """
+    Bulk retroactive entity reclassification.
+    Reclassifies ALL discovery_staging records using the new EntityTypeClassifier.
+    Fixes historically misclassified records (e.g. PERSON names labeled as COMPANY).
+    """
+    from ..models.staging_models import DiscoveryStaging
+    from ..services.entity_classifier import entity_classifier as _ec
+    
+    # Process in batches to avoid memory issues
+    offset = 0
+    total_reclassified = 0
+    type_counts = {}
+    
+    while True:
+        records = db.query(DiscoveryStaging).order_by(
+            DiscoveryStaging.id.asc()
+        ).offset(offset).limit(batch_size).all()
+        
+        if not records:
+            break
+        
+        for r in records:
+            try:
+                result = _ec.classify(
+                    raw_name=r.raw_name,
+                    raw_title=r.raw_title,
+                    raw_company=r.raw_company,
+                    raw_email=r.raw_email,
+                    raw_phone=r.raw_phone,
+                    source_url=r.source_url,
+                    source_page_title=getattr(r, 'source_page_title', None),
+                    extraction_source=getattr(r, 'extraction_source', None),
+                )
+                new_type = result['entity_type']
+                r.entity_type = new_type
+                db.add(r)
+                type_counts[new_type] = type_counts.get(new_type, 0) + 1
+                total_reclassified += 1
+            except Exception:
+                pass
+        
+        db.commit()
+        offset += batch_size
+    
+    return {
+        "success": True,
+        "total_reclassified": total_reclassified,
+        "entity_type_breakdown": type_counts,
+        "message": f"Reclassified {total_reclassified} records with new entity type classifier"
+    }
 
 # ── Multi-Source Web Intelligence & Staging Reconciliation Endpoints ─────────
 

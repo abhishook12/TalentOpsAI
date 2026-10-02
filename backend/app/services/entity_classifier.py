@@ -121,6 +121,23 @@ class EntityTypeClassifier:
                 'clean_name': clean_name,
             }
         
+        # ── CamelCase username recovery ──────────────────────────────
+        # LinkedIn feed names often appear as "LucasSilverott" / "JeffKobza"
+        # Try splitting CamelCase into separate words and re-validate
+        if len(name.split()) == 1 and len(name) >= 4 and name[0].isupper():
+            camel_parts = re.sub(r'([a-z])([A-Z])', r'\1 \2', name)
+            if len(camel_parts.split()) >= 2:
+                is_valid_cc, clean_cc, _ = validate_human_name(camel_parts)
+                if is_valid_cc:
+                    signals.append('camelcase_name_recovered')
+                    return {
+                        'entity_type': ENTITY_PERSON,
+                        'confidence': 0.75,
+                        'reason': f'CamelCase username recovered: {clean_cc}',
+                        'signals': signals,
+                        'clean_name': clean_cc,
+                    }
+        
         # Name failed human validation but didn't match any other type
         # Re-check if it's actually a company that wasn't caught
         from ..utils.normalizer import is_company_name
@@ -180,6 +197,17 @@ class EntityTypeClassifier:
             r'^(sign in|join now|log in|sign up|create account)',
             r'^(see all|show more|load more|view all|more results)',
             r'^(cookie|privacy|terms|disclaimer)',
+            # CTA / promotional / marketing noise
+            r'^(unlock|discover|explore|learn more|get started|try|start|find out|check out)\b.{5,}',
+            r'\b(insights? on|insights? about|insights? for|insights? into)\b',
+            r'^(sponsored|promoted|advertisement|ad)\b',
+            r'^(subscribe|follow us|join us|connect with us)',
+            r'^(trending|popular|recommended|suggested)\b',
+            r'^(premium|upgrade|pro plan|free trial)\b',
+            # Feed / activity noise
+            r'^(feed post|more groups|people also viewed|people you may know)',
+            r'^(liked by|commented on|shared by|posted by)\b',
+            r'^(add to|remove from|save to|bookmark)\b',
         ]
         for pat in NOISE_PATTERNS:
             if re.search(pat, name_lower):
@@ -191,6 +219,17 @@ class EntityTypeClassifier:
                     'signals': signals,
                 }
         
+        # Check for names that are too long to be a person or company (likely sentences/descriptions)
+        word_count = len(name.split())
+        if word_count >= 6:
+            signals.append('sentence_length_name')
+            return {
+                'entity_type': ENTITY_NOISE,
+                'confidence': 0.90,
+                'reason': f'Name is too long ({word_count} words), likely a description: {name}',
+                'signals': signals,
+            }
+
         # Check for URL / domain / search snippet noise
         if re.search(r'(?:https?://|www\.|httpswww|\.com/|\.org/|\.net/|\.io/|zhihu\.com|youtube\.com|instagram\.com|justanswer\.com|microsoft\.com|hindustantimes)', name_lower):
             signals.append('url_or_web_snippet_noise')

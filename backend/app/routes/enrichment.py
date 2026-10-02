@@ -436,7 +436,32 @@ def get_web_harvest_reports(
                 DiscoveryStaging.processing_status.in_(["pending", "PENDING"])
             )
 
-    records = query.order_by(DiscoveryStaging.id.desc()).limit(limit).all()
+    try:
+        records = query.order_by(DiscoveryStaging.id.desc()).limit(limit).all()
+    except Exception as q_err:
+        logger.warning("[WEBHARVEST] Reports query error: %s. Attempting self-healing schema migration...", q_err)
+        try:
+            db.rollback()
+            cols_to_heal = [
+                ("entity_type", "VARCHAR(30)"),
+                ("page_type", "VARCHAR(50)"),
+                ("canonical_profile_url", "VARCHAR(500)"),
+                ("field_confidence_json", "TEXT"),
+                ("evidence_json", "TEXT"),
+                ("geo_region", "VARCHAR(30)"),
+                ("geo_confidence", "FLOAT"),
+            ]
+            for col, col_type in cols_to_heal:
+                try:
+                    db.execute(text(f"ALTER TABLE discovery_staging ADD COLUMN IF NOT EXISTS {col} {col_type}"))
+                    db.commit()
+                except Exception:
+                    db.rollback()
+            records = query.order_by(DiscoveryStaging.id.desc()).limit(limit).all()
+        except Exception as retry_err:
+            db.rollback()
+            logger.error("[WEBHARVEST] Self-healing schema migration failed: %s", retry_err)
+            records = []
     
     reports = []
     for r in records:

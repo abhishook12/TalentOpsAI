@@ -24,7 +24,7 @@ from .config import (
 )
 from .routes import recruiters, companies, vendors, candidates, submissions, analytics, admin, auth, actions, updates, ai, campaigns, harvester, users, visitor_analytics, notifications, bridge, accounts, extension, staging
 from .database import get_db, engine, Base
-from .models import models, auth_models, staging_models, data_quality_models, extension_models, update_models, ai_models
+from .models import models, auth_models, staging_models, data_quality_models, extension_models, update_models, ai_models, knowledge_models
 from .create_indexes import create_performance_indexes
 
 
@@ -72,8 +72,31 @@ def _ensure_core_schema(db_engine):
             with db_engine.begin() as conn:
                 conn.execute(text("ALTER TABLE users ALTER COLUMN avatar_url TYPE TEXT;"))
         logger.info("Users table avatar_url schema verified as TEXT.")
+
+        if insp.has_table("discovery_staging"):
+            existing_cols = {col["name"] for col in insp.get_columns("discovery_staging")}
+            staging_cols = {
+                "entity_type": "VARCHAR(30)",
+                "page_type": "VARCHAR(50)",
+                "canonical_profile_url": "VARCHAR(500)",
+                "field_confidence_json": "TEXT",
+                "evidence_json": "TEXT",
+                "geo_region": "VARCHAR(30)",
+                "geo_confidence": "FLOAT",
+            }
+            with db_engine.begin() as conn:
+                for col, col_type in staging_cols.items():
+                    if col not in existing_cols:
+                        conn.execute(text(f"ALTER TABLE discovery_staging ADD COLUMN IF NOT EXISTS {col} {col_type}"))
+            logger.info("discovery_staging column schema verified.")
     except Exception as e:
         logger.warning("Core database table initialization warning: %s", e)
+
+# Unconditionally guarantee core schema consistency across SQLite & PostgreSQL
+try:
+    _ensure_core_schema(engine)
+except Exception as _schema_err:
+    logger.warning("Initial core schema verification warning: %s", _schema_err)
 
 
 RUN_STARTUP_MIGRATIONS = os.getenv("RUN_STARTUP_MIGRATIONS", "false").lower() in ("1", "true", "yes")

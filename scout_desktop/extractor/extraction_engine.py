@@ -78,6 +78,7 @@ class CanonicalCandidate:
     def to_staged_dict(self) -> Dict[str, Any]:
         """Serializes candidate for SQLite queue and backend synchronization."""
         return {
+            "entity_type": getattr(self.raw_cluster, "entity_type", "PERSON") if self.raw_cluster else "PERSON",
             "recruiter_name": self.canonical_name,
             "raw_name": self.canonical_name,
             "title": self.current_title,

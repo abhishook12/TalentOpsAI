@@ -35,7 +35,7 @@ from .scout_data import (
     ACTIVITY_FEED_SUBTITLE, ACTIVITY_FOOTNOTE, SETTINGS_SUBTITLE
 )
 from .components import (
-    Card, PageHead, StateChip, ConfidenceMeter, ToggleSwitch,
+    Card, PageHead, StateChip, EntityTypeChip, ConfidenceMeter, ToggleSwitch,
     COLOR_BG_BASE, COLOR_RAIL, COLOR_SURFACE, COLOR_SURFACE_CARD, COLOR_SURFACE_HOVER,
     COLOR_SURFACE_ACTIVE, COLOR_SURFACE_BORDER, COLOR_SURFACE_BORDER_LIGHT,
     COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_TEXT_MUTED,
@@ -595,6 +595,8 @@ class ScanPage(QWidget):
         top_latest.addWidget(self.lbl_l_title)
         top_latest.addStretch()
 
+        self.chip_entity_type = EntityTypeChip("PERSON")
+        top_latest.addWidget(self.chip_entity_type)
         self.chip_latest = StateChip("CANONICAL")
         top_latest.addWidget(self.chip_latest)
         latest_layout.addLayout(top_latest)
@@ -984,6 +986,7 @@ class ScanPage(QWidget):
         confidence: int = 95,
         profile_url: str = "",
         field_confidence: Optional[Dict[str, float]] = None,
+        entity_type: str = "PERSON",
     ):
         from scout_desktop.extractor.patterns import clean_job_title, clean_company_name, clean_location_text
         self._current_candidate_id = cand_id
@@ -999,15 +1002,27 @@ class ScanPage(QWidget):
         
         st_clean = (status or "CANONICAL").upper()
         self.chip_latest.set_state(st_clean)
+        if hasattr(self, "chip_entity_type"):
+            self.chip_entity_type.set_entity_type(entity_type)
+
         if hasattr(self, "lbl_l_title"):
-            if st_clean == "REVIEW_REQUIRED":
+            if entity_type == "COMPANY":
+                self.lbl_l_title.setText("LATEST COMPANY ENTITY")
+            elif entity_type == "JOB_POSTING":
+                self.lbl_l_title.setText("LATEST JOB POSTING")
+            elif st_clean == "REVIEW_REQUIRED":
                 self.lbl_l_title.setText("CANDIDATE UNDER REVIEW")
             elif st_clean in ("IN DATABASE", "VERIFIED", "CANONICAL"):
                 self.lbl_l_title.setText("LATEST VERIFIED ENTITY")
             else:
                 self.lbl_l_title.setText("LATEST CANDIDATE")
 
-        initials = "".join([p[0].upper() for p in name.split()[:2] if p]) or "??"
+        if entity_type == "COMPANY":
+            initials = "".join([p[0].upper() for p in (company or name).split()[:2] if p]) or "🏢"
+        elif entity_type == "JOB_POSTING":
+            initials = "💼"
+        else:
+            initials = "".join([p[0].upper() for p in name.split()[:2] if p]) or "??"
         if hasattr(self, "lbl_avatar"):
             self.lbl_avatar.setText(initials)
         if hasattr(self, "lbl_conf_val"):
@@ -1202,7 +1217,7 @@ class CandidatesPage(QWidget):
 
         # Filter Pills
         self.pill_buttons = {}
-        for pill in ["All", "Canonical", "Hypothesis", "Review", "Rejected"]:
+        for pill in ["All", "People", "Companies", "Jobs", "Canonical", "Review", "Rejected"]:
             btn = QPushButton(pill)
             btn.setFont(QFont("Segoe UI", 8, QFont.Weight.Medium))
             btn.setFixedHeight(30)
@@ -1262,7 +1277,14 @@ class CandidatesPage(QWidget):
         # Filter candidates
         filtered_cands = []
         for cand in CANDIDATES:
-            if self.active_filter != "ALL" and cand["state"] != self.active_filter:
+            c_ent = (cand.get("entity_type") or "PERSON").upper()
+            if self.active_filter == "PEOPLE" and c_ent != "PERSON":
+                continue
+            elif self.active_filter == "COMPANIES" and c_ent != "COMPANY":
+                continue
+            elif self.active_filter == "JOBS" and c_ent not in ("JOB", "JOB_POSTING"):
+                continue
+            elif self.active_filter in ("CANONICAL", "HYPOTHESIS", "REVIEW", "REJECTED") and cand.get("state") != self.active_filter:
                 continue
             if self.search_term:
                 term = self.search_term.lower()
@@ -1343,6 +1365,9 @@ class CandidatesPage(QWidget):
 
         top_row.addLayout(name_col)
         top_row.addStretch()
+
+        ent_chip = EntityTypeChip(cand.get("entity_type", "PERSON"))
+        top_row.addWidget(ent_chip, alignment=Qt.AlignmentFlag.AlignTop)
 
         chip = StateChip(cand["state"])
         top_row.addWidget(chip, alignment=Qt.AlignmentFlag.AlignTop)
@@ -1522,6 +1547,9 @@ class CandidateRecordPage(QWidget):
 
         chip = StateChip(cand["state"])
         name_row.addWidget(chip)
+
+        ent_chip = EntityTypeChip(cand.get("entity_type", "PERSON"))
+        name_row.addWidget(ent_chip)
         name_row.addStretch()
         name_box.addLayout(name_row)
 

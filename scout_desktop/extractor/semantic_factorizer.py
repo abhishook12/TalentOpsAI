@@ -116,6 +116,7 @@ class FactorizedCandidate:
             meta["specialization_label"] = self.title_intel.get("specialization_label")
 
         return {
+            "entity_type": "PERSON",
             "recruiter_name": self.canonical_name,
             "raw_name": self.canonical_name,
             "title": self.current_title or "Professional",
@@ -314,6 +315,21 @@ class ProfileJudge:
                 confidence=0.90,
                 rejection_reason="Detected job description/posting layout",
                 signals_detected=["job_description_headers", "apply_buttons"],
+            )
+
+        # 2b. COMPANY PROFILE CLASSIFICATION
+        is_company_context = (
+            "/company/" in url_lower
+            or "/school/" in url_lower
+            or bool(re.search(r":\s*(?:Overview|About|Life|Jobs|Posts|Videos|Insights)\b", wt_lower))
+            or any(term in wt_lower for term in ["company profile", "about us", "leadership team"])
+        )
+        if is_company_context and "/in/" not in url_lower and "/people" not in url_lower:
+            return JudgmentResult(
+                category="COMPANY_PROFILE",
+                is_candidate_profile=True,
+                confidence=0.92,
+                signals_detected=["company_page_indicators"],
             )
 
         # 3. MULTI-CANDIDATE GRID / SEARCH LISTING

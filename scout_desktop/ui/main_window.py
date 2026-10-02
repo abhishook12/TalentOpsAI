@@ -647,12 +647,14 @@ class MainWindow(QMainWindow):
         display_title: str = "",
         display_company: str = "",
         display_loc: str = "",
+        entity_type: str = "PERSON",
         *args,
         **kwargs
     ):
         """Called by app.py when candidate is extracted or verified"""
         import re
         from scout_desktop.extractor.patterns import clean_job_title, clean_company_name
+        cand_entity_type = entity_type or kwargs.get("entity_type", "PERSON")
         raw_t = display_title or title or kwargs.get("current_title", "") or kwargs.get("raw_title", "")
         raw_c = display_company or company or kwargs.get("company_name", "") or kwargs.get("current_company", "") or kwargs.get("raw_company", "")
         cand_name = display_name or name or kwargs.get("canonical_name", "") or kwargs.get("recruiter_name", "") or kwargs.get("raw_name", "")
@@ -667,8 +669,14 @@ class MainWindow(QMainWindow):
         self.page_scan.lbl_cand_subtitle.setText(" · ".join(subtitle_parts) if subtitle_parts else "Professional Profile")
         self.page_scan.lbl_cand_loc.setText(f"📍 {cand_loc}" if cand_loc else "📍 Location not specified")
         self.page_scan.chip_latest.set_state(cand_status)
+        if hasattr(self.page_scan, "chip_entity_type"):
+            self.page_scan.chip_entity_type.set_entity_type(cand_entity_type)
         if hasattr(self.page_scan, "lbl_l_title"):
-            if cand_status == "REVIEW_REQUIRED":
+            if cand_entity_type == "COMPANY":
+                self.page_scan.lbl_l_title.setText("LATEST COMPANY ENTITY")
+            elif cand_entity_type == "JOB_POSTING":
+                self.page_scan.lbl_l_title.setText("LATEST JOB POSTING")
+            elif cand_status == "REVIEW_REQUIRED":
                 self.page_scan.lbl_l_title.setText("CANDIDATE UNDER REVIEW")
             elif cand_status in ("IN DATABASE", "VERIFIED", "CANONICAL"):
                 self.page_scan.lbl_l_title.setText("LATEST VERIFIED ENTITY")
@@ -678,7 +686,12 @@ class MainWindow(QMainWindow):
             self._latest_profile_url = p_url
 
         # Dynamic avatar initials
-        initials = "".join([p[0].upper() for p in cand_name.split()[:2] if p]) or "??"
+        if cand_entity_type == "COMPANY":
+            initials = "".join([p[0].upper() for p in (cand_company or cand_name).split()[:2] if p]) or "🏢"
+        elif cand_entity_type == "JOB_POSTING":
+            initials = "💼"
+        else:
+            initials = "".join([p[0].upper() for p in cand_name.split()[:2] if p]) or "??"
         if hasattr(self.page_scan, "lbl_avatar"):
             self.page_scan.lbl_avatar.setText(initials)
 
@@ -740,7 +753,8 @@ class MainWindow(QMainWindow):
                 raw_title=cand_title,
                 raw_company=cand_company,
                 raw_location=cand_loc,
-                created_at=kwargs.get("created_at")
+                created_at=kwargs.get("created_at"),
+                entity_type=cand_entity_type,
             )
 
     def _add_candidate_table_row(self, *args, **kwargs):
@@ -751,6 +765,7 @@ class MainWindow(QMainWindow):
             data = kwargs
 
         cid = data.get("id", f"cand-{len(CANDIDATES)+1}")
+        entity_type = data.get("entity_type") or kwargs.get("entity_type", "PERSON")
         name = data.get("name") or data.get("recruiter_name", "Unknown")
         initials = "".join([p[0].upper() for p in name.split()[:2]]) or "??"
         title = data.get("title") or data.get("raw_title", "Professional")
@@ -759,7 +774,7 @@ class MainWindow(QMainWindow):
         status = data.get("status", "CANONICAL").upper()
         raw_conf = data.get("confidence", 95)
         conf = int(raw_conf * 100 if raw_conf <= 1.0 else raw_conf)
-        source = f"{data.get('platform', 'Chrome')} · Person profile"
+        source = f"{data.get('platform', 'Chrome')} · {entity_type.capitalize()} profile"
 
         dt_str = time.strftime("%Y-%m-%d %H:%M:%S UTC")
         created_ts = data.get("created_at")
@@ -772,6 +787,7 @@ class MainWindow(QMainWindow):
 
         new_cand = {
             "id": cid,
+            "entity_type": entity_type,
             "initials": initials,
             "name": name,
             "title": title,
@@ -797,7 +813,7 @@ class MainWindow(QMainWindow):
             "checklist": [
                 {"title": "Platform allowlisted", "detail": "Active recruitment source", "passed": True},
                 {"title": "Window stability check", "detail": "Stable frame capture", "passed": True},
-                {"title": "Layout recognized", "detail": "Candidate profile card", "passed": True},
+                {"title": "Layout recognized", "detail": f"{entity_type.capitalize()} card", "passed": True},
                 {"title": "Confidence threshold", "detail": "Passed quality gate", "passed": True},
             ]
         }

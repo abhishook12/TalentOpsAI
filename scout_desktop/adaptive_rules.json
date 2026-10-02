@@ -11,5 +11,18 @@
     "created_at": 1790947077.5647209,
     "hit_count": 4,
     "last_hit_at": 1790947105.6233997
+  },
+  {
+    "rule_id": "reflex_LINKEDIN_2_1790951992",
+    "platform": "LINKEDIN",
+    "window_pattern": "Contract\\ Professionals,\\ Inc\\.:\\ People\\ \\|\\ LinkedIn",
+    "name_line_idx": 5,
+    "title_line_idx": 7,
+    "company_line_idx": null,
+    "name_sample": "April Allenwn",
+    "title_sample": "Administrative Assistant",
+    "created_at": 1790951992.8431292,
+    "hit_count": 1,
+    "last_hit_at": 1790951992.8431299
   }
 ]

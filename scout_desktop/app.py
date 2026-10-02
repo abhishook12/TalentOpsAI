@@ -217,7 +217,7 @@ class AppBridge(QObject):
     capture_view_updated = Signal(str, float, str, object, dict, str) # (capture_id, delta, reason, img, breakdown, status)
     extraction_proof_updated = Signal(list)       # (observations)
     db_proof_updated = Signal(str, dict, str)     # (status, response_dict, result_str)
-    candidate_card_updated = Signal(str, str, str, str, str, str, object, str, int, object, object) # (name, title, company, location, status, desc, copilot_info, profile_url, confidence, checklist, field_confidence)
+    candidate_card_updated = Signal(str, str, str, str, str, str, object, str, int, object, object, str) # (name, title, company, location, status, desc, copilot_info, profile_url, confidence, checklist, field_confidence, entity_type)
 
 
 class ScoutDesktopApp:
@@ -371,6 +371,7 @@ class ScoutDesktopApp:
                     status=cand["status"],
                     profile_url=cand.get("profile_url"),
                     confidence=cand.get("confidence", 95),
+                    entity_type=cand.get("entity_type", "PERSON"),
                 )
 
             # Set the latest candidate on the hero card and candidate record page
@@ -405,6 +406,7 @@ class ScoutDesktopApp:
                         confidence=latest.get("confidence", 85),
                         profile_url=latest.get("profile_url", ""),
                         field_confidence=fc,
+                        entity_type=latest.get("entity_type", "PERSON"),
                     )
                 elif hasattr(self.main_window.page_scan, "update_meters"):
                     self.main_window.page_scan._current_candidate_id = latest_id
@@ -1621,66 +1623,131 @@ class ScoutDesktopApp:
                 except Exception as stitch_err:
                     logger.debug("CrossChannelStitcher error: %s", stitch_err)
 
-                # Data Quality Gate: Centralized Candidate Creation Gate Enforcement (Rule 2)
-                from scout_desktop.extractor.candidate_gate import create_candidate_if_valid
-                gate_res = create_candidate_if_valid(
-                    staged_contact,
-                    context={
-                        "source_url": page_url,
-                        "window_title": page_title,
-                        "platform": target_type,
-                        "page_type": matching_canon.page_type if matching_canon else "",
-                        "owner_names": [self.backend_client.user_name] if self.backend_client.user_name else [],
-                        "owner_email": self.backend_client.current_user_email,
-                    }
+                # Hard Entity Type Classification & Quality Routing
+                from scout_desktop.extractor.entity_classifier import (
+                    desktop_entity_classifier,
+                    ENTITY_PERSON,
+                    ENTITY_COMPANY,
+                    ENTITY_JOB_POSTING,
+                    ENTITY_CONTACT_INFO,
+                    ENTITY_MARKET_SIGNAL,
+                    ENTITY_NOISE,
                 )
+                from scout_desktop.extractor.candidate_gate import create_candidate_if_valid
 
-                if c.entity_type == "JOB":
-                    # Job postings are requisition context, not human candidates — do not enqueue as recruiters
-                    breakdown["jobs"] += 1
+                raw_n = staged_contact.get("recruiter_name") or staged_contact.get("canonical_name") or getattr(c, "canonical_name", None)
+                raw_t = staged_contact.get("title") or getattr(c, "current_title", None)
+                raw_c = staged_contact.get("company_name") or getattr(c, "current_company", None)
+                raw_e = staged_contact.get("email") or getattr(c, "primary_email", None)
+                raw_p = staged_contact.get("phone") or getattr(c, "primary_phone", None)
+
+                pre_type = getattr(c, "entity_type", None) or staged_contact.get("entity_type")
+                if pre_type and pre_type in (ENTITY_COMPANY, ENTITY_JOB_POSTING, ENTITY_CONTACT_INFO, ENTITY_MARKET_SIGNAL, ENTITY_NOISE):
+                    resolved_entity_type = pre_type
+                else:
+                    classification = desktop_entity_classifier.classify(
+                        raw_name=raw_n,
+                        raw_title=raw_t,
+                        raw_company=raw_c,
+                        raw_email=raw_e,
+                        raw_phone=raw_p,
+                        source_url=page_url,
+                        source_page_title=page_title,
+                        extraction_source=target_type,
+                    )
+                    resolved_entity_type = classification.get("entity_type", ENTITY_PERSON)
+
+                staged_contact["entity_type"] = resolved_entity_type
+
+                if resolved_entity_type == ENTITY_NOISE:
+                    logger.info("Quality Gate: Dropped observation '%s' as NOISE", raw_n)
                     continue
 
-                if gate_res.decision == "REJECTED_OBSERVATION" or gate_res.decision == "UNRESOLVED_UI_TEXT":
-                    logger.info("Quality Gate: Rejected observation '%s' (%s) — %s",
-                                staged_contact.get("recruiter_name"), gate_res.decision, gate_res.reasons)
-                    continue
-
-                # Overwrite with sanitized and normalized values
-                staged_contact["recruiter_name"] = gate_res.canonical_name
-                staged_contact["title"] = gate_res.title
-                staged_contact["company_name"] = gate_res.company
-                staged_contact["location"] = gate_res.location
-                staged_contact["platform"] = gate_res.platform
-                staged_contact["canonical_profile_url"] = gate_res.canonical_profile_url
-                staged_contact["candidate_gate_status"] = gate_res.status
-                staged_contact["candidate_gate_decision"] = gate_res.decision
-                staged_contact["candidate_gate_reasons"] = gate_res.reasons
-                staged_contact["field_confidence"] = gate_res.field_confidence
-                staged_contact["evidence_checklist"] = gate_res.audit_checklist
-
-                # Geographic enforcement gate
-                geo_region = getattr(c, 'geo_region', None) or classify_location_region(getattr(c, 'location', ''))
-                if geo_region == 'OTHER':
-                    logger.info('[SCOUT] GEO_REJECTED: %s — region=%s', getattr(c, 'canonical_name', 'unknown'), geo_region)
-                    continue
-
-                qid = self.local_queue.enqueue_cluster(staged_contact)
-                if qid != -1:
-                    self.cnt_staged += 1
-
-                breakdown["people"] += 1
-                if c.current_company:
+                elif resolved_entity_type == ENTITY_COMPANY:
+                    staged_contact["candidate_gate_status"] = "VERIFIED"
+                    staged_contact["candidate_gate_decision"] = "COMPANY_VERIFIED"
+                    staged_contact["candidate_gate_reasons"] = ["Classified as COMPANY entity"]
+                    staged_contact["field_confidence"] = {"name": 0.95, "company": 0.95}
+                    qid = self.local_queue.enqueue_cluster(staged_contact)
+                    if qid != -1:
+                        self.cnt_staged += 1
                     breakdown["companies"] += 1
-                if c.location:
-                    breakdown["locations"] += 1
-                breakdown["signals"] += len(c.observations)
+                    breakdown["signals"] += len(getattr(c, "observations", []))
+
+                elif resolved_entity_type == ENTITY_JOB_POSTING:
+                    staged_contact["candidate_gate_status"] = "VERIFIED"
+                    staged_contact["candidate_gate_decision"] = "JOB_VERIFIED"
+                    staged_contact["candidate_gate_reasons"] = ["Classified as JOB_POSTING entity"]
+                    staged_contact["field_confidence"] = {"name": 0.90, "title": 0.90}
+                    qid = self.local_queue.enqueue_cluster(staged_contact)
+                    if qid != -1:
+                        self.cnt_staged += 1
+                    breakdown["jobs"] += 1
+                    breakdown["signals"] += len(getattr(c, "observations", []))
+
+                elif resolved_entity_type in (ENTITY_CONTACT_INFO, ENTITY_MARKET_SIGNAL):
+                    staged_contact["candidate_gate_status"] = "VERIFIED"
+                    staged_contact["candidate_gate_decision"] = f"{resolved_entity_type}_VERIFIED"
+                    qid = self.local_queue.enqueue_cluster(staged_contact)
+                    if qid != -1:
+                        self.cnt_staged += 1
+                    breakdown["signals"] += len(getattr(c, "observations", []))
+
+                else:
+                    # PERSON path: Centralized Candidate Creation Gate Enforcement
+                    gate_res = create_candidate_if_valid(
+                        staged_contact,
+                        context={
+                            "source_url": page_url,
+                            "window_title": page_title,
+                            "platform": target_type,
+                            "page_type": matching_canon.page_type if matching_canon else "",
+                            "owner_names": [self.backend_client.user_name] if self.backend_client.user_name else [],
+                            "owner_email": self.backend_client.current_user_email,
+                        }
+                    )
+
+                    if gate_res.decision == "REJECTED_OBSERVATION" or gate_res.decision == "UNRESOLVED_UI_TEXT":
+                        logger.info("Quality Gate: Rejected observation '%s' (%s) — %s",
+                                    staged_contact.get("recruiter_name"), gate_res.decision, gate_res.reasons)
+                        continue
+
+                    # Overwrite with sanitized and normalized values
+                    staged_contact["recruiter_name"] = gate_res.canonical_name
+                    staged_contact["title"] = gate_res.title
+                    staged_contact["company_name"] = gate_res.company
+                    staged_contact["location"] = gate_res.location
+                    staged_contact["platform"] = gate_res.platform
+                    staged_contact["canonical_profile_url"] = gate_res.canonical_profile_url
+                    staged_contact["candidate_gate_status"] = gate_res.status
+                    staged_contact["candidate_gate_decision"] = gate_res.decision
+                    staged_contact["candidate_gate_reasons"] = gate_res.reasons
+                    staged_contact["field_confidence"] = gate_res.field_confidence
+                    staged_contact["evidence_checklist"] = gate_res.audit_checklist
+
+                    # Geographic enforcement gate
+                    geo_region = getattr(c, 'geo_region', None) or classify_location_region(getattr(c, 'location', ''))
+                    if geo_region == 'OTHER':
+                        logger.info('[SCOUT] GEO_REJECTED: %s — region=%s', getattr(c, 'canonical_name', 'unknown'), geo_region)
+                        continue
+
+                    qid = self.local_queue.enqueue_cluster(staged_contact)
+                    if qid != -1:
+                        self.cnt_staged += 1
+
+                    breakdown["people"] += 1
+                    if getattr(c, "current_company", None):
+                        breakdown["companies"] += 1
+                    if getattr(c, "location", None):
+                        breakdown["locations"] += 1
+                    breakdown["signals"] += len(getattr(c, "observations", []))
 
             self.evidence_store.update_status(capture_id, "STAGED")
             self.bridge.event_logged.emit("ENTITY_FOUND", f"{len(clusters)} candidate(s) — {clusters[0].canonical_name}")
             self.bridge.event_logged.emit("STAGING_CREATED", f"Enqueued to SQLite buffer ({len(clusters)} items)")
             self._flush_queue_to_backend()
 
-            # Promote all verified candidates to Candidates UI table & Hero Card
+            # Promote all verified entities (PERSON, COMPANY, JOB_POSTING) to Candidates UI table & Hero Card
             verified_emitted = 0
             for c in clusters:
                 c_canon = c.canonical_name
@@ -1688,6 +1755,72 @@ class ScoutDesktopApp:
                     continue
 
                 c_prof_url = getattr(c, "linkedin_url", None) or getattr(c, "canonical_profile_url", None) or page_url
+                c_type = getattr(c, "entity_type", ENTITY_PERSON)
+                if not c_type or c_type == ENTITY_PERSON:
+                    c_class = desktop_entity_classifier.classify(
+                        raw_name=c_canon,
+                        raw_title=c.current_title,
+                        raw_company=c.current_company,
+                        source_url=page_url,
+                        source_page_title=page_title,
+                        extraction_source=target_type,
+                    )
+                    c_type = c_class.get("entity_type", ENTITY_PERSON)
+
+                if c_type == ENTITY_NOISE:
+                    continue
+
+                if c_type == ENTITY_COMPANY:
+                    desc = f"🏢 {c_canon}"
+                    if c.current_title:
+                        desc += f" — {c.current_title}"
+                    if c.location:
+                        desc += f" ({c.location})"
+                    
+                    self.bridge.candidate_card_updated.emit(
+                        c_canon,
+                        c.current_title or "Company Overview",
+                        c_canon,
+                        c.location or "",
+                        "VERIFIED",
+                        desc,
+                        None,
+                        c_prof_url or "",
+                        90,
+                        ["Company classification verified", "Domain allowlisted"],
+                        {"name": 0.95, "company": 0.95},
+                        ENTITY_COMPANY,
+                    )
+                    verified_emitted += 1
+                    continue
+
+                if c_type == ENTITY_JOB_POSTING:
+                    desc = f"💼 {c_canon}"
+                    if c.current_company:
+                        desc += f" @ {c.current_company}"
+                    if c.location:
+                        desc += f" ({c.location})"
+                    
+                    self.bridge.candidate_card_updated.emit(
+                        c_canon,
+                        c_canon,
+                        c.current_company or "",
+                        c.location or "",
+                        "VERIFIED",
+                        desc,
+                        None,
+                        c_prof_url or "",
+                        85,
+                        ["Job posting detected", "Requisition context preserved"],
+                        {"name": 0.90, "title": 0.90},
+                        ENTITY_JOB_POSTING,
+                    )
+                    verified_emitted += 1
+                    continue
+
+                if c_type in (ENTITY_CONTACT_INFO, ENTITY_MARKET_SIGNAL):
+                    continue
+
                 c_gate = create_candidate_if_valid(
                     {
                         "recruiter_name": c_canon,
@@ -1770,7 +1903,8 @@ class ScoutDesktopApp:
                         card_profile_url or "",
                         card_confidence,
                         c_gate.audit_checklist,
-                        c_gate.field_confidence
+                        c_gate.field_confidence,
+                        ENTITY_PERSON,
                     )
                     try:
                         title_str = c_gate.title or "Unknown Title"
@@ -2138,7 +2272,7 @@ class ScoutDesktopApp:
             self.edge_handle.set_status_state("IDLE")
             self.tray.update_icon_status("IDLE")
 
-    @Slot(str, str, str, str, str, str, object, str, int, object, object)
+    @Slot(str, str, str, str, str, str, object, str, int, object, object, str)
     def _handle_candidate_card_update(
         self,
         name: str,
@@ -2152,6 +2286,7 @@ class ScoutDesktopApp:
         confidence: int = 95,
         checklist: Optional[list] = None,
         field_confidence: Optional[dict] = None,
+        entity_type: str = "PERSON",
     ):
         self.main_window.lbl_target_desc.setText(f"Extracted: {desc}")
         self.main_window.update_candidate_card(
@@ -2165,6 +2300,7 @@ class ScoutDesktopApp:
             confidence=confidence,
             checklist=checklist,
             field_confidence=field_confidence,
+            entity_type=entity_type,
         )
 
     @Slot(str)

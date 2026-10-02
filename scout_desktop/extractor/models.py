@@ -541,6 +541,7 @@ class EntityCluster:
             meta["seniority_level"] = sen_level
 
         return {
+            "entity_type": self.entity_type,
             "recruiter_name": clean_name or self.canonical_name,
             "raw_name": self.canonical_name,
             "title": canonical_title or self.current_title or "",
@@ -580,6 +581,10 @@ class EntityCluster:
             "domain_specialization": title_intel.get("domain_specialization") if title_intel else None,
             "specialization_label": title_intel.get("specialization_label") if title_intel else None,
         }
+
+    def to_staged_dict(self) -> Dict[str, Any]:
+        """Alias for to_staged_contact_dict."""
+        return self.to_staged_contact_dict()
 
 
 class ExtensibleObservation:

@@ -109,6 +109,7 @@ RECENT_ACTIVITY: List[Dict[str, str]] = [
 CANDIDATES: List[Dict[str, Any]] = [
     {
         "id": "sarah-chen",
+        "entity_type": "PERSON",
         "initials": "SC",
         "name": "Sarah Chen",
         "title": "Software Engineer",
@@ -154,6 +155,7 @@ CANDIDATES: List[Dict[str, Any]] = [
     },
     {
         "id": "marcus-webb",
+        "entity_type": "PERSON",
         "initials": "MW",
         "name": "Marcus Webb",
         "title": "VP Engineering",
@@ -199,6 +201,7 @@ CANDIDATES: List[Dict[str, Any]] = [
     },
     {
         "id": "priya-nair",
+        "entity_type": "PERSON",
         "initials": "PN",
         "name": "Priya Nair",
         "title": "Senior Product Manager",
@@ -244,6 +247,7 @@ CANDIDATES: List[Dict[str, Any]] = [
     },
     {
         "id": "daniel-ortiz",
+        "entity_type": "PERSON",
         "initials": "DO",
         "name": "Daniel Ortiz",
         "title": "Staff Designer",
@@ -288,7 +292,85 @@ CANDIDATES: List[Dict[str, Any]] = [
         ]
     },
     {
+        "id": "helix-labs-corp",
+        "entity_type": "COMPANY",
+        "initials": "HL",
+        "name": "Helix Labs Inc.",
+        "title": "AI Platform & Research",
+        "company": "Helix Labs Inc.",
+        "location": "New York, NY",
+        "state": "CANONICAL",
+        "confidence": 96,
+        "time_ago": "15 min ago",
+        "source": "Company profile · Chrome",
+        "profile_url": "https://www.linkedin.com/company/helix-labs-ai",
+        "fields": [
+            {"label": "Company Name", "value": "Helix Labs Inc.", "raw": "Helix Labs Inc.", "confidence": 98},
+            {"label": "Industry", "value": "Computer Software · Artificial Intelligence", "raw": "AI Platform & Foundation Models", "confidence": 95},
+            {"label": "Location", "value": "New York, NY", "raw": "New York, NY, United States", "confidence": 92},
+            {"label": "Website", "value": "https://helixlabs.ai", "raw": "https://helixlabs.ai", "confidence": 96},
+        ],
+        "gate_reasons": [
+            {"text": "Corporate entity recognized", "passed": True, "icon": "check"},
+            {"text": "Legal business designator present", "passed": True, "icon": "check"},
+            {"text": "Company profile page verified", "passed": True, "icon": "check"},
+        ],
+        "identity_resolution": {
+            "status": "Company Record Established",
+            "confidence": 0.96,
+            "detail": "Promoted to Companies master pool.",
+        },
+        "provenance": {
+            "source": "Google Chrome · LinkedIn Company Overview",
+            "timestamp": "2026-09-15 00:26:15 UTC",
+            "extractor": f"{EXTRACTOR_VERSION}",
+            "device": "Installation #483",
+        },
+        "checklist": [
+            {"title": "Commercial entity verified", "detail": "Company profile path corroborated", "passed": True},
+            {"title": "Firmographic data extracted", "detail": "Industry and location captured", "passed": True},
+        ]
+    },
+    {
+        "id": "sr-react-job",
+        "entity_type": "JOB_POSTING",
+        "initials": "JP",
+        "name": "Staff Distributed Systems Engineer",
+        "title": "Staff Distributed Systems Engineer",
+        "company": "Google Cloud",
+        "location": "Sunnyvale, CA",
+        "state": "CANONICAL",
+        "confidence": 94,
+        "time_ago": "35 min ago",
+        "source": "Job listing · Chrome",
+        "profile_url": "https://www.linkedin.com/jobs/view/staff-distributed-systems",
+        "fields": [
+            {"label": "Job Title", "value": "Staff Distributed Systems Engineer", "raw": "Staff Distributed Systems Engineer", "confidence": 97},
+            {"label": "Company", "value": "Google Cloud", "raw": "Google Cloud Infrastructure", "confidence": 95},
+            {"label": "Location", "value": "Sunnyvale, CA", "raw": "Sunnyvale, CA (Hybrid)", "confidence": 90},
+        ],
+        "gate_reasons": [
+            {"text": "Job listing structure recognized", "passed": True, "icon": "check"},
+            {"text": "Requirements and qualifications parsed", "passed": True, "icon": "check"},
+        ],
+        "identity_resolution": {
+            "status": "Job Requisition Captured",
+            "confidence": 0.94,
+            "detail": "Stored in Knowledge Graph signals pool.",
+        },
+        "provenance": {
+            "source": "Google Chrome · LinkedIn Job Page",
+            "timestamp": "2026-09-15 00:06:40 UTC",
+            "extractor": f"{EXTRACTOR_VERSION}",
+            "device": "Installation #483",
+        },
+        "checklist": [
+            {"title": "Job requisition corroborated", "detail": "Job description headers parsed", "passed": True},
+        ]
+    },
+    {
         "id": "unresolved-1",
+        "entity_type": "NOISE",
         "initials": "??",
         "name": "Unresolved observation",
         "title": "Editorial Content Specialist",

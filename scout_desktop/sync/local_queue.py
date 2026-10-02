@@ -433,37 +433,58 @@ class LocalQueue:
                     data = json.loads(row[1])
                     contacts = data.get("contacts", [data] if any(k in data for k in ("name", "recruiter_name", "canonical_name", "raw_name")) else [])
                     for c in contacts:
-                        gate_res = create_candidate_if_valid(c, context={
-                            "platform": c.get("platform") or data.get("platform"),
-                            "source_url": c.get("source_url") or data.get("source_url"),
-                            "window_title": c.get("source_page_title") or data.get("source_page_title") or data.get("window_title"),
-                        })
-                        # Discard rejected observations
-                        if gate_res.status == "REJECTED":
-                            continue
+                        c_entity_type = c.get("entity_type", "PERSON")
+                        if c_entity_type == "PERSON":
+                            gate_res = create_candidate_if_valid(c, context={
+                                "platform": c.get("platform") or data.get("platform"),
+                                "source_url": c.get("source_url") or data.get("source_url"),
+                                "window_title": c.get("source_page_title") or data.get("source_page_title") or data.get("window_title"),
+                            })
+                            # Discard rejected observations
+                            if gate_res.status == "REJECTED":
+                                continue
 
-                        name = gate_res.canonical_name
-                        if not name or len(name) < 3 or name.lower() in seen_names:
-                            continue
+                            name = gate_res.canonical_name
+                            if not name or len(name) < 3 or name.lower() in seen_names:
+                                continue
 
-                        seen_names.add(name.lower())
-                        status = gate_res.status or "REVIEW_REQUIRED"
-                        conf_pct = int(round(gate_res.identity_confidence * 100)) if gate_res.identity_confidence else 50
-                        if status == "VERIFIED" and conf_pct < 75:
-                            conf_pct = 85
+                            seen_names.add(name.lower())
+                            status = gate_res.status or "REVIEW_REQUIRED"
+                            conf_pct = int(round(gate_res.identity_confidence * 100)) if gate_res.identity_confidence else 50
+                            if status == "VERIFIED" and conf_pct < 75:
+                                conf_pct = 85
 
-                        candidates.append({
-                            "name": name,
-                            "title": gate_res.title or "",
-                            "company": gate_res.company or "",
-                            "location": gate_res.location or "",
-                            "platform": gate_res.platform or "DESKTOP_CAPTURE",
-                            "status": status,
-                            "confidence": conf_pct,
-                            "profile_url": gate_res.canonical_profile_url or "",
-                            "field_confidence": gate_res.field_confidence,
-                            "created_at": row[3],
-                        })
+                            candidates.append({
+                                "name": name,
+                                "title": gate_res.title or "",
+                                "company": gate_res.company or "",
+                                "location": gate_res.location or "",
+                                "platform": gate_res.platform or "DESKTOP_CAPTURE",
+                                "status": status,
+                                "confidence": conf_pct,
+                                "profile_url": gate_res.canonical_profile_url or "",
+                                "field_confidence": gate_res.field_confidence,
+                                "created_at": row[3],
+                                "entity_type": "PERSON",
+                            })
+                        elif c_entity_type in ("COMPANY", "JOB_POSTING"):
+                            name = c.get("name") or c.get("recruiter_name") or c.get("canonical_name") or c.get("company_name") or "Unknown"
+                            if not name or len(name) < 3 or name.lower() in seen_names:
+                                continue
+                            seen_names.add(name.lower())
+                            candidates.append({
+                                "name": name,
+                                "title": c.get("title") or c.get("industry") or ("Company Profile" if c_entity_type == "COMPANY" else "Job Posting"),
+                                "company": c.get("company_name") or c.get("company") or name,
+                                "location": c.get("location") or "",
+                                "platform": c.get("platform") or data.get("platform") or "DESKTOP_CAPTURE",
+                                "status": "VERIFIED",
+                                "confidence": 90,
+                                "profile_url": c.get("profile_url") or c.get("canonical_profile_url") or c.get("source_url") or "",
+                                "field_confidence": c.get("field_confidence") or {"name": 0.90},
+                                "created_at": row[3],
+                                "entity_type": c_entity_type,
+                            })
                         if len(candidates) >= limit:
                             break
                     if len(candidates) >= limit:

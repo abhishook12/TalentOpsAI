@@ -42,11 +42,23 @@ from .patterns import (
     EMAIL_REGEX,
     PHONE_REGEX,
     classify_location_region,
+    DEPARTMENTS_AND_INDUSTRIES,
 )
 from .timeline_parser import TimelineParser
 from .title_normalizer import classify_title
 from scout_desktop.extractor.semantic_factorizer import ProfileJudge, SemanticFactorizer
 from scout_desktop.extractor.sourcing_signals_engine import SourcingSignalsEngine
+from scout_desktop.extractor.entity_classifier import (
+    desktop_entity_classifier,
+    is_job_posting_title,
+    is_company_industry,
+    ENTITY_PERSON,
+    ENTITY_COMPANY,
+    ENTITY_JOB_POSTING,
+    ENTITY_CONTACT_INFO,
+    ENTITY_MARKET_SIGNAL,
+    ENTITY_NOISE,
+)
 
 logger = logging.getLogger("scout.entity_extractor")
 
@@ -122,13 +134,19 @@ class EntityExtractor:
 
         # 0. Intelligent AI Triage: Judge if frame is a valid candidate profile/job vs system noise
         judgment = ProfileJudge.judge_frame(clean_lines, window_title, source_url, platform=platform)
-        if not judgment.is_candidate_profile and judgment.category != "JOB_POSTING":
+        if not judgment.is_candidate_profile and judgment.category not in ("JOB_POSTING", "COMPANY_PROFILE"):
             logger.info("ProfileJudge: Frame rejected as %s (%s)", judgment.category, judgment.rejection_reason)
             return []
 
         # Case A: Job Posting Page
         if self._is_job_page(clean_lines, window_title, source_url):
             return self._extract_job_page(clean_lines, capture_id, source_url, window_title)
+
+        # Case A.1: Corporate Company / Organization Page
+        if self._is_company_page(clean_lines, window_title, source_url):
+            comp_clusters = self._extract_company_page(clean_lines, capture_id, source_url, window_title)
+            if comp_clusters:
+                return comp_clusters
 
         # Case A.5: Chat & Multi-Channel Stream Intelligence (Google Chat, Teams, Slack, WhatsApp, Telegram, Gmail, Outlook, Resumes)
         plat_upper = (platform or "").upper()
@@ -1205,12 +1223,12 @@ class EntityExtractor:
                 continue
 
         if job_title:
-            job_cluster = EntityCluster(canonical_name=job_title, entity_type="JOB")
+            job_cluster = EntityCluster(canonical_name=job_title, entity_type=ENTITY_JOB_POSTING)
             job_cluster.current_title = job_title
             job_cluster.current_company = company_name
             job_cluster.location = job_location
             job_cluster.add_observation(Observation(
-                semantic_type="JOB",
+                semantic_type="JOB_POSTING",
                 subject=job_title,
                 predicate="OFFERED_BY",
                 object_value=company_name or "Unknown Company",
@@ -1221,7 +1239,7 @@ class EntityExtractor:
             ))
             if job_location:
                 job_cluster.add_observation(Observation(
-                    semantic_type="JOB",
+                    semantic_type="JOB_POSTING",
                     subject=job_title,
                     predicate="LOCATED_IN",
                     object_value=job_location,
@@ -1257,7 +1275,7 @@ class EntityExtractor:
                     break
 
             if person_name:
-                person_cluster = EntityCluster(canonical_name=person_name, entity_type="PERSON")
+                person_cluster = EntityCluster(canonical_name=person_name, entity_type=ENTITY_PERSON)
                 person_cluster.current_title = person_title
                 person_cluster.current_company = person_comp
                 person_cluster.location = job_location
@@ -1307,6 +1325,135 @@ class EntityExtractor:
                 clusters.append(person_cluster)
 
         return clusters
+
+    def _is_company_page(self, clean_lines: List[str], window_title: str, source_url: str) -> bool:
+        """Determines if the view is an organization/company profile rather than an individual person."""
+        url_lower = (source_url or "").lower()
+        title_lower = (window_title or "").lower()
+
+        # Company URL path but not a personal /in/ profile
+        if "/company/" in url_lower or "/school/" in url_lower:
+            if "/in/" not in url_lower and "/people" not in url_lower:
+                return True
+
+        # Window title indicates company overview
+        if re.search(r":\s*(?:Overview|About|Life|Jobs|Posts|Videos|Insights)\b", window_title, re.IGNORECASE):
+            return True
+
+        if any(term in title_lower for term in ["company profile", "about us", "our company", "organization overview", "leadership team"]):
+            return True
+
+        # Check top lines for company profile indicators
+        top_text = " ".join(clean_lines[:8]).lower()
+        if any(k in top_text for k in ["about the company", "company overview", "headquarters", "company size"]):
+            if not any("linkedin.com/in/" in l.lower() for l in clean_lines[:10]):
+                return True
+
+        return False
+
+    def _extract_company_page(
+        self,
+        clean_lines: List[str],
+        capture_id: str,
+        source_url: str,
+        window_title: str,
+    ) -> List[EntityCluster]:
+        """Extracts COMPANY entity cluster from corporate profile page."""
+        company_name = None
+        industry = None
+        location = None
+        website = None
+
+        # 1. Try extracting company name from window title (e.g. "Marcus & Millichap: Overview | LinkedIn" -> "Marcus & Millichap")
+        m_comp = re.match(r"^(?:\(\d+\+?\)\s*)?([^:|\-–—\n]+?)\s*:\s*(?:Overview|About|Life|Jobs|Posts)", window_title, re.IGNORECASE)
+        if m_comp:
+            cand = clean_company_name(m_comp.group(1).strip())
+            if cand and is_valid_company_name(cand):
+                company_name = cand
+
+        if not company_name and (" | LinkedIn" in window_title or " - LinkedIn" in window_title):
+            m_comp2 = re.match(r"^(?:\(\d+\+?\)\s*)?([^:|\-–—\n]+?)\s*[|\-–—]\s*LinkedIn", window_title, re.IGNORECASE)
+            if m_comp2:
+                cand = clean_company_name(m_comp2.group(1).strip())
+                if cand and is_valid_company_name(cand):
+                    company_name = cand
+
+        # 2. Check top lines if not found from title
+        if not company_name:
+            for l in clean_lines[:5]:
+                if is_noise_text(l) or is_valid_location(l):
+                    continue
+                cand = clean_company_name(l)
+                if cand and is_valid_company_name(cand):
+                    company_name = cand
+                    break
+
+        if not company_name:
+            return []
+
+        # 3. Extract industry, location, website from remaining lines
+        for l in clean_lines[:15]:
+            if not industry and (is_company_industry(l) or l.lower() in DEPARTMENTS_AND_INDUSTRIES):
+                industry = l.strip()
+            elif not location and is_valid_location(clean_location_text(l)):
+                location = clean_location_text(l)
+            elif not website and re.search(r"https?://(?:www\.)?[a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,}", l):
+                m_web = re.search(r"https?://(?:www\.)?[a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,}(?:/[^\s]*)?", l)
+                if m_web and "linkedin.com" not in m_web.group(0).lower():
+                    website = m_web.group(0)
+
+        company_cluster = EntityCluster(canonical_name=company_name, entity_type=ENTITY_COMPANY)
+        company_cluster.current_company = company_name
+        company_cluster.current_title = industry or "Company Profile"
+        company_cluster.location = location
+        company_cluster.metadata["website"] = website
+        company_cluster.metadata["source_url"] = source_url
+
+        company_cluster.add_observation(Observation(
+            semantic_type="COMPANY",
+            subject=company_name,
+            predicate="IDENTIFIED_AS",
+            object_value=company_name,
+            confidence=0.98,
+            evidence=f"Company profile: {company_name}",
+            capture_id=capture_id,
+            source_url=source_url,
+        ))
+        if industry:
+            company_cluster.add_observation(Observation(
+                semantic_type="COMPANY",
+                subject=company_name,
+                predicate="IN_INDUSTRY",
+                object_value=industry,
+                confidence=0.90,
+                evidence=industry,
+                capture_id=capture_id,
+                source_url=source_url,
+            ))
+        if location:
+            company_cluster.add_observation(Observation(
+                semantic_type="COMPANY",
+                subject=company_name,
+                predicate="LOCATED_IN",
+                object_value=location,
+                confidence=0.90,
+                evidence=location,
+                capture_id=capture_id,
+                source_url=source_url,
+            ))
+        if website:
+            company_cluster.add_observation(Observation(
+                semantic_type="COMPANY",
+                subject=company_name,
+                predicate="HAS_WEBSITE",
+                object_value=website,
+                confidence=0.95,
+                evidence=website,
+                capture_id=capture_id,
+                source_url=source_url,
+            ))
+
+        return [company_cluster]
 
     def _find_card_boundaries(self, clean_lines: List[str], window_title: str, source_url: str) -> List[int]:
         if " | LinkedIn" in window_title and not any(term in window_title.lower() for term in ["search", "people"]):

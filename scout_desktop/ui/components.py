@@ -141,6 +141,89 @@ class StateChip(QFrame):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# 1b. EntityTypeChip (Person / Company / Job / Contact / Signal)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class EntityTypeChip(QFrame):
+    """
+    Color-coded entity kind badge:
+    - PERSON: Cyan / Sky Blue (#38BDF8)
+    - COMPANY: Purple (#C084FC)
+    - JOB_POSTING: Amber (#FBBF24)
+    - CONTACT_INFO: Emerald (#34D399)
+    - MARKET_SIGNAL: Rose / Pink (#F43F5E)
+    """
+    def __init__(self, entity_type: str = "PERSON", parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self.entity_type = (entity_type or "PERSON").strip().upper()
+        self.setFixedHeight(22)
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(7, 0, 7, 0)
+        layout.setSpacing(0)
+
+        display_label = self._format_label(self.entity_type)
+        self.lbl_text = QLabel(display_label)
+        self.lbl_text.setFont(QFont("Segoe UI", 8, QFont.Weight.Bold))
+        layout.addWidget(self.lbl_text)
+        self._apply_style()
+
+    def set_type(self, entity_type: str):
+        self.entity_type = (entity_type or "PERSON").strip().upper()
+        self.lbl_text.setText(self._format_label(self.entity_type))
+        self._apply_style()
+
+    def _format_label(self, et: str) -> str:
+        if et in ("JOB", "JOB_POSTING"):
+            return "JOB"
+        if et in ("CONTACT", "CONTACT_INFO"):
+            return "CONTACT"
+        if et in ("SIGNAL", "MARKET_SIGNAL"):
+            return "SIGNAL"
+        return et
+
+    def _apply_style(self):
+        et = self.entity_type
+        if et == "PERSON":
+            bg = "#0C4A6E"
+            fg = "#38BDF8"
+            border = "#0284C7"
+        elif et == "COMPANY":
+            bg = "#3B0764"
+            fg = "#C084FC"
+            border = "#7E22CE"
+        elif et in ("JOB", "JOB_POSTING"):
+            bg = "#451A03"
+            fg = "#FBBF24"
+            border = "#B45309"
+        elif et in ("CONTACT", "CONTACT_INFO"):
+            bg = "#064E3B"
+            fg = "#34D399"
+            border = "#059669"
+        elif et in ("SIGNAL", "MARKET_SIGNAL"):
+            bg = "#4C0519"
+            fg = "#FB7185"
+            border = "#BE123C"
+        else:
+            bg = "#1F2937"
+            fg = "#9CA3AF"
+            border = "#374151"
+
+        self.setStyleSheet(f"""
+            QFrame {{
+                background-color: {bg};
+                border: 1px solid {border};
+                border-radius: 4px;
+            }}
+            QLabel {{
+                color: {fg};
+                background: transparent;
+                border: none;
+            }}
+        """)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # 2. ConfidenceMeter (Confidence Bar: green 90+, amber 70+, red <70%)
 # ─────────────────────────────────────────────────────────────────────────────
 

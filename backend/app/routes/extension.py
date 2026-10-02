@@ -116,6 +116,7 @@ class ExtensionContact(BaseModel):
     candidate_gate_status: Optional[str] = None
     candidate_gate_decision: Optional[str] = None
     candidate_gate_reasons: Optional[list] = None
+    entity_type: Optional[str] = None
 
 
 class BatchRequest(BaseModel):
@@ -374,20 +375,23 @@ def ingest_extension_batch(
                 s_canonical_url = s_canonical_url[:500]
 
             # Early Entity Classification & Noise Gate
-            from ..services.entity_classifier import entity_classifier, ENTITY_NOISE
-            classification = entity_classifier.classify(
-                raw_name=s_name,
-                raw_title=s_title,
-                raw_company=s_company,
-                raw_email=s_email,
-                raw_phone=s_phone,
-                source_url=s_source_url,
-                source_page_title=s_page_title,
-                extraction_source=contact.source or "visual_dom_fusion",
-            )
-            s_entity_type = classification['entity_type']
+            from ..services.entity_classifier import entity_classifier, ENTITY_NOISE, ALL_ENTITY_TYPES
+            if contact.entity_type and contact.entity_type in ALL_ENTITY_TYPES:
+                s_entity_type = contact.entity_type
+            else:
+                classification = entity_classifier.classify(
+                    raw_name=s_name,
+                    raw_title=s_title,
+                    raw_company=s_company,
+                    raw_email=s_email,
+                    raw_phone=s_phone,
+                    source_url=s_source_url,
+                    source_page_title=s_page_title,
+                    extraction_source=contact.source or "visual_dom_fusion",
+                )
+                s_entity_type = classification['entity_type']
             if s_entity_type == ENTITY_NOISE:
-                logger.debug("Dropping noise element '%s': %s", s_name, classification['reason'])
+                logger.debug("Dropping noise element '%s'", s_name)
                 continue
 
             staging_record = DiscoveryStaging(

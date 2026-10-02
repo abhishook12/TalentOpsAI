@@ -1341,17 +1341,40 @@ class DiscoveryProcessor:
                 # find them on LinkedIn, can't call them.
                 #
                 # Actionable channels:
-                #   1. Real email (NOT @noemail.talentops)
+                #   1. Real discovered email (NOT @noemail.talentops,
+                #      NOT pattern-guessed without MX verification)
                 #   2. LinkedIn profile URL (linkedin.com/in/...)
                 #   3. Phone number
+                #
+                # Generated/guessed emails ONLY count if MX-verified
+                # (the domain actually accepts mail).
                 #
                 # If NONE of these exist, the record goes to REVIEW
                 # instead of polluting the Master DB.
                 # ═══════════════════════════════════════════════════════
+                _email = (person.primary_email or '').strip().lower()
+                _is_noemail = _email.endswith('@noemail.talentops') or not _email
+
+                # Check if email is from original source vs pattern-guessed
+                _email_is_generated = False
+                _email_mx_ok = False
+                _p_meta = {}
+                if person.metadata_json:
+                    try:
+                        _p_meta = json.loads(person.metadata_json) if isinstance(person.metadata_json, str) else dict(person.metadata_json)
+                    except Exception:
+                        pass
+                _ei = _p_meta.get('email_intel', {})
+                if _ei:
+                    _ei_status = _ei.get('status', '')
+                    _email_is_generated = _ei_status in ('PATTERN_VERIFIED', 'MX_VERIFIED', 'MX_UNREACHABLE')
+                    _email_mx_ok = _ei.get('has_mx', False) and _ei_status in ('PATTERN_VERIFIED', 'MX_VERIFIED')
+
+                # A real email is one that was discovered from the source
+                # (not generated) OR one that was generated AND MX-verified
                 has_real_email = bool(
-                    person.primary_email
-                    and '@' in person.primary_email
-                    and not person.primary_email.endswith('@noemail.talentops')
+                    _email and '@' in _email and not _is_noemail
+                    and (not _email_is_generated or _email_mx_ok)
                 )
                 has_linkedin = bool(
                     person.linkedin_url
@@ -1370,13 +1393,16 @@ class DiscoveryProcessor:
                         r.decision = 'REVIEW_NO_CONTACT_INTEL'
                         r.decision_reason = (
                             f'Person "{person.canonical_name}" has no actionable contact info: '
-                            f'no real email, no LinkedIn profile URL, no phone number. '
+                            f'no real email (generated={_email_is_generated}, mx_ok={_email_mx_ok}), '
+                            f'no LinkedIn profile URL, no phone number. '
                             f'Cannot be committed to Master DB without at least one contact channel.'
                         )
                     logger.info(
                         "[CONTACT GATE] Blocked %s from Master DB — zero contact intelligence "
-                        "(no email, no LinkedIn, no phone)",
-                        person.canonical_name,
+                        "(email=%s, generated=%s, mx_ok=%s, linkedin=%s, phone=%s)",
+                        person.canonical_name, _email or 'NONE',
+                        _email_is_generated, _email_mx_ok,
+                        bool(person.linkedin_url), bool(person.primary_phone),
                     )
                     continue
 

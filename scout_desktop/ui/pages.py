@@ -627,10 +627,10 @@ class ScanPage(QWidget):
         self.lbl_cand_name.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY}; background: transparent; border: none;")
         name_row.addWidget(self.lbl_cand_name)
 
-        chk = QLabel("✓")
-        chk.setFont(QFont("Segoe UI", 9, QFont.Weight.Bold))
-        chk.setStyleSheet("color: #34D399; background: transparent; border: none;")
-        name_row.addWidget(chk)
+        self.lbl_cand_chk = QLabel("✓")
+        self.lbl_cand_chk.setFont(QFont("Segoe UI", 9, QFont.Weight.Bold))
+        self.lbl_cand_chk.setStyleSheet("color: #34D399; background: transparent; border: none;")
+        name_row.addWidget(self.lbl_cand_chk)
         name_row.addStretch()
         name_box.addLayout(name_row)
 
@@ -1004,6 +1004,22 @@ class ScanPage(QWidget):
         self.chip_latest.set_state(st_clean)
         if hasattr(self, "chip_entity_type"):
             self.chip_entity_type.set_entity_type(entity_type)
+
+        if hasattr(self, "lbl_cand_chk"):
+            if st_clean in ("VERIFIED", "CANONICAL", "IN DATABASE"):
+                self.lbl_cand_chk.setText("✓")
+                self.lbl_cand_chk.setStyleSheet("color: #34D399; background: transparent; border: none;")
+                self.lbl_cand_chk.setVisible(True)
+            elif st_clean == "REVIEW_REQUIRED":
+                self.lbl_cand_chk.setText("⏳")
+                self.lbl_cand_chk.setStyleSheet("color: #F59E0B; background: transparent; border: none;")
+                self.lbl_cand_chk.setVisible(True)
+            elif st_clean in ("REJECTED", "NOISE"):
+                self.lbl_cand_chk.setText("✕")
+                self.lbl_cand_chk.setStyleSheet("color: #EF4444; background: transparent; border: none;")
+                self.lbl_cand_chk.setVisible(True)
+            else:
+                self.lbl_cand_chk.setVisible(False)
 
         if hasattr(self, "lbl_l_title"):
             if entity_type == "COMPANY":

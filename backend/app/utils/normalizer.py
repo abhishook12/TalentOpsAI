@@ -90,6 +90,63 @@ COMPANY_DOMAIN_TERMS = frozenset({
     'inspirations', 'innovations', 'dynamics', 'cloud', 'advisors', 'adviser',
 })
 
+# Comprehensive Non-Human Noise Word Blacklist for Candidate Name Screening
+NON_PERSON_NAME_KEYWORDS = frozenset({
+    # Degrees & Education
+    'degree', 'degrees', 'bachelor', 'bachelors', 'bactklors', 'bactkloes', 'master', 'masters',
+    'doctorate', 'diploma', 'certificate', 'certification', 'alumni', 'graduate', 'undergraduate',
+    'university', 'college', 'school', 'academy', 'institute', 'education', 'campus', 'science',
+    'computer', 'engineering', 'informatics', 'kinesiology', 'humanities',
+    # Licenses, Certifications & Requirements
+    'license', 'licenses', 'driver', 'drivers', 'driving', 'cdl', 'clearance', 'authorized',
+    'authorization', 'screening', 'screen', 'test', 'testing', 'check', 'background',
+    # Occupation & Role Nouns as Names
+    'professional', 'professionals', 'contractor', 'contractors', 'handyman', 'detailer',
+    'cleaner', 'cleaning', 'technician', 'mechanic', 'operator', 'installer', 'installation',
+    'worker', 'workers', 'laborer', 'laborers', 'helper', 'helpers', 'crew', 'staff',
+    'assistant', 'specialist', 'coordinator', 'consultant', 'analyst', 'recruiter',
+    'sourcer', 'manager', 'director', 'engineer', 'developer',
+    # Benefits, Leave & Compensation
+    'medical', 'dental', 'vision', 'retirement', 'retrernent', 'retire', 'pension',
+    'insurance', 'benefits', 'benefit', '401k', 'fsa', 'hsa', 'pto', 'vacation',
+    'leave', 'stipend', 'reimbursement', 'disability', 'perks', 'compensation',
+    'allowance', 'commuter', 'parental', 'wellness', 'relocation', 'bonus', 'equity',
+    # Application & Hiring UI
+    'application', 'applications', 'apply', 'applying', 'applicant', 'applicants',
+    'online', 'interview', 'interviews', 'rejoin', 'questionnaire', 'assessment',
+    'submission', 'submitting', 'resume', 'resumes', 'portal', 'posting', 'postings',
+    'requisition', 'listing', 'listings', 'vacancy', 'vacancies', 'opening', 'openings',
+    'search', 'utility', 'deployment', 'homage', 'festival', 'center', 'claim',
+    'job', 'jobs', 'career', 'careers', 'hire', 'hiring', 'work', 'works',
+    'my', 'our', 'all', 'the', 'your', 'verified', 'premium', 'badge',
+    # Work Authorization & Visas
+    'visa', 'visas', 'citizenship', 'citizen', 'citizens', 'sponsorship', 'sponsor',
+    'sponsors', 'greencard', 'w2', 'c2c', '1099', 'tax', 'hourly', 'salary',
+    'full-time', 'part-time', 'contract', 'in-person', 'travel', 'remote', 'hybrid', 'on-site',
+    # Cities & States
+    'vegas', 'vegos', 'fort', 'worth', 'angeles', 'francisco', 'diego', 'jose',
+    'antonio', 'orleans', 'charlotte', 'columbus', 'indianapolis', 'denver',
+    'seattle', 'boston', 'atlanta', 'miami', 'austin', 'houston', 'dallas',
+    'phoenix', 'philadelphia', 'detroit', 'memphis', 'baltimore', 'milwaukee',
+    'albuquerque', 'tucson', 'fresno', 'sacramento', 'mesa', 'omaha', 'raleigh',
+    'oakland', 'minneapolis', 'tulsa', 'wichita', 'arlington', 'bakersfield',
+    'aurora', 'tampa', 'tamva', 'honolulu', 'anaheim', 'chicago', 'germantown',
+    'madison', 'orlando', 'cleveland', 'pittsburgh', 'cincinnati', 'greensboro',
+    'plano', 'newark', 'irvine', 'toledo', 'durham', 'laredo', 'scottsdale',
+    'glendale', 'gilbert', 'winston-salem', 'lubbock', 'reno', 'chandler',
+    'chesapeake', 'fremont', 'baton', 'rouge', 'richmond', 'boise', 'birmingham',
+    'spokane', 'rochester', 'auburn', 'hills', 'falls', 'church', 'saint',
+    'louis', 'alamos', 'chester', 'preschool', 'stores', 'rock', 'state',
+    # Tech & Software Products
+    'cisco', 'catalyst', 'guidewire', 'sap', 'oracle', 'salesforce', 'investment',
+    # OCR Glitches & Sourcing Platform Noise
+    'cz', 'fo', 'mard', 'relewnce', 'termlogy', 'cotamt', 'fim', 'lre', 'cause',
+    'percentage', 'estimate', 'estimated', 'posted', 'urgently', 'viewed',
+    'matched', 'matching', 'recommended', 'saved', 'sponsored', 'relevance',
+    'date', 'recent', 'popularity', 'distance', 'pwple', 'talen', 'taler',
+    'searc', 'zoor', 'searco', 'wkata', 'lile', 'breaks', 'roadside',
+})
+
 # Comprehensive Section Headers on Profiles, Resumes, and ATS pages
 SECTION_HEADERS = frozenset({
     "experience", "work experience", "professional experience", "employment history",
@@ -486,6 +543,9 @@ def validate_human_name(raw_name: Optional[str]) -> Tuple[bool, Optional[str], O
 
     # Strip leading notification numbers or badges e.g. "54 | ", "(54) ", "[12] ", "(1) "
     name = re.sub(r"^(?:[\(\[]?\d+\+?[\)\]]?\s*[|•·–—\-:]?\s*)+", "", name).strip()
+    name = re.sub(r"\s+\b(?:Verified|Premium|Top Voice)\b.*$", "", name, flags=re.IGNORECASE).strip()
+    name = re.sub(r"^\d+(?:st|nd|rd|th)\s*([A-Za-z])", lambda m: m.group(1).upper(), name, flags=re.IGNORECASE).strip()
+    name = re.sub(r"^\d+(?:st|nd|rd|th)\s*", "", name, flags=re.IGNORECASE).strip()
 
     # Strip degree connection bullets and numbers
     name = re.sub(r'[·•]\s*\d*(?:st|nd|rd|th)?(?:\s*degree(?:\s+connection)?)?', ' ', name, flags=re.IGNORECASE)
@@ -495,9 +555,11 @@ def validate_human_name(raw_name: Optional[str]) -> Tuple[bool, Optional[str], O
     name = re.sub(r'\b\d+(?:st|nd|rd|th)\s*([A-Z])', r' \1', name, flags=re.IGNORECASE)
     name = re.sub(r'(?:,\s*|\s+)(?:MBA|SHRM-CP|SHRM-SCP|PHR|SPHR|PRC|CIR|CMVR|PMP|CPA|MD|JD|PhD|BSc|MSc|BA|BS|MA|MS)\b', '', name)
     name = re.sub(r'\b(?:SHRM-CP|SHRM-SCP|PHR|SPHR|PMP|CPA|PhD)\b', '', name, flags=re.IGNORECASE)
+    name = re.sub(r"\s+\b(?:Verified|Premium|Top Voice)\b.*$", "", name, flags=re.IGNORECASE).strip()
     # Split on title/descriptor separators with spaces (e.g. "John Smith - Recruiter", "Jane Doe | AI")
     parts = re.split(r'\s+[-–—]\s+|[|,]', name)[0]
     cleaned = re.sub(r'[^\w\s\'.\-]', ' ', parts).strip()
+    cleaned = cleaned.strip(" \t\n\r'\"`•·-–—|")
     cleaned = " ".join(cleaned.split())
 
     # Truncate trailing role title words (e.g. "Klaus Raem Managing..." -> "Klaus Raem")
@@ -586,6 +648,14 @@ def validate_human_name(raw_name: Optional[str]) -> Tuple[bool, Optional[str], O
     }
     if any(w in QUANTITATIVE_ADJECTIVES for w in lower_words):
         return False, None, f"Name contains quantitative or job posting adjective ('{cleaned}')"
+
+    # Reject non-person keywords (benefits, degrees, cities, application keywords)
+    if any(w in NON_PERSON_NAME_KEYWORDS for w in lower_words):
+        return False, None, f"Name contains non-person / noise keyword: {[w for w in lower_words if w in NON_PERSON_NAME_KEYWORDS]}"
+
+    # Reject job search / listing phrases
+    if re.search(r"\b(?:jobs? in|jobs? near|now hiring|job openings?|vacancies|job details|careers?)\b", lower):
+        return False, None, f"Name contains job search phrase ('{cleaned}')"
 
     # Reject names that end in corporate / agency designations (e.g. "Daley Ard Associates")
     if any(lower.endswith(" " + d) for d in [

@@ -300,7 +300,29 @@ class ProfileJudge:
                         rejection_reason=f"Matched noise keywords {noise_hits[:3]} without any profile sections",
                     )
 
-        # 2. JOB POSTING CLASSIFICATION
+        # 2. JOB BOARD & JOB POSTING CLASSIFICATION
+        is_job_board_window = (
+            any(k in wt_lower for k in [
+                " jobs in ", " jobs |", " jobs - ", "developer jobs", "engineer jobs",
+                "recruiter jobs", "now hiring", "hiring near", "employment in",
+                "job openings", "job vacancies", "simplyhired", "ziprecruiter",
+                "jobright", "indeed.com", "glassdoor.com/job", "dice.com/jobs"
+            ])
+            or any(k in url_lower for k in [
+                "simplyhired.com", "ziprecruiter.com", "jobright.ai", "indeed.com",
+                "/jobs/search", "/jobs/collections", "/jobs?", "/jobs/", "/careers",
+                "dice.com/jobs", "careerbuilder.com"
+            ])
+        )
+        if is_job_board_window and not is_verified_linkedin:
+            return JudgmentResult(
+                category="JOB_POSTING",
+                is_candidate_profile=False,
+                confidence=0.95,
+                rejection_reason="Detected job board or job search listing window",
+                signals_detected=["job_board_url_or_title"],
+            )
+
         job_signals = 0
         for l in clean_lines[:20]:
             if re.search(r"\b(?:about the job|job description|qualifications|responsibilities|requirements|what you'll do|role overview)\b", l, re.IGNORECASE):

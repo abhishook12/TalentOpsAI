@@ -282,14 +282,23 @@ class PageClassifier:
             or any(w in title_lower for w in ("jobright", "indeed", "simplyhired", "glassdoor", "ziprecruiter", "wellfound", "hired", "recruitment agency", "staffing", "talent acquisition"))
         )
         if is_sourcing_plat:
-            is_applicant = any(k in url_lower for k in ["/candidate", "/application", "/applicant", "/resume", "/profile", "/r/"]) or any(k in title_lower for k in ["candidate", "applicant", "resume", "profile"])
+            is_job_listing_title = any(kw in title_lower for kw in [
+                "jobs in", "jobs -", "jobs |", "developer jobs", "engineer jobs", "recruiter jobs",
+                "hiring", "now hiring", "job search", "search results",
+                "job listing", "careers at", "apply for", "top ", "openings",
+                "vacancies", "requisition", "work from home jobs"
+            ])
+            is_applicant = (
+                (any(k in url_lower for k in ["/candidate", "/application", "/applicant", "/resume", "/profile", "/r/"]) or any(k in title_lower for k in ["candidate profile", "applicant profile", "resume:", "profile of"]))
+                and not is_job_listing_title
+            )
             return {
                 "page_type": PAGE_TYPE_PERSON_PROFILE if is_applicant else PAGE_TYPE_JOB_PAGE,
                 "platform": plat or "SOURCING_PORTAL",
-                "is_candidate_eligible": True,
+                "is_candidate_eligible": is_applicant,
                 "confidence": 0.90,
                 "canonical_url": raw_url.split("?")[0] if raw_url else None,
-                "reason": "Sourcing portal applicant or requisition view",
+                "reason": "Sourcing portal applicant view" if is_applicant else "Sourcing portal job listing / requisition view",
             }
 
         # 6. Messaging & Chat Tools (Slack, Teams, WhatsApp, Gmail, Outlook, Google Chat)

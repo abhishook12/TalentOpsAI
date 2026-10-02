@@ -40,9 +40,69 @@ GEO_INDICATORS = re.compile(
     r"ontario|british columbia|quebec|alberta|montreal|montréal|calgary|ottawa|"
     r"karnataka|tamil nadu|gujarat|kolkata|ahmedabad|kerala|munich|frankfurt|barcelona|"
     r"lisbon|milan|dublin|zurich|zürich|stockholm|oslo|copenhagen|vienna|brussels|warsaw|"
-    r"manchester|birmingham|leeds|edinburgh|bristol|são paulo|sao paulo|buenos aires|bogotá|bogota)\b",
+    r"manchester|birmingham|leeds|edinburgh|bristol|são paulo|sao paulo|buenos aires|bogotá|bogota|"
+    r"las vegas|fort worth|milwaukee|indianapolis|columbus|charlotte|baltimore|tampa|orlando|"
+    r"pittsburgh|cincinnati|cleveland|sacramento|kansas city|san antonio|el paso|nashville|"
+    r"memphis|oklahoma city|louisville|albuquerque|tucson|fresno|mesa|omaha|germantown|madison)\b",
     re.IGNORECASE,
 )
+
+# Comprehensive Non-Human Noise Word Blacklist for Candidate Name Screening
+NON_PERSON_NAME_KEYWORDS = frozenset({
+    # Degrees & Education
+    'degree', 'degrees', 'bachelor', 'bachelors', 'bactklors', 'bactkloes', 'master', 'masters',
+    'doctorate', 'diploma', 'certificate', 'certification', 'alumni', 'graduate', 'undergraduate',
+    'university', 'college', 'school', 'academy', 'institute', 'education', 'campus', 'science',
+    'computer', 'engineering', 'informatics', 'kinesiology', 'humanities',
+    # Licenses, Certifications & Requirements
+    'license', 'licenses', 'driver', 'drivers', 'driving', 'cdl', 'clearance', 'authorized',
+    'authorization', 'screening', 'screen', 'test', 'testing', 'check', 'background',
+    # Occupation & Role Nouns as Names
+    'professional', 'professionals', 'contractor', 'contractors', 'handyman', 'detailer',
+    'cleaner', 'cleaning', 'technician', 'mechanic', 'operator', 'installer', 'installation',
+    'worker', 'workers', 'laborer', 'laborers', 'helper', 'helpers', 'crew', 'staff',
+    'assistant', 'specialist', 'coordinator', 'consultant', 'analyst', 'recruiter',
+    'sourcer', 'manager', 'director', 'engineer', 'developer',
+    # Benefits, Leave & Compensation
+    'medical', 'dental', 'vision', 'retirement', 'retrernent', 'retire', 'pension',
+    'insurance', 'benefits', 'benefit', '401k', 'fsa', 'hsa', 'pto', 'vacation',
+    'leave', 'stipend', 'reimbursement', 'disability', 'perks', 'compensation',
+    'allowance', 'commuter', 'parental', 'wellness', 'relocation', 'bonus', 'equity',
+    # Application & Hiring UI
+    'application', 'applications', 'apply', 'applying', 'applicant', 'applicants',
+    'online', 'interview', 'interviews', 'rejoin', 'questionnaire', 'assessment',
+    'submission', 'submitting', 'resume', 'resumes', 'portal', 'posting', 'postings',
+    'requisition', 'listing', 'listings', 'vacancy', 'vacancies', 'opening', 'openings',
+    'search', 'utility', 'deployment', 'homage', 'festival', 'center', 'claim',
+    'job', 'jobs', 'career', 'careers', 'hire', 'hiring', 'work', 'works',
+    'my', 'our', 'all', 'the', 'your', 'verified', 'premium', 'badge',
+    # Work Authorization & Visas
+    'visa', 'visas', 'citizenship', 'citizen', 'citizens', 'sponsorship', 'sponsor',
+    'sponsors', 'greencard', 'w2', 'c2c', '1099', 'tax', 'hourly', 'salary',
+    'full-time', 'part-time', 'contract', 'in-person', 'travel', 'remote', 'hybrid', 'on-site',
+    # Cities & States
+    'vegas', 'vegos', 'fort', 'worth', 'angeles', 'francisco', 'diego', 'jose',
+    'antonio', 'orleans', 'charlotte', 'columbus', 'indianapolis', 'denver',
+    'seattle', 'boston', 'atlanta', 'miami', 'austin', 'houston', 'dallas',
+    'phoenix', 'philadelphia', 'detroit', 'memphis', 'baltimore', 'milwaukee',
+    'albuquerque', 'tucson', 'fresno', 'sacramento', 'mesa', 'omaha', 'raleigh',
+    'oakland', 'minneapolis', 'tulsa', 'wichita', 'arlington', 'bakersfield',
+    'aurora', 'tampa', 'tamva', 'honolulu', 'anaheim', 'chicago', 'germantown',
+    'madison', 'orlando', 'cleveland', 'pittsburgh', 'cincinnati', 'greensboro',
+    'plano', 'newark', 'irvine', 'toledo', 'durham', 'laredo', 'scottsdale',
+    'glendale', 'gilbert', 'winston-salem', 'lubbock', 'reno', 'chandler',
+    'chesapeake', 'fremont', 'baton', 'rouge', 'richmond', 'boise', 'birmingham',
+    'spokane', 'rochester', 'auburn', 'hills', 'falls', 'church', 'saint',
+    'louis', 'alamos', 'chester', 'preschool', 'stores', 'rock', 'state',
+    # Tech & Software Products
+    'cisco', 'catalyst', 'guidewire', 'sap', 'oracle', 'salesforce', 'investment',
+    # OCR Glitches & Sourcing Platform Noise
+    'cz', 'fo', 'mard', 'relewnce', 'termlogy', 'cotamt', 'fim', 'lre', 'cause',
+    'percentage', 'estimate', 'estimated', 'posted', 'urgently', 'viewed',
+    'matched', 'matching', 'recommended', 'saved', 'sponsored', 'relevance',
+    'date', 'recent', 'popularity', 'distance', 'pwple', 'talen', 'taler',
+    'searc', 'zoor', 'searco', 'wkata', 'lile', 'breaks', 'roadside',
+})
 
 # Strict uppercase 2-letter US state code requiring preceding city name of >= 2 characters
 US_STATE_POSTAL_REGEX = re.compile(
@@ -509,6 +569,12 @@ def clean_job_title(text: Optional[str]) -> Optional[str]:
     cleaned = re.sub(r"^[\s\-_–—•·*|:;~,#>\(\)/]+", "", cleaned).strip()
     # Strip leading list numbers e.g. '1. ', '1) ', '1- '
     cleaned = re.sub(r"^\d+[\.\)\-]\s*", "", cleaned).strip()
+    # Strip mashed ordinal indicators (e.g. "3Rdsenior" -> "Senior", "2ndManaging" -> "Managing")
+    cleaned = re.sub(r"^\d+(?:st|nd|rd|th)\s*([A-Za-z])", lambda m: m.group(1).upper(), cleaned, flags=re.IGNORECASE).strip()
+    cleaned = re.sub(r"^\d+(?:st|nd|rd|th)\s*", "", cleaned, flags=re.IGNORECASE).strip()
+    cleaned = re.sub(r"\b\d+(?:st|nd|rd|th)\s*([A-Za-z])", lambda m: m.group(1).upper(), cleaned, flags=re.IGNORECASE).strip()
+    # Strip trailing badges (e.g. "Verified", "Premium", "Top Voice")
+    cleaned = re.sub(r"\s+\b(?:verified|premium|top\s+voice)\b.*$", "", cleaned, flags=re.IGNORECASE).strip()
     # Strip gender pronouns commonly tagged in headers e.g. '(he/him)', '(she/her)'
     cleaned = re.sub(r"\s*\((?:he/him|she/her|they/them|ze/zir|any pronouns)\)", "", cleaned, flags=re.IGNORECASE).strip()
     # Strip connection indicators e.g. '· 1st', '(2nd degree)', '2nd', '3rd+'
@@ -1315,6 +1381,8 @@ def is_valid_person_name(text: Optional[str]) -> bool:
     # Strip pronouns and connection degree badges first
     t = re.sub(r"\s*[·•\u00B7\u2022\u2219\u25E6\u2013\u2014|]+\s*(?:1st|2nd|3rd(?:\+)?).*$", "", t, flags=re.IGNORECASE).strip()
     t = re.sub(r"\s*[\(\[]?\b(?:she/her|he/him|they/them|she/they|he/they)\b[\)\]]?", "", t, flags=re.IGNORECASE).strip()
+    t = re.sub(r"\s+\b(?:verified|premium|top\s+voice)\b.*$", "", t, flags=re.IGNORECASE).strip()
+    t = re.sub(r"^\d+(?:st|nd|rd|th)\s*", "", t, flags=re.IGNORECASE).strip()
     if len(t) < 3 or len(t) > 40:
         return False
     if is_noise_text(t) or is_valid_location(t) or extract_connection_degree(t):
@@ -1528,7 +1596,10 @@ def is_valid_person_name(text: Optional[str]) -> bool:
         "vehicle", "commute", "overtime", "eligibility", "eligible", "requirements",
         "requirement", "qualifications", "qualification",
     }
-    if any(w in blacklisted for w in lower_words):
+    if any(w in blacklisted for w in lower_words) or any(w in NON_PERSON_NAME_KEYWORDS for w in lower_words):
+        return False
+    # Reject strings containing job search / listing / requirement phrases
+    if re.search(r"\b(?:jobs? in|jobs? near|now hiring|job openings?|vacancies|job details|careers?)\b", t_lower):
         return False
     if any(w in QUALIFICATION_AND_REQUIREMENT_WORDS for w in lower_words):
         return False
@@ -1651,11 +1722,20 @@ def clean_person_name(text: Optional[str]) -> Optional[str]:
     raw_lower = raw_str.lower()
     if raw_lower in BROWSER_CHROME_NOISE or raw_lower in QUALIFICATION_AND_REQUIREMENT_WORDS:
         return None
+    if re.search(r"\b(?:jobs? in|jobs? near|now hiring|job openings?|vacancies|job details|careers?)\b", raw_lower):
+        return None
+
     t = raw_str
     # Strip leading notification numbers or badges e.g. "54 | ", "(54) ", "[12] "
     t = re.sub(r"^(?:[\(\[]\d+\+?[\)\]]\s*[|•·–—\-:]?\s*|\d+\s*[|•·–—\-:]\s*)+", "", t).strip()
+    # Strip mashed leading connection numbers (e.g. "3RdJohn" -> "John", "2ndMary" -> "Mary")
+    t = re.sub(r"^\d+(?:st|nd|rd|th)\s*([A-Za-z])", lambda m: m.group(1).upper(), t, flags=re.IGNORECASE).strip()
+    t = re.sub(r"^\d+(?:st|nd|rd|th)\s*", "", t, flags=re.IGNORECASE).strip()
+    t = re.sub(r"\b\d+(?:st|nd|rd|th)\s*([A-Za-z])", lambda m: m.group(1).upper(), t, flags=re.IGNORECASE).strip()
     # Strip degree suffixes: • 2nd, · 1st, 3rd, etc.
     t = re.sub(r"\s*[·•\u00B7\u2022\u2219\u25E6\u2013\u2014|]+\s*(?:1st|2nd|3rd(?:\+)?).*$", "", t, flags=re.IGNORECASE).strip()
+    # Strip trailing platform badges (e.g. "Verified", "Premium", "Top Voice")
+    t = re.sub(r"\s+\b(?:verified|premium|top\s+voice)\b.*$", "", t, flags=re.IGNORECASE).strip()
     # Strip pronouns in parens/brackets/free: (she/her), [she/her], (he/him), etc.
     t = re.sub(r"\s*[\(\[]?\b(?:she/her|he/him|they/them|she/they|he/they)\b[\)\]]?", "", t, flags=re.IGNORECASE).strip()
     # Strip honorific prefixes (Dr., Mr., Ms., Mrs., Prof.)
@@ -1668,7 +1748,12 @@ def clean_person_name(text: Optional[str]) -> Optional[str]:
     # e.g. "Kate Threewitts, SPHR, SHRM-SCP" → "Kate Threewitts"
     # e.g. "Megan Alford, PRC, CIR, CMVR" → "Megan Alford"
     # Pattern: comma followed by 2-10 uppercase letters/numbers/hyphens (credential abbreviations)
-    t = re.sub(r"(?:,\s*[A-Z][A-Z0-9\-]{1,9})+$", "", t).strip()
+    # Trailing badge strip again after other strips
+    t = re.sub(r"\s+\b(?:verified|premium|top\s+voice)\b.*$", "", t, flags=re.IGNORECASE).strip()
+    t = t.strip(" \t\n\r'\"`•·-–—|")
+    post_words = [re.sub(r"[^a-zA-Z]", "", w).lower() for w in t.split()]
+    if any(w in NON_PERSON_NAME_KEYWORDS for w in post_words if w):
+        return None
     return t if is_valid_person_name(t) else None
 
 

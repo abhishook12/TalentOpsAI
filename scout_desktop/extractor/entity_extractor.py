@@ -139,7 +139,7 @@ class EntityExtractor:
             return []
 
         # Case A: Job Posting Page
-        if self._is_job_page(clean_lines, window_title, source_url):
+        if self._is_job_page(clean_lines, window_title, source_url) or judgment.category == "JOB_POSTING":
             return self._extract_job_page(clean_lines, capture_id, source_url, window_title)
 
         # Case A.1: Corporate Company / Organization Page
@@ -195,6 +195,11 @@ class EntityExtractor:
                 return clusters
 
         # Case C: Single Person Profile Page (With Multi-Scroll Context)
+        # HARD-WALL: Job listings and job search aggregators must NEVER fall through to single person extraction
+        if judgment.category == "JOB_POSTING" or self._is_job_page(clean_lines, window_title, source_url):
+            logger.debug("Hard-wall: Bypassing Case C single person extraction on job page (%s)", window_title)
+            return []
+
         zones = self._segment_profile_zones(clean_lines)
         header_lines = zones["header"]
 
@@ -1184,10 +1189,27 @@ class EntityExtractor:
 
     def _is_job_page(self, clean_lines: List[str], window_title: str, source_url: str) -> bool:
         title_lower = window_title.lower()
-        if "/jobs/" in source_url or any(p in title_lower for p in ['job posting', 'job application', 'job details', 'job search', 'apply for']):
+        url_lower = source_url.lower()
+        if (
+            "/jobs/" in url_lower
+            or "/jobs?" in url_lower
+            or "/job/" in url_lower
+            or "/careers" in url_lower
+            or "/vacancies" in url_lower
+            or any(d in url_lower for d in ["simplyhired.com", "ziprecruiter.com", "jobright.ai", "indeed.com", "careerbuilder.com", "dice.com/job"])
+            or any(p in title_lower for p in [
+                'job posting', 'job application', 'job details', 'job search', 'apply for',
+                'jobs in ', 'jobs |', 'jobs - ', 'developer jobs', 'engineer jobs', 'recruiter jobs',
+                'now hiring', 'hiring near', 'employment in', 'job vacancies', 'job openings',
+                'simplyhired', 'ziprecruiter', 'jobright', 'indeed.com', 'glassdoor.com/job'
+            ])
+        ):
             return True
-        full_text = " ".join(clean_lines[:15]).lower()
-        if any(trigger in full_text for trigger in ["about the job", "apply on company website", "easy apply", "meet the hiring team", "job description"]):
+        full_text = " ".join(clean_lines[:20]).lower()
+        if any(trigger in full_text for trigger in [
+            "about the job", "apply on company website", "easy apply", "meet the hiring team",
+            "job description", "full job description", "qualifications", "responsibilities", "role overview"
+        ]):
             return True
         return False
 
@@ -1208,10 +1230,12 @@ class EntityExtractor:
                 continue
             if not job_title and len(line) >= 4 and not is_valid_location(line) and not SCHOOL_KEYWORDS.search(line):
                 t, c = clean_title_and_company(line)
-                job_title = t or line
-                if c and is_valid_company_name(c):
-                    company_name = c
-                continue
+                candidate_title = clean_job_title(t or line)
+                if candidate_title and is_plausible_title(candidate_title):
+                    job_title = candidate_title
+                    if c and is_valid_company_name(c):
+                        company_name = c
+                    continue
             if job_title and not company_name and len(line) >= 2 and not is_valid_location(line) and not extract_connection_degree(line):
                 if is_valid_company_name(line) and not is_plausible_title(line):
                     se = classify_semantic_entity(line)

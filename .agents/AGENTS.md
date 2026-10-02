@@ -54,3 +54,41 @@ All autonomous discovery, harvesting, enrichment, and pipeline background engine
 4. **OS-Level Process Supervisor**: `backend/talentops_supervisor.py` must remain permanently running via Windows Startup (`shell:startup`) and Windows Task Scheduler (`TalentOpsPerpetualSupervisor`). If the backend process ever crashes, terminates, or the PC wakes from sleep/hibernation, the supervisor must immediately auto-relaunch it.
 5. **No Code May Break This Guarantee**: No future agent is permitted to disable, remove, or comment out these sentinel layers or make background workers contingent on user UI actions.
 
+---
+
+## 4. Permanent System Architecture Mandate — Systemic Embedding of User Directives (Strict User Mandate)
+
+Every user requirement, rule, instruction, or architectural preference is a PERMANENT, NON-NEGOTIABLE COMMAND to be implemented directly into the system code, automated pipelines, database schemas, and background sentinels:
+
+1. **Never a One-Off Patch**: Every instruction given by the user must be engineered as a permanent, systemic mechanism. It must automatically govern all current records AND all upcoming, future discoveries without requiring the user to ever repeat the instruction.
+2. **Permanent Autonomous Ingestion Compliance**: All background harvesters, crawlers, Desktop Scout nodes, and staging enrichers must permanently adhere to user commands natively during every execution loop.
+3. **No Code May Dilute User Directives**: Future agents are forbidden from reverting, softening, bypassing, or removing logic codified per user directives.
+
+---
+
+## 5. Permanent Autonomous Corporate Email Intelligence & Deliverability Gate (Strict Mandate)
+
+Whenever ANY candidate profile is staged or ingested that has a confirmed or inferrable company but lacks a confirmed, deliverable email, the system MUST autonomously execute the following 5-phase intelligence loop:
+
+1. **Phase 1: Autonomous Domain & Entity Resolution**:
+   - Company names must never be platform noise (`Linkedin`, `Google`, `Facebook`, etc.).
+   - If raw company is a platform name or missing, infer the true company from the URL context (e.g. `/company/<slug>/`) or source page title.
+   - Clean UI action terms (`Contact`, `View Profile`, `Connect`, etc.) out of job titles immediately.
+   - Resolve company's canonical corporate domain via dictionary, database match (whitespace-insensitive slug matching), and DNS MX verification.
+2. **Phase 2: Cross-Colleague Pattern Mining**:
+   - Query existing colleagues in the master catalog (`recruiters`) at that corporate domain.
+   - Reverse-engineer empirical email formulas (`first.last`, `f_last`, `first`, `first_last`, etc.) from verified colleagues.
+   - Prioritize empirical colleague patterns over generic seeds.
+3. **Phase 3: Multi-Formula Permutation Synthesis**:
+   - Synthesize corporate email candidates for the person using the deduced company formula(s).
+4. **Phase 4: Non-Intrusive Live Deliverability Probing (Port 25 SMTP & MX)**:
+   - Perform live DNS MX lookup and identify provider (Google Workspace, Microsoft 365, etc.).
+   - Execute non-intrusive Port 25 SMTP RCPT TO mailbox handshake probes.
+   - Code 250: Mailbox exists -> verified deliverable (`SMTP_VERIFIED`).
+   - Code 550: Server rejects mailbox -> cycle through remaining permutations until finding deliverable format or concluding bounce.
+   - Catchall: Assign `CATCHALL_VERIFIED` / `PATTERN_VERIFIED` with high confidence.
+   - Auto-persist verified formulas to `company_email_patterns` to train the intelligence registry for future colleagues.
+5. **Phase 5: Master DB Committal & Hard Lockdown**:
+   - Attach ONLY deliverable corporate emails.
+   - Synthetic placeholder emails (`@unknown.com`, `@noemail.talentops`) are HARD BLOCKED across all gates and databases.
+

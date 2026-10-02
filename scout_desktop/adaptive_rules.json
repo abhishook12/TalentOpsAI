@@ -50,5 +50,18 @@
     "created_at": 1790956892.5957925,
     "hit_count": 2,
     "last_hit_at": 1790956920.1328542
+  },
+  {
+    "rule_id": "reflex_LINKEDIN_5_1790962725",
+    "platform": "LINKEDIN",
+    "window_pattern": "eSkillz:\\ People\\ \\|\\ LinkedIn",
+    "name_line_idx": 7,
+    "title_line_idx": null,
+    "company_line_idx": null,
+    "name_sample": "Yo Yatharath Chaudhary",
+    "title_sample": "Talent Acquisition Specialist",
+    "created_at": 1790962725.0837858,
+    "hit_count": 1,
+    "last_hit_at": 1790962725.0837862
   }
 ]

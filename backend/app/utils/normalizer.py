@@ -446,6 +446,9 @@ def validate_human_name(raw_name: Optional[str]) -> Tuple[bool, Optional[str], O
 
     name = str(raw_name).strip()
 
+    if is_company_name(name):
+        return False, None, 'Organization/company name detected'
+
     # Reject corrupt unicode replacement characters
     if "\ufffd" in name or "\\ufffd" in name:
         return False, None, f"Name contains corrupt OCR unicode characters ('{name}')"

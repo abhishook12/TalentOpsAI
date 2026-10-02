@@ -6,6 +6,7 @@ import random
 import logging
 import os
 from tavily import TavilyClient
+from ..utils.normalizer import is_company_name
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +98,14 @@ def is_human_name(name: str, company_name: str = "", existing_email: str = "") -
         return False
     lower_name = name.lower().strip()
 
+    # Hard gate: Reject known company/organization names immediately
+    if is_company_name(name):
+        return False
+
+    # Reject names containing TLD patterns (e.g. 'Beacontechinc.Com')
+    if re.search(r'\.(com|net|org|io|co|biz|info|edu|gov)\b', lower_name, re.IGNORECASE):
+        return False
+
     if any(char.isdigit() for char in lower_name):
         return False
 
@@ -149,7 +158,15 @@ def is_human_name(name: str, company_name: str = "", existing_email: str = "") -
         'thanks', 'regards', 'sincerely', 'cheers', 'thank', 'delete', 'archive',
         'sent', 'items', 'flagged', 'unread', 'subject', 'drafts', 'trash', 'junk',
         'folder', 'folders', 'distance', 'directions', 'transit', 'added', 'posted',
-        'urgently', 'urgent', 'tell', 'tellme', 'hi', 'hello', 'dear', 'hey'
+        'urgently', 'urgent', 'tell', 'tellme', 'hi', 'hello', 'dear', 'hey',
+        # Company/organization entity terms that are never human names
+        'recruiting', 'recruitment', 'technologies', 'technology', 'tech',
+        'inc', 'llc', 'ltd', 'corp', 'corporation', 'company', 'gmbh',
+        'holdings', 'enterprises', 'ventures', 'capital', 'associates',
+        'consulting', 'consultancy', 'staffing', 'international', 'worldwide',
+        'foundation', 'institute', 'academy', 'pharmaceuticals', 'pharma',
+        'therapeutics', 'healthcare', 'laboratories', 'infotech', 'logix',
+        'com', 'net', 'org', 'io', 'co',  # TLD fragments that appear in garbled names
     }
     if any(p in strict_roles for p in parts):
         return False

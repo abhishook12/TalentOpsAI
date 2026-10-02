@@ -1,1 +1,15 @@
-[]
+[
+  {
+    "rule_id": "reflex_LINKEDIN_1_1790947077",
+    "platform": "LINKEDIN",
+    "window_pattern": "NTEN:\\ People\\ \\|\\ LinkedIn",
+    "name_line_idx": 7,
+    "title_line_idx": null,
+    "company_line_idx": null,
+    "name_sample": "Non-profit Organizations",
+    "title_sample": "Talent Acquisition Specialist",
+    "created_at": 1790947077.5647209,
+    "hit_count": 4,
+    "last_hit_at": 1790947105.6233997
+  }
+]

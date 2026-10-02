@@ -995,6 +995,12 @@ class WebHarvestEngine:
                     self.stats["quality_gate_rejections"] += 1
                     continue
 
+                # Quality Gate 2b: Must NOT be a company/organization entity
+                from ..utils.normalizer import is_company_name
+                if is_company_name(raw_name):
+                    self.stats["quality_gate_rejections"] += 1
+                    continue
+
                 # Quality Gate 2.5: Title check — valid recruiter title boosts confidence,
                 # but absence does NOT hard-reject. Most web pages don't put title text
                 # near the email/name anchor — only about 20% of spider profiles have titles

@@ -6,6 +6,7 @@ and waterfall candidate profile enrichment.
 
 import json
 import logging
+import re
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -526,6 +527,15 @@ def get_web_harvest_reports(
                         r.processing_status = 'rejected'
                         r.decision = 'REJECT_NOISE'
                         r.decision_reason = result.get('reason', 'Classified as NOISE')
+                    elif new_type == 'PERSON' and r.decision == 'COMPANY_COMMITTED':
+                        r.decision = 'ACCEPT_PERSON'
+                        r.decision_reason = f"Classified as PERSON: {result.get('reason', '')}"
+                    elif new_type == 'JOB_POSTING':
+                        r.decision = 'JOB_CAPTURED'
+                        r.decision_reason = f"Classified as JOB_POSTING: {result.get('reason', '')}"
+                    elif new_type == 'COMPANY' and r.decision == 'ACCEPT_PERSON':
+                        r.decision = 'COMPANY_COMMITTED'
+                        r.decision_reason = f"Classified as COMPANY: {result.get('reason', '')}"
                     db.add(r)
                     reclassified_any = True
                 except Exception:
@@ -607,32 +617,46 @@ async def trigger_web_harvest_cycle(
 
 @router.post("/reclassify-entities")
 def reclassify_all_entities(
-    batch_size: int = Query(500, ge=50, le=5000),
+    batch_size: int = Query(200, ge=20, le=1000),
+    max_records: int = Query(2000, ge=10, le=50000),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_from_request),
 ) -> Dict[str, Any]:
     """
     Bulk retroactive entity reclassification.
-    Reclassifies ALL discovery_staging records using the new EntityTypeClassifier.
-    Fixes historically misclassified records (e.g. PERSON names labeled as COMPANY).
+    Reclassifies discovery_staging records using the new EntityTypeClassifier.
+    Fixes historically misclassified records (e.g. PERSON names labeled as COMPANY,
+    timestamps in names, UI noise).
+    Uses keyset pagination for high performance.
     """
     from ..models.staging_models import DiscoveryStaging
     from ..services.entity_classifier import entity_classifier as _ec
     
-    # Process in batches to avoid memory issues
-    offset = 0
+    last_id = 0
     total_reclassified = 0
     type_counts = {}
     
-    while True:
-        records = db.query(DiscoveryStaging).order_by(
+    while total_reclassified < max_records:
+        fetch_limit = min(batch_size, max_records - total_reclassified)
+        records = db.query(DiscoveryStaging).filter(
+            DiscoveryStaging.id > last_id
+        ).order_by(
             DiscoveryStaging.id.asc()
-        ).offset(offset).limit(batch_size).all()
+        ).limit(fetch_limit).all()
         
         if not records:
             break
         
+        last_id = records[-1].id
+        
         for r in records:
+            raw_n = r.raw_name or ''
+            # Clean timestamp noise
+            cleaned_n = re.sub(r"\s*[·•|]\s*\d+\s*(?:seconds?|minutes?|hours?|days?|weeks?|months?|years?|secs?|mins?|hrs?|d|w|m|h|y)\s*ago.*$", "", raw_n, flags=re.IGNORECASE).strip()
+            cleaned_n = re.sub(r"\s*[·•|]\s*(?:reposted|shared|liked).*$", "", cleaned_n, flags=re.IGNORECASE).strip()
+            if cleaned_n != raw_n and len(cleaned_n) >= 2:
+                r.raw_name = cleaned_n
+
             try:
                 result = _ec.classify(
                     raw_name=r.raw_name,
@@ -646,15 +670,33 @@ def reclassify_all_entities(
                 )
                 new_type = result['entity_type']
                 r.entity_type = new_type
+                if new_type == 'NOISE':
+                    r.processing_status = 'rejected'
+                    r.decision = 'REJECT_NOISE'
+                    r.decision_reason = result.get('reason', 'Classified as NOISE')
+                elif new_type == 'PERSON' and r.decision == 'COMPANY_COMMITTED':
+                    r.decision = 'ACCEPT_PERSON'
+                    r.decision_reason = f"Classified as PERSON: {result.get('reason', '')}"
+                elif new_type == 'JOB_POSTING':
+                    r.decision = 'JOB_CAPTURED'
+                    r.decision_reason = f"Classified as JOB_POSTING: {result.get('reason', '')}"
+                elif new_type == 'COMPANY' and r.decision == 'ACCEPT_PERSON':
+                    r.decision = 'COMPANY_COMMITTED'
+                    r.decision_reason = f"Classified as COMPANY: {result.get('reason', '')}"
+                
                 db.add(r)
                 type_counts[new_type] = type_counts.get(new_type, 0) + 1
                 total_reclassified += 1
-            except Exception:
-                pass
+            except Exception as classify_err:
+                logger.debug("[RECLASSIFY] Error on id=%s: %s", r.id, classify_err)
         
-        db.commit()
-        offset += batch_size
-    
+        try:
+            db.commit()
+        except Exception as commit_err:
+            db.rollback()
+            logger.error("[RECLASSIFY] Commit error: %s", commit_err)
+            break
+            
     return {
         "success": True,
         "total_reclassified": total_reclassified,

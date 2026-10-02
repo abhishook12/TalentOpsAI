@@ -166,6 +166,10 @@ class DesktopEntityTypeClassifier:
         """
         signals = []
         name = (raw_name or "").strip()
+        # Clean relative timestamp noise e.g. "Fineta Consulting · 20 minutes ago"
+        name = re.sub(r"\s*[·•|]\s*\d+\s*(?:seconds?|minutes?|hours?|days?|weeks?|months?|years?|secs?|mins?|hrs?|d|w|m|h|y)\s*ago.*$", "", name, flags=re.IGNORECASE).strip()
+        name = re.sub(r"\s*[·•|]\s*(?:reposted|shared|liked|commented).*$", "", name, flags=re.IGNORECASE).strip()
+
         title = (raw_title or "").strip()
         company = (raw_company or "").strip()
         email = (raw_email or "").strip().lower()
@@ -180,20 +184,20 @@ class DesktopEntityTypeClassifier:
         if noise_res:
             return noise_res
 
-        # ── GATE 2: COMPANY Detection ─────────────────────────────────
-        comp_res = self._check_company(name, name_lower, title, title_lower, company, email, url, page_title, signals)
-        if comp_res:
-            return comp_res
-
-        # ── GATE 3: JOB_POSTING Detection ─────────────────────────────
+        # ── GATE 2: JOB_POSTING Detection (Prioritized so Job Titles are not classified as Companies) ──
         job_res = self._check_job_posting(name, name_lower, title, title_lower, url, page_title, signals)
         if job_res:
             return job_res
 
-        # ── GATE 4: CONTACT_INFO Detection ────────────────────────────
+        # ── GATE 3: CONTACT_INFO Detection (Prioritized so Generic Desks are classified as Contacts) ────
         contact_res = self._check_contact_info(name, name_lower, title_lower, email, raw_phone, url, signals)
         if contact_res:
             return contact_res
+
+        # ── GATE 4: COMPANY Detection ─────────────────────────────────
+        comp_res = self._check_company(name, name_lower, title, title_lower, company, email, url, page_title, signals)
+        if comp_res:
+            return comp_res
 
         # ── GATE 5: MARKET_SIGNAL Detection ───────────────────────────
         sig_res = self._check_market_signal(name, name_lower, title, title_lower, url, page_title, signals)
@@ -211,6 +215,45 @@ class DesktopEntityTypeClassifier:
                 "signals": signals,
                 "clean_name": c_name,
             }
+
+        # ── CamelCase & Mashed Username Recovery ─────────────────────
+        if len(name.split()) == 1 and len(name) >= 5:
+            # Step 1: Try CamelCase split
+            camel_parts = re.sub(r'([a-z])([A-Z])', r'\1 \2', name)
+            if len(camel_parts.split()) >= 2:
+                c_cc = clean_person_name(camel_parts)
+                if c_cc and is_valid_person_name(c_cc):
+                    signals.append("camelcase_name_recovered")
+                    return {
+                        "entity_type": ENTITY_PERSON,
+                        "confidence": 0.85,
+                        "reason": f"CamelCase username recovered: {c_cc}",
+                        "signals": signals,
+                        "clean_name": c_cc,
+                    }
+
+            # Step 2: Try common given name split for mashed handles e.g. "Lucasleverett" -> "Lucas Leverett"
+            COMMON_GIVEN_NAMES = {
+                'adam', 'alex', 'andrew', 'anthony', 'ben', 'brian', 'chris', 'dan', 'daniel',
+                'david', 'eric', 'gary', 'greg', 'james', 'jason', 'jeff', 'joe', 'john',
+                'justin', 'kevin', 'lucas', 'mark', 'matt', 'matthew', 'michael', 'nick',
+                'paul', 'peter', 'richard', 'rob', 'robert', 'ryan', 'sam', 'sarah', 'scott',
+                'steve', 'steven', 'tim', 'tom', 'thomas', 'will', 'william'
+            }
+            n_low = name.lower()
+            for gn in sorted(COMMON_GIVEN_NAMES, key=len, reverse=True):
+                if n_low.startswith(gn) and len(n_low) >= len(gn) + 3:
+                    candidate_split = f"{name[:len(gn)].capitalize()} {name[len(gn):].capitalize()}"
+                    c_m = clean_person_name(candidate_split)
+                    if c_m and is_valid_person_name(c_m):
+                        signals.append("mashed_handle_recovered")
+                        return {
+                            "entity_type": ENTITY_PERSON,
+                            "confidence": 0.80,
+                            "reason": f"Mashed handle recovered: {c_m}",
+                            "signals": signals,
+                            "clean_name": c_m,
+                        }
 
         # Fallback check: Did a company name slip through without legal suffix?
         if is_valid_company_name(name):
@@ -287,12 +330,22 @@ class DesktopEntityTypeClassifier:
             }
 
         # Check notification / feed noise
+        # Check notification / feed / CTA noise
         NOISE_PATTERNS = [
             r"^\d+\s+(?:new|unread|notification|update|result)",
             r"(?:accepted your|sent you|shared a|reacted to|messaged you)",
             r"^(?:sign in|join now|log in|sign up|create account)",
             r"^(?:see all|show more|load more|view all|more results)",
             r"^(?:cookie|privacy|terms|disclaimer|all rights reserved)",
+            r"^(?:unlock|discover|explore|learn more|get started|try|start|find out|check out)\b.{5,}",
+            r"^(?:insights? on|overview of|about us|who we are)\b",
+            r"^(?:sponsored|promoted|advertisement|ad)\b",
+            r"^(?:subscribe|follow us|join our|stay updated)\b",
+            r"^(?:trending|popular|recommended for you)\b",
+            r"^(?:upgrade to|switch to|try sales navigator|try premium)\b",
+            r"^(?:feed post|more groups|people also viewed|people you may know)\b",
+            r"^(?:add to|remove from|save to|bookmark)\b",
+            r"\b(?:current openings|job openings|career opportunities|latest openings)\b",
         ]
         for pat in NOISE_PATTERNS:
             if re.search(pat, name_lower):
@@ -303,6 +356,28 @@ class DesktopEntityTypeClassifier:
                     "reason": f"Name matches noise pattern: {name}",
                     "signals": signals,
                 }
+
+        # Check for names that are too long to be a person or company (likely sentences/descriptions)
+        # Market signals can be 6-7 words (e.g. 'Tech Hiring Surge in Q3 2026')
+        word_count = len(name.split())
+        if word_count >= 8:
+            signals.append("sentence_length_name")
+            return {
+                "entity_type": ENTITY_NOISE,
+                "confidence": 0.90,
+                "reason": f"Name is too long ({word_count} words), likely a description: {name}",
+                "signals": signals,
+            }
+
+        # Check for URL / domain / search snippet noise
+        if re.search(r"(?:https?://|www\.|httpswww|\.com/|\.org/|\.net/|\.io/|zhihu\.com|youtube\.com|instagram\.com|justanswer\.com|microsoft\.com|hindustantimes)", name_lower):
+            signals.append("url_or_web_snippet_noise")
+            return {
+                "entity_type": ENTITY_NOISE,
+                "confidence": 1.0,
+                "reason": f"Name contains URL or search snippet artifacts: {name}",
+                "signals": signals,
+            }
 
         return None
 
@@ -319,16 +394,23 @@ class DesktopEntityTypeClassifier:
         signals: List[str],
     ) -> Optional[Dict[str, Any]]:
         """Detect company/organization entities."""
-        confidence = 0.0
-        reasons = []
-
         tokens = [re.sub(r"[^a-zA-Z0-9]", "", tok).lower() for tok in name.split() if tok]
 
-        # Signal 1: Name matches known company or has commercial markers
         has_biz_marker = (
             any(tok in COMMERCIAL_LEGAL_AND_BIZ_MARKERS for tok in tokens)
             or bool(re.search(r"\b(?:inc|llc|ltd|corp|corporation|technologies|solutions|services|group|partners|associates|holdings|labs|ventures|consulting|agency|capital|systems|analytics)\b", name_lower))
         )
+
+        # GUARD: If the name is definitively a valid human name and does NOT have explicit corporate markers,
+        # it cannot be a company even if viewed on a company page / feed!
+        c_name = clean_person_name(name)
+        if c_name and is_valid_person_name(c_name) and not has_biz_marker and name_lower not in KNOWN_STANDALONE_CORPS:
+            return None
+
+        confidence = 0.0
+        reasons = []
+
+        # Signal 1: Name matches known company or has commercial markers
         if has_biz_marker and is_valid_company_name(name):
             confidence += 0.50
             reasons.append("has commercial business designators")

@@ -24,5 +24,31 @@
     "created_at": 1790951992.8431292,
     "hit_count": 1,
     "last_hit_at": 1790951992.8431299
+  },
+  {
+    "rule_id": "reflex_LINKEDIN_3_1790956886",
+    "platform": "LINKEDIN",
+    "window_pattern": "CIS\\ TECHNOLOGIES\\ INC:\\ People\\ \\|\\ LinkedIn",
+    "name_line_idx": 7,
+    "title_line_idx": 8,
+    "company_line_idx": null,
+    "name_sample": "Award-Winning Workplace",
+    "title_sample": "Staffing and Recruiting",
+    "created_at": 1790956886.9434662,
+    "hit_count": 1,
+    "last_hit_at": 1790956886.9434664
+  },
+  {
+    "rule_id": "reflex_LINKEDIN_4_1790956892",
+    "platform": "LINKEDIN",
+    "window_pattern": "Gardner\\ Resources\\ Consulting,\\ LLC:\\ People\\ \\|\\ LinkedIn",
+    "name_line_idx": 7,
+    "title_line_idx": 8,
+    "company_line_idx": null,
+    "name_sample": "Award-Winning Workplace",
+    "title_sample": "Staffing and Recruiting",
+    "created_at": 1790956892.5957925,
+    "hit_count": 2,
+    "last_hit_at": 1790956920.1328542
   }
 ]

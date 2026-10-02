@@ -463,14 +463,52 @@ def get_web_harvest_reports(
             logger.error("[WEBHARVEST] Self-healing schema migration failed: %s", retry_err)
             records = []
     
-    # ── Retroactive Entity Classification ────────────────────────────────
-    # Records without entity_type (legacy data) get classified on-the-fly.
-    # The classification is persisted back to the DB for future queries.
+    # ── Retroactive Self-Healing Entity Audit & Classification ────────────
+    # Records without entity_type, misclassified records (e.g. human names labeled
+    # as COMPANY, company names labeled as PERSON), and timestamp-polluted names
+    # are automatically audited, cleaned, and persisted back to the database.
     try:
         from ..services.entity_classifier import entity_classifier as _ec
-        records_to_reclassify = [r for r in records if not getattr(r, 'entity_type', None)]
-        if records_to_reclassify:
-            for r in records_to_reclassify:
+        from ..utils.normalizer import is_company_name, validate_human_name
+        
+        reclassified_any = False
+        for r in records:
+            current_type = getattr(r, 'entity_type', None)
+            raw_n = r.raw_name or ''
+            
+            # Clean timestamp noise from raw_name e.g. "Fineta Consulting · 20 minutes ago"
+            cleaned_n = re.sub(r"\s*[·•|]\s*\d+\s*(?:seconds?|minutes?|hours?|days?|weeks?|months?|years?|secs?|mins?|hrs?|d|w|m|h|y)\s*ago.*$", "", raw_n, flags=re.IGNORECASE).strip()
+            cleaned_n = re.sub(r"\s*[·•|]\s*(?:reposted|shared|liked).*$", "", cleaned_n, flags=re.IGNORECASE).strip()
+            if cleaned_n != raw_n and len(cleaned_n) >= 2:
+                r.raw_name = cleaned_n
+                reclassified_any = True
+
+            # Check if record needs reclassification:
+            # 1. Missing entity_type
+            # 2. Labeled COMPANY but is a valid human name and not a company
+            # 3. Labeled PERSON but is an obvious company name or starts with promotional/CTA noise
+            # 4. Any record matching promotional, CTA, or feed noise patterns
+            is_human_candidate = False
+            try:
+                is_human_candidate, _, _ = validate_human_name(r.raw_name)
+            except Exception:
+                pass
+
+            is_comp_candidate = False
+            try:
+                is_comp_candidate = is_company_name(r.raw_name)
+            except Exception:
+                pass
+
+            needs_reclass = (
+                not current_type
+                or (current_type == 'COMPANY' and is_human_candidate and not is_comp_candidate)
+                or (current_type == 'PERSON' and is_comp_candidate)
+                or bool(re.search(r"^(?:unlock|discover|explore|learn more|try|feed post|more groups|people also viewed)\b", (r.raw_name or '').lower()))
+                or len((r.raw_name or '').split()) >= 6
+            )
+            
+            if needs_reclass:
                 try:
                     result = _ec.classify(
                         raw_name=r.raw_name,
@@ -482,17 +520,26 @@ def get_web_harvest_reports(
                         source_page_title=getattr(r, 'source_page_title', None),
                         extraction_source=getattr(r, 'extraction_source', None),
                     )
-                    r.entity_type = result['entity_type']
+                    new_type = result['entity_type']
+                    r.entity_type = new_type
+                    if new_type == 'NOISE':
+                        r.processing_status = 'rejected'
+                        r.decision = 'REJECT_NOISE'
+                        r.decision_reason = result.get('reason', 'Classified as NOISE')
                     db.add(r)
+                    reclassified_any = True
                 except Exception:
-                    r.entity_type = 'PERSON'  # Safe fallback
+                    if not current_type:
+                        r.entity_type = 'PERSON'
+        
+        if reclassified_any:
             try:
                 db.commit()
-                logger.info("[WEBHARVEST] Retroactively classified %d records", len(records_to_reclassify))
+                logger.info("[WEBHARVEST] Successfully audited & self-healed records in batch")
             except Exception:
                 db.rollback()
     except Exception as ec_err:
-        logger.debug("[WEBHARVEST] Entity classifier not available for retroactive classification: %s", ec_err)
+        logger.debug("[WEBHARVEST] Entity audit note: %s", ec_err)
 
     reports = []
     for r in records:

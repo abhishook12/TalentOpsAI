@@ -72,6 +72,10 @@ class EntityTypeClassifier:
         """
         signals = []
         name = (raw_name or '').strip()
+        # Clean relative timestamp noise e.g. "Fineta Consulting · 20 minutes ago"
+        name = re.sub(r"\s*[·•|]\s*\d+\s*(?:seconds?|minutes?|hours?|days?|weeks?|months?|years?|secs?|mins?|hrs?|d|w|m|h|y)\s*ago.*$", "", name, flags=re.IGNORECASE).strip()
+        name = re.sub(r"\s*[·•|]\s*(?:reposted|shared|liked|commented).*$", "", name, flags=re.IGNORECASE).strip()
+
         title = (raw_title or '').strip()
         company = (raw_company or '').strip()
         email = (raw_email or '').strip().lower()
@@ -121,10 +125,10 @@ class EntityTypeClassifier:
                 'clean_name': clean_name,
             }
         
-        # ── CamelCase username recovery ──────────────────────────────
-        # LinkedIn feed names often appear as "LucasSilverott" / "JeffKobza"
-        # Try splitting CamelCase into separate words and re-validate
-        if len(name.split()) == 1 and len(name) >= 4 and name[0].isupper():
+        # ── CamelCase & Mashed Username Recovery ─────────────────────
+        # LinkedIn feed names often appear as "LucasSilverott", "Lucasleverett", "Jeffkobza"
+        if len(name.split()) == 1 and len(name) >= 5:
+            # Step 1: Try CamelCase split
             camel_parts = re.sub(r'([a-z])([A-Z])', r'\1 \2', name)
             if len(camel_parts.split()) >= 2:
                 is_valid_cc, clean_cc, _ = validate_human_name(camel_parts)
@@ -132,11 +136,34 @@ class EntityTypeClassifier:
                     signals.append('camelcase_name_recovered')
                     return {
                         'entity_type': ENTITY_PERSON,
-                        'confidence': 0.75,
+                        'confidence': 0.80,
                         'reason': f'CamelCase username recovered: {clean_cc}',
                         'signals': signals,
                         'clean_name': clean_cc,
                     }
+            
+            # Step 2: Try common given name split for mashed handles e.g. "Lucasleverett" -> "Lucas Leverett"
+            COMMON_GIVEN_NAMES = {
+                'adam', 'alex', 'andrew', 'anthony', 'ben', 'brian', 'chris', 'dan', 'daniel',
+                'david', 'eric', 'gary', 'greg', 'james', 'jason', 'jeff', 'joe', 'john',
+                'justin', 'kevin', 'lucas', 'mark', 'matt', 'matthew', 'michael', 'nick',
+                'paul', 'peter', 'richard', 'rob', 'robert', 'ryan', 'sam', 'sarah', 'scott',
+                'steve', 'steven', 'tim', 'tom', 'thomas', 'will', 'william'
+            }
+            n_low = name.lower()
+            for gn in sorted(COMMON_GIVEN_NAMES, key=len, reverse=True):
+                if n_low.startswith(gn) and len(n_low) >= len(gn) + 3:
+                    candidate_split = f"{name[:len(gn)].capitalize()} {name[len(gn):].capitalize()}"
+                    is_valid_m, clean_m, _ = validate_human_name(candidate_split)
+                    if is_valid_m:
+                        signals.append('mashed_handle_recovered')
+                        return {
+                            'entity_type': ENTITY_PERSON,
+                            'confidence': 0.75,
+                            'reason': f'Mashed handle recovered: {clean_m}',
+                            'signals': signals,
+                            'clean_name': clean_m,
+                        }
         
         # Name failed human validation but didn't match any other type
         # Re-check if it's actually a company that wasn't caught
@@ -208,6 +235,7 @@ class EntityTypeClassifier:
             r'^(feed post|more groups|people also viewed|people you may know)',
             r'^(liked by|commented on|shared by|posted by)\b',
             r'^(add to|remove from|save to|bookmark)\b',
+            r'\b(?:current openings|job openings|career opportunities|latest openings)\b',
         ]
         for pat in NOISE_PATTERNS:
             if re.search(pat, name_lower):
@@ -220,8 +248,9 @@ class EntityTypeClassifier:
                 }
         
         # Check for names that are too long to be a person or company (likely sentences/descriptions)
+        # Market signals can be 6-7 words (e.g. 'Tech Hiring Surge in Q3 2026')
         word_count = len(name.split())
-        if word_count >= 6:
+        if word_count >= 8:
             signals.append('sentence_length_name')
             return {
                 'entity_type': ENTITY_NOISE,
@@ -244,8 +273,14 @@ class EntityTypeClassifier:
     
     def _check_company(self, name, name_lower, title, title_lower, company, email, url, page_title, signals) -> Optional[Dict]:
         """Detect company/organization entities."""
-        from ..utils.normalizer import is_company_name, is_company_industry
+        from ..utils.normalizer import is_company_name, is_company_industry, validate_human_name
         
+        # GUARD: If the name is definitively a valid human name and does NOT have explicit corporate markers,
+        # it cannot be a company even if viewed on a company page / feed!
+        is_human, clean_hname, _ = validate_human_name(name)
+        if is_human and not is_company_name(name):
+            return None
+
         confidence = 0.0
         reasons = []
         

@@ -293,7 +293,7 @@ SLOGAN_VERB_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
-# UI Action Phrases, Buttons & Platform Actions (e.g. 'Show credential', 'Provide services', 'Send InMail')
+# UI Action Phrases, Buttons & Platform Actions (e.g. 'Show credential', 'Provide services', 'Send InMail', 'Unlock insights')
 UI_ACTION_PHRASES = re.compile(
     r"\b(?:show\s+credential|show\s+all\s+\d+|show\s+all|show\s+more|show\s+less|"
     r"provide\s+services|request\s+services|see\s+services|services\s+provided|"
@@ -302,9 +302,13 @@ UI_ACTION_PHRASES = re.compile(
     r"open\s+in\s+recruiter|view\s+in\s+recruiter|share\s+profile|copy\s+link|"
     r"report\s+profile|message\s+sent|pending\s+invitation|invitation\s+sent|"
     r"endorse\s+skills?|give\s+recommendation|request\s+recommendation|"
-    r"see\s+more\s+results|load\s+more|view\s+more|click\s+to\s+(?:view|skip|expand))\b",
+    r"see\s+more\s+results|load\s+more|view\s+more|click\s+to\s+(?:view|skip|expand)|"
+    r"unlock\s+insights?(?:\s+(?:on|about|for|with))?|unlock\s+full\s+profile|"
+    r"try\s+premium|try\s+sales\s+navigator|try\s+free|learn\s+more\s+about|"
+    r"feed\s+post|more\s+groups|people\s+also\s+viewed|people\s+you\s+may\s+know)\b",
     re.IGNORECASE,
 )
+
 
 # Languages & Language Proficiency Levels
 LANGUAGE_PROFICIENCY_PATTERN = re.compile(

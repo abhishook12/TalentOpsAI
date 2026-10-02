@@ -291,81 +291,85 @@ class VisualSampler:
         During idle mode: polls every 1.5s with low-overhead diff only.
         """
         while not self._stop_event.is_set():
-            if self._pause_event.is_set():
-                time.sleep(0.5)
-                continue
+            try:
+                if self._pause_event.is_set():
+                    time.sleep(0.5)
+                    continue
 
-            # Strict Whitelist Rule: If current window is outside allowlist, rest completely (0% CPU)
-            if not self._is_target_allowed:
-                if self._state != "RESTING_NON_TARGET":
-                    self._set_state("RESTING_NON_TARGET")
-                time.sleep(1.0)
-                continue
+                # Strict Whitelist Rule: If current window is outside allowlist, rest completely (0% CPU)
+                if not self._is_target_allowed:
+                    if self._state != "RESTING_NON_TARGET":
+                        self._set_state("RESTING_NON_TARGET")
+                    time.sleep(1.0)
+                    continue
 
-            now = time.time()
-            time_since_active = now - self._last_active_time
+                now = time.time()
+                time_since_active = now - self._last_active_time
 
-            # Check 10-Second Idle Rule: transition to IDLE WATCH MODE
-            if self._state == "ACTIVE_SAMPLING" and time_since_active >= self.idle_timeout_sec:
-                self._set_state("IDLE_WATCH")
+                # Check 10-Second Idle Rule: transition to IDLE WATCH MODE
+                if self._state == "ACTIVE_SAMPLING" and time_since_active >= self.idle_timeout_sec:
+                    self._set_state("IDLE_WATCH")
 
-            # Determine sleep duration based on state
-            sleep_duration = self.idle_poll_interval_sec if self._state == "IDLE_WATCH" else self.active_interval_sec
+                # Determine sleep duration based on state
+                sleep_duration = self.idle_poll_interval_sec if self._state == "IDLE_WATCH" else self.active_interval_sec
 
-            # Perform grab
-            win_info = self._current_window_info
-            if not win_info or not win_info.is_valid:
-                time.sleep(sleep_duration)
-                continue
+                # Perform grab
+                win_info = self._current_window_info
+                if not win_info or not win_info.is_valid:
+                    time.sleep(sleep_duration)
+                    continue
 
-            img = self.grab_window_or_screen(win_info)
+                img = self.grab_window_or_screen(win_info)
 
-            if img:
-                current_pixels = downscale_to_grayscale(img)
-                self.stats["total_samples"] += 1
+                if img:
+                    current_pixels = downscale_to_grayscale(img)
+                    self.stats["total_samples"] += 1
 
-                if self._prev_pixels is None:
-                    # Initial baseline
-                    self._prev_pixels = current_pixels
-                    self._last_active_time = now
-                    self.stats["meaningful_frames"] += 1
-                    self.stats["last_delta"] = 1.0
-                    if self.on_meaningful_frame and win_info:
-                        try:
-                            self.on_meaningful_frame(img, 1.0, win_info)
-                        except Exception as e:
-                            logger.error("Baseline frame dispatch error: %s", e)
-                else:
-                    delta, bbox = compute_weighted_regional_delta_and_box(
-                        self._prev_pixels, current_pixels, img.width, img.height
-                    )
-                    self.stats["last_delta"] = delta
-                    is_meaningful = delta >= self.delta_threshold
-                    is_autonomous_scan = (now - self._last_autonomous_scan_time) >= self.autonomous_scan_interval_sec
-
-                    if is_meaningful or is_autonomous_scan:
-                        # WAKE UP IMMEDIATELY if in IDLE WATCH or trigger autonomous scan
-                        self._last_active_time = now
-                        self._last_autonomous_scan_time = now
+                    if self._prev_pixels is None:
+                        # Initial baseline
                         self._prev_pixels = current_pixels
-                        self._set_state("ACTIVE_SAMPLING")
+                        self._last_active_time = now
                         self.stats["meaningful_frames"] += 1
-                        if is_autonomous_scan and not is_meaningful:
-                            self.stats["autonomous_scans"] = self.stats.get("autonomous_scans", 0) + 1
-
-                        effective_delta = delta if is_meaningful else 0.05
+                        self.stats["last_delta"] = 1.0
                         if self.on_meaningful_frame and win_info:
                             try:
-                                import inspect
-                                sig = inspect.signature(self.on_meaningful_frame)
-                                if len(sig.parameters) >= 4:
-                                    self.on_meaningful_frame(img, effective_delta, win_info, bbox)
-                                else:
-                                    self.on_meaningful_frame(img, effective_delta, win_info)
+                                self.on_meaningful_frame(img, 1.0, win_info)
                             except Exception as e:
-                                logger.error("Frame dispatch error: %s", e)
+                                logger.error("Baseline frame dispatch error: %s", e)
                     else:
-                        self.stats["idle_skips"] += 1
+                        delta, bbox = compute_weighted_regional_delta_and_box(
+                            self._prev_pixels, current_pixels, img.width, img.height
+                        )
+                        self.stats["last_delta"] = delta
+                        is_meaningful = delta >= self.delta_threshold
+                        is_autonomous_scan = (now - self._last_autonomous_scan_time) >= self.autonomous_scan_interval_sec
 
-            # Sleep until next scheduled sample
-            time.sleep(sleep_duration)
+                        if is_meaningful or is_autonomous_scan:
+                            # WAKE UP IMMEDIATELY if in IDLE WATCH or trigger autonomous scan
+                            self._last_active_time = now
+                            self._last_autonomous_scan_time = now
+                            self._prev_pixels = current_pixels
+                            self._set_state("ACTIVE_SAMPLING")
+                            self.stats["meaningful_frames"] += 1
+                            if is_autonomous_scan and not is_meaningful:
+                                self.stats["autonomous_scans"] = self.stats.get("autonomous_scans", 0) + 1
+
+                            effective_delta = delta if is_meaningful else 0.05
+                            if self.on_meaningful_frame and win_info:
+                                try:
+                                    import inspect
+                                    sig = inspect.signature(self.on_meaningful_frame)
+                                    if len(sig.parameters) >= 4:
+                                        self.on_meaningful_frame(img, effective_delta, win_info, bbox)
+                                    else:
+                                        self.on_meaningful_frame(img, effective_delta, win_info)
+                                except Exception as e:
+                                    logger.error("Frame dispatch error: %s", e)
+                        else:
+                            self.stats["idle_skips"] += 1
+
+                # Sleep until next scheduled sample
+                time.sleep(sleep_duration)
+            except Exception as loop_err:
+                logger.error("VisualSampler loop iteration notice: %s", loop_err)
+                time.sleep(1.0)

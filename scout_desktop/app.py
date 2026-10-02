@@ -675,12 +675,19 @@ class ScoutDesktopApp:
                     else:
                         self.subsystems["ocr"] = "HEALTHY"
 
-                # 3. Sampler Thread Liveness Check
+                # 3. Sampler Thread Liveness Check & Auto-Revival
                 if hasattr(self, "sampler"):
                     if hasattr(self.sampler, "is_alive") and not self.sampler.is_alive():
                         if self.sampler.state not in ("STOPPED", "PAUSED", "RESTING_NON_TARGET"):
-                            logger.warning("Scout Watchdog: Sampler worker thread stopped unexpectedly.")
-                            self.subsystems["sampler"] = "STALLED"
+                            logger.warning("Scout Watchdog: Sampler worker thread stopped unexpectedly. Auto-reviving sampler...")
+                            self.subsystems["sampler"] = "RECOVERING"
+                            try:
+                                self.sampler.start(initial_window=self.current_window)
+                                logger.info("Scout Watchdog: Successfully auto-revived VisualSampler thread.")
+                                self.subsystems["sampler"] = "HEALTHY"
+                            except Exception as revive_err:
+                                logger.error("Scout Watchdog: Failed to auto-revive sampler: %s", revive_err)
+                                self.subsystems["sampler"] = "STALLED"
                     else:
                         self.subsystems["sampler"] = "HEALTHY"
 

@@ -693,9 +693,10 @@ class BackendClient:
                 url = f"{self.active_api_base}/scout/heartbeat"
                 res = requests.post(url, json=payload, headers=self._get_headers(), timeout=4.0)
             if res.status_code == 401:
-                logger.info("Heartbeat received 401; auto-reactivating device...")
-                self.auth_token = None
-                if self.ensure_authenticated():
+                logger.warning("Heartbeat received 401 from %s; checking stored credentials...", self.active_api_base)
+                old_token = self.auth_token
+                self._load_token_from_config()
+                if self.auth_token and self.auth_token != old_token:
                     res = requests.post(url, json=payload, headers=self._get_headers(), timeout=4.0)
             if res.status_code == 200:
                 try:

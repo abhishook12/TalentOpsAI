@@ -173,6 +173,9 @@ class EntityTypeChip(QFrame):
         self.lbl_text.setText(self._format_label(self.entity_type))
         self._apply_style()
 
+    def set_entity_type(self, entity_type: str):
+        self.set_type(entity_type)
+
     def _format_label(self, et: str) -> str:
         if et in ("JOB", "JOB_POSTING"):
             return "JOB"

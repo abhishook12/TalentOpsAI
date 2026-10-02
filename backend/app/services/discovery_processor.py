@@ -1333,6 +1333,53 @@ class DiscoveryProcessor:
                 if clean_cand_nm:
                     person.canonical_name = clean_cand_nm
 
+                # ═══════════════════════════════════════════════════════
+                # HARD CONTACT INTELLIGENCE GATE (Strict Mandate)
+                # A person MUST have at least ONE actionable contact
+                # channel to enter the Master DB. Without it, the
+                # record is dead weight — you can't email them, can't
+                # find them on LinkedIn, can't call them.
+                #
+                # Actionable channels:
+                #   1. Real email (NOT @noemail.talentops)
+                #   2. LinkedIn profile URL (linkedin.com/in/...)
+                #   3. Phone number
+                #
+                # If NONE of these exist, the record goes to REVIEW
+                # instead of polluting the Master DB.
+                # ═══════════════════════════════════════════════════════
+                has_real_email = bool(
+                    person.primary_email
+                    and '@' in person.primary_email
+                    and not person.primary_email.endswith('@noemail.talentops')
+                )
+                has_linkedin = bool(
+                    person.linkedin_url
+                    and 'linkedin.com/in/' in person.linkedin_url.lower()
+                )
+                has_phone = bool(
+                    person.primary_phone
+                    and len(person.primary_phone.strip()) >= 7
+                )
+
+                if not has_real_email and not has_linkedin and not has_phone:
+                    # No actionable contact intelligence — route to review, NOT master DB
+                    stats['review'] += 1
+                    for r in staging_records:
+                        r.processing_status = 'review'
+                        r.decision = 'REVIEW_NO_CONTACT_INTEL'
+                        r.decision_reason = (
+                            f'Person "{person.canonical_name}" has no actionable contact info: '
+                            f'no real email, no LinkedIn profile URL, no phone number. '
+                            f'Cannot be committed to Master DB without at least one contact channel.'
+                        )
+                    logger.info(
+                        "[CONTACT GATE] Blocked %s from Master DB — zero contact intelligence "
+                        "(no email, no LinkedIn, no phone)",
+                        person.canonical_name,
+                    )
+                    continue
+
                 stats['new'] += 1
                 company_id = None
 

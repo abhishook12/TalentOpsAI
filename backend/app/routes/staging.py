@@ -118,6 +118,29 @@ def get_staging_summary(
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 
+@router.get("/funnel-metrics")
+def get_funnel_metrics(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+):
+    """
+    Returns real-time telemetry across all 7 gates of the Universal Ingestion Funnel:
+    Gate 1: Raw Sourcing & Platform Chrome Elimination
+    Gate 2: Hard Entity Disambiguation (Person vs Company vs Job)
+    Gate 3: Contextual Identity Reconstruction & Title Sanitization
+    Gate 4: Autonomous Corporate Email Intelligence & Pattern Mining
+    Gate 5: Live Port 25 SMTP Deliverability Probing & MX Verification
+    Gate 6: Actionable Contact Intelligence Gate (Zero Fake Emails)
+    Gate 7: Master Catalog Promotion & Real-Time Dual-Sync Flywheel
+    """
+    try:
+        from ..services.ingestion_funnel import universal_funnel
+        return universal_funnel.get_funnel_metrics(db=db)
+    except Exception as e:
+        logger.error("Error fetching funnel metrics: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/records")
 def get_staging_records(
     status: Optional[str] = Query(None),

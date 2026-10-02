@@ -39,7 +39,7 @@ class DiscoveryStaging(Base):
     dom_confidence = Column(Integer, default=0)
     processing_status = Column(String(30), default='pending', index=True)
     resolved_person_id = Column(Integer, ForeignKey("resolved_persons.id", ondelete="SET NULL"), nullable=True, index=True)
-    decision = Column(String(30), nullable=True)
+    decision = Column(String(60), nullable=True)
     decision_reason = Column(Text, nullable=True)
     identity_confidence = Column(Float, default=0.0)
     quality_score = Column(Integer, default=0)

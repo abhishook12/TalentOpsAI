@@ -1,9 +1,15 @@
 """
-db_auto_enricher.py — Non-Destructive Database Auto-Enricher & Healer.
-Safely bridges external web intelligence from discovery_staging into the master catalog:
-- Heals & enriches existing recruiters without overwriting valid data
-- Runs Port 25 SMTP handshakes to verify or flag deliverability
-- Promotes verified fresh talent with complete provenance attribution
+db_auto_enricher.py — Database Auto-Enricher & Flywheel Synchronizer.
+====================================================================
+Bridges external discoveries from discovery_staging into the master catalog
+by routing through the mandatory 7-stage Universal Ingestion Funnel:
+1. Raw Sourcing & Platform Chrome Elimination
+2. Hard Entity Disambiguation (Person vs Company vs Job)
+3. Contextual Identity Reconstruction & Title Sanitization
+4. Autonomous Corporate Email Intelligence & Pattern Mining
+5. Live Port 25 SMTP Deliverability Probing & MX Verification
+6. Actionable Contact Intelligence Gate (Zero Fake Emails)
+7. Master Catalog Promotion & DuckDB Parquet Dual-Sync Flywheel
 """
 
 import os
@@ -13,12 +19,11 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime
 
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 
 from ..database import SessionLocal
 from ..models.staging_models import DiscoveryStaging
 from ..models.models import Recruiter, Company
-from ..services.smtp_prober import smtp_prober
+from .ingestion_funnel import universal_funnel
 
 logger = logging.getLogger("talentops.db_auto_enricher")
 
@@ -27,6 +32,7 @@ class DatabaseAutoEnricher:
     """
     Safely reconciles staged web intelligence into PostgreSQL master tables.
     Non-destructive: Never overwrites existing populated fields; only fills blanks.
+    Governed 100% by UniversalIngestionFunnel.
     """
 
     def __init__(self):
@@ -41,437 +47,21 @@ class DatabaseAutoEnricher:
 
     def reconcile_staging_batch(self, db: Session, limit: int = 50) -> Dict[str, Any]:
         """
-        Processes pending staged observations and applies non-destructive enrichment.
+        Processes pending staged observations through the mandatory 7-stage Universal Ingestion Funnel.
         """
-        pending_records = db.query(DiscoveryStaging).filter(
-            DiscoveryStaging.processing_status == "pending"
-        ).order_by(DiscoveryStaging.id.desc()).limit(limit).all()
-
-        results = {
-            "processed_count": len(pending_records),
-            "enriched_existing": 0,
-            "promoted_new": 0,
-            "skipped": 0,
-        }
-        promoted_records_for_parquet = []
-
-        for staged in pending_records:
-            self.stats["total_processed"] += 1
-            raw_name = (staged.raw_name or "").strip()
-            raw_email = (staged.raw_email or "").strip().lower()
-            raw_company = (staged.raw_company or "").strip()
-
-            from .entity_classifier import (
-                entity_classifier,
-                ENTITY_PERSON, ENTITY_COMPANY, ENTITY_JOB_POSTING,
-                ENTITY_CONTACT_INFO, ENTITY_MARKET_SIGNAL, ENTITY_NOISE
-            )
-            from ..utils.normalizer import validate_human_name, is_company_name, clean_company
-
-            classification = entity_classifier.classify(
-                raw_name=staged.raw_name,
-                raw_title=staged.raw_title,
-                raw_company=staged.raw_company,
-                raw_email=staged.raw_email,
-                raw_phone=staged.raw_phone,
-                source_url=staged.source_url,
-                source_page_title=staged.source_page_title,
-                extraction_source=staged.extraction_source,
-            )
-            entity_type = classification["entity_type"]
-            staged.entity_type = entity_type
-
-            # ── HARD WALL 1: NOISE ─────────────────────────────────────
-            if entity_type == ENTITY_NOISE:
-                staged.processing_status = "rejected"
-                staged.decision = "REJECTED_NOISE"
-                staged.decision_reason = f"Classified as NOISE: {classification['reason']}"
-                results["skipped"] += 1
-                continue
-
-            # ── HARD WALL 2: COMPANY ───────────────────────────────────
-            if entity_type == ENTITY_COMPANY:
-                comp_name = clean_company(raw_name or raw_company) or (raw_name or raw_company)
-                if comp_name:
-                    existing_c = db.query(Company).filter(
-                        func.lower(Company.company_name) == comp_name.lower().strip()
-                    ).first()
-                    if not existing_c:
-                        new_c = Company(
-                            company_name=comp_name,
-                            normalized_company_name=comp_name.lower().strip(),
-                            primary_domain=raw_email.split("@")[1] if "@" in raw_email else "",
-                            industry=staged.raw_title or None,
-                            location=staged.raw_location or None,
-                            verification_status="verified_web_harvest",
-                            trust_score=85,
-                            data_source=f"web_intelligence:{staged.extraction_source}",
-                        )
-                        db.add(new_c)
-                        db.flush()
-                staged.processing_status = "committed"
-                staged.decision = "COMPANY_COMMITTED"
-                staged.decision_reason = f"Routed to Company catalog: {comp_name}"
-                staged.processed_at = datetime.utcnow()
-                continue
-
-            # ── HARD WALL 3: JOB_POSTING ───────────────────────────────
-            if entity_type == ENTITY_JOB_POSTING:
-                try:
-                    from ..models.knowledge_models import KnowledgeEntity, KnowledgeSignal
-                    job_title = raw_name or staged.raw_title or "Job Vacancy"
-                    k_entity = KnowledgeEntity(
-                        owner_user_id=staged.owner_user_id or 1,
-                        entity_type="JOB_POSTING",
-                        canonical_name=job_title[:255],
-                        primary_identifier=(staged.source_url or staged.discovery_id or f"job_{staged.id}")[:255],
-                        attributes_json=f'{{"company": "{raw_company}", "source": "{staged.extraction_source}"}}',
-                        confidence=0.85,
-                        source_url=(staged.source_url or "")[:500] if staged.source_url else None,
-                    )
-                    db.add(k_entity)
-                    db.flush()
-                    k_sig = KnowledgeSignal(
-                        owner_user_id=staged.owner_user_id or 1,
-                        entity_id=k_entity.id,
-                        signal_type="JOB_POSTING",
-                        title=f"{job_title} at {raw_company}"[:255],
-                        description=staged.about_summary or staged.raw_title,
-                        confidence=0.85,
-                        source_url=(staged.source_url or "")[:500] if staged.source_url else None,
-                    )
-                    db.add(k_sig)
-                except Exception as je:
-                    logger.debug("Knowledge entity job capture note: %s", je)
-                staged.processing_status = "committed"
-                staged.decision = "JOB_CAPTURED"
-                staged.decision_reason = f"Routed to Knowledge Graph: {raw_name}"
-                staged.processed_at = datetime.utcnow()
-                continue
-
-            # ── HARD WALL 4: CONTACT_INFO ──────────────────────────────
-            if entity_type == ENTITY_CONTACT_INFO:
-                staged.processing_status = "committed"
-                staged.decision = "CONTACT_CAPTURED"
-                staged.decision_reason = f"Routed to Company Contact Intel: {raw_name}"
-                staged.processed_at = datetime.utcnow()
-                continue
-
-            # ── HARD WALL 5: MARKET_SIGNAL ─────────────────────────────
-            if entity_type == ENTITY_MARKET_SIGNAL:
-                staged.processing_status = "committed"
-                staged.decision = "SIGNAL_CAPTURED"
-                staged.decision_reason = f"Routed to Market Signal: {raw_name}"
-                staged.processed_at = datetime.utcnow()
-                continue
-
-            # ── HARD WALL 6: PERSON (Must pass strict human validation) ─
-            is_human, clean_name, rej_reason = validate_human_name(raw_name)
-            if not is_human or is_company_name(raw_name):
-                staged.processing_status = "rejected"
-                staged.decision = "REJECTED_INVALID_NAME"
-                staged.decision_reason = f"Person validation rejected: {rej_reason or 'Company name detected'}"
-                results["skipped"] += 1
-                continue
-
-            raw_name = clean_name
-
-            # ── Intelligent Company Resolution & Noise Elimination ──────
-            from ..utils.normalizer import is_platform_name, is_ui_action, clean_company
-            from .discovery_processor import BOGUS_COMPANY_NAMES
-
-            cand_company = clean_company(raw_company) if raw_company else None
-            if not cand_company or is_platform_name(cand_company) or cand_company.lower().strip() in BOGUS_COMPANY_NAMES:
-                cand_company = None
-                # Try inferring company from LinkedIn company URL (e.g. /company/fuse3-solutions/)
-                if staged.source_url:
-                    comp_match = re.search(r'/company/([^/?#]+)', staged.source_url)
-                    if comp_match:
-                        slug = comp_match.group(1).replace('-', ' ').strip()
-                        if slug and not is_platform_name(slug):
-                            cand_company = slug.title()
-                # Try inferring company from page title (e.g. "Fuse3 Solutions: People | LinkedIn")
-                if not cand_company and staged.source_page_title:
-                    title_match = re.search(r'^([^:|]+)(?::\s*People|\s*\|\s*LinkedIn)', staged.source_page_title, re.IGNORECASE)
-                    if title_match:
-                        pt_comp = title_match.group(1).strip()
-                        if pt_comp and not is_platform_name(pt_comp):
-                            cand_company = pt_comp
-
-            # Clean Title: Eliminate UI actions like "Contact"
-            cand_title = (staged.raw_title or "").strip()
-            if not cand_title or is_ui_action(cand_title) or cand_title.lower() in ('contact', 'view profile', 'connect', 'message', 'follow', 'more'):
-                cand_title = "Talent Acquisition Specialist" if "recruiter" in (staged.source_url or "").lower() else "Staffing Professional"
-
-            # ── Smart Corporate Email Pattern Resolution & Deliverability Check ──
-            # For candidates with a confirmed company who lack an email:
-            # 1. Research company's corporate domain & pattern (mined from existing colleagues or DB)
-            # 2. Formulate email permutation(s)
-            # 3. Test deliverability via live SMTP & DNS MX handshake
-            synthesized_email = None
-            email_status = "PATTERN_PREDICTED"
-            email_conf = staged.quality_score or 75
-
-            if not raw_email and cand_company:
-                try:
-                    from .email_intelligence_service import email_intelligence
-                    intel_res = email_intelligence.resolve_and_enrich_candidate(
-                        full_name=raw_name,
-                        company_name=cand_company,
-                        db=db
-                    )
-                    if intel_res and intel_res.get("email") and intel_res.get("status") in ("SMTP_VERIFIED", "PATTERN_VERIFIED", "MX_VERIFIED"):
-                        synthesized_email = intel_res["email"]
-                        raw_email = synthesized_email
-                        email_status = intel_res["status"]
-                        email_conf = int(intel_res.get("confidence", 0.85) * 100)
-                        logger.info("🎯 Synthesized deliverable email for %s at %s: %s (Status: %s)",
-                                    raw_name, cand_company, synthesized_email, email_status)
-                except Exception as intel_err:
-                    logger.debug("Candidate email intelligence error in enricher: %s", intel_err)
-
-            # ── HARD CONTACT INTELLIGENCE GATE ──────────────────────────
-            # A candidate MUST have at least ONE actionable contact channel:
-            # 1. Real discovered / deliverable corporate email (NOT @unknown.com, NOT @noemail.talentops)
-            # 2. Valid individual LinkedIn profile URL (linkedin.com/in/...)
-            # 3. Real phone number (>= 7 digits)
-            has_real_email = bool(raw_email and '@' in raw_email and not raw_email.endswith('@unknown.com') and not raw_email.endswith('@noemail.talentops'))
-            has_linkedin = bool(staged.raw_linkedin and 'linkedin.com/in/' in staged.raw_linkedin.lower())
-            has_phone = bool(staged.raw_phone and len(staged.raw_phone.strip()) >= 7)
-
-            if not has_real_email and not has_linkedin and not has_phone:
-                staged.processing_status = "review"
-                staged.decision = "REVIEW_NO_CONTACT_INTEL"
-                staged.decision_reason = f"Candidate '{raw_name}' lacks actionable contact info (no email, no LinkedIn profile URL, no phone). Held in Review."
-                staged.processed_at = datetime.utcnow()
-                results["skipped"] += 1
-                continue
-
-            # Resolve or lookup company
-            company = None
-            if cand_company:
-                company = db.query(Company).filter(
-                    func.lower(Company.company_name) == cand_company.lower()
-                ).first()
-
-            # Check if this recruiter already exists in the master catalog
-            existing_recruiter = None
-            if raw_email:
-                existing_recruiter = db.query(Recruiter).filter(
-                    func.lower(Recruiter.email) == raw_email
-                ).first()
-
-            if not existing_recruiter and company:
-                existing_recruiter = db.query(Recruiter).filter(
-                    func.lower(Recruiter.recruiter_name) == raw_name.lower(),
-                    Recruiter.company_id == company.company_id
-                ).first()
-
-            if existing_recruiter:
-                # ── ENRICHMENT MODE (NON-DESTRUCTIVE) ──────────────────────────
-                fields_enriched = []
-
-                if not existing_recruiter.title and cand_title:
-                    existing_recruiter.title = cand_title
-                    fields_enriched.append("title")
-
-                if not existing_recruiter.phone and staged.raw_phone:
-                    existing_recruiter.phone = staged.raw_phone
-                    fields_enriched.append("phone")
-
-                if not existing_recruiter.linkedin and staged.raw_linkedin:
-                    existing_recruiter.linkedin = staged.raw_linkedin
-                    fields_enriched.append("linkedin")
-
-                if staged.raw_location and not existing_recruiter.state:
-                    st_m = re.search(r"\b([A-Z]{2})\b", staged.raw_location)
-                    if st_m:
-                        existing_recruiter.state = st_m.group(1)
-                        fields_enriched.append("state")
-
-                # Verify email deliverability if unverified
-                if existing_recruiter.email and getattr(existing_recruiter, "email_status", None) != "SMTP_VERIFIED":
-                    try:
-                        probe = smtp_prober.probe_mailbox(existing_recruiter.email)
-                        if probe.smtp_code == 250:
-                            existing_recruiter.email_status = "SMTP_VERIFIED"
-                            existing_recruiter.email_confidence = 100
-                            self.stats["emails_smtp_verified"] += 1
-                            fields_enriched.append("email_smtp_verified")
-                        elif probe.smtp_code == 550:
-                            existing_recruiter.email_status = "BOUNCED"
-                            self.stats["bounced_emails_flagged"] += 1
-                            fields_enriched.append("email_bounced")
-                    except Exception as e:
-                        logger.debug("SMTP probe skipped during enrichment: %s", e)
-
-                staged.processing_status = "enriched"
-                staged.decision = "ENRICHED_EXISTING"
-                staged.decision_reason = f"Enriched existing recruiter #{existing_recruiter.recruiter_id}: {', '.join(fields_enriched) if fields_enriched else 'Confirmed existing'}"
-                staged.processed_at = datetime.utcnow()
-
-                self.stats["existing_enriched"] += 1
-                results["enriched_existing"] += 1
-
-            else:
-                # ── PROMOTION MODE (NEW CONTACT) ──────────────────────────────
-                # Ensure company exists or create lightweight company shell
-                clean_dom = ""
-                if raw_email and "@" in raw_email:
-                    clean_dom = raw_email.split("@")[1]
-
-                if not company and cand_company:
-                    company = Company(
-                        company_name=cand_company,
-                        normalized_company_name=cand_company.lower().strip(),
-                        primary_domain=clean_dom,
-                    )
-                    db.add(company)
-                    db.flush()
-                elif company and (not company.primary_domain or company.primary_domain in ('unknown.com', 'linkedin.com')) and clean_dom and clean_dom not in ('unknown.com', 'linkedin.com'):
-                    company.primary_domain = clean_dom
-
-                # Live Port 25 SMTP deliverability check before promotion (if not already verified by email_intelligence)
-                if not synthesized_email:
-                    email_status = "PATTERN_PREDICTED"
-                    confidence = staged.quality_score or 75
-
-                    if raw_email:
-                        try:
-                            probe = smtp_prober.probe_mailbox(raw_email)
-                            if probe.smtp_code == 250:
-                                email_status = "SMTP_VERIFIED"
-                                confidence = 100
-                                self.stats["emails_smtp_verified"] += 1
-                            elif probe.smtp_code == 550:
-                                email_status = "BOUNCED"
-                        except Exception:
-                            pass
-                else:
-                    confidence = email_conf
-
-                raw_loc = (staged.raw_location or "").strip()
-                state_abbr = None
-                if raw_loc:
-                    try:
-                        from ..utils.state_mapper import extract_state_detailed
-                        state_abbr, _ = extract_state_detailed(raw_loc)
-                    except Exception:
-                        pass
-
-                # Derive clean email - NEVER use @unknown.com
-                final_email = raw_email if has_real_email else None
-                if not final_email and company and company.primary_domain and company.primary_domain not in ('unknown.com', 'linkedin.com'):
-                    final_email = f"{raw_name.lower().replace(' ', '.')}@{company.primary_domain}"
-
-                new_recruiter = Recruiter(
-                    recruiter_name=raw_name,
-                    title=cand_title,
-                    company_id=company.company_id if company else None,
-                    email=final_email,
-                    phone=staged.raw_phone,
-                    linkedin=staged.raw_linkedin,
-                    location=raw_loc or None,
-                    state=state_abbr,
-                    email_status=email_status if final_email else "UNVERIFIED",
-                    email_confidence=confidence if final_email else 0,
-                    data_source=f"web_intelligence:{staged.extraction_source}",
-                    notes=f"Auto-harvested via {staged.extraction_source} on {datetime.utcnow().strftime('%Y-%m-%d')}",
-                    email_generated=True if staged.extraction_source in ("search_xray", "web_harvest") else False,
-                )
-                db.add(new_recruiter)
-                db.flush()
-
-                staged.processing_status = "promoted"
-                staged.decision = "PROMOTED_NEW"
-                staged.decision_reason = f"Promoted to master catalog as Recruiter #{new_recruiter.recruiter_id} (Status: {email_status})"
-                staged.processed_at = datetime.utcnow()
-
-                self.stats["new_promoted"] += 1
-                results["promoted_new"] += 1
-
-                promoted_dict = {
-                    "recruiter_id": new_recruiter.recruiter_id,
-                    "recruiter_name": new_recruiter.recruiter_name,
-                    "title": new_recruiter.title,
-                    "company_id": new_recruiter.company_id,
-                    "email": new_recruiter.email,
-                    "phone": new_recruiter.phone,
-                    "linkedin": new_recruiter.linkedin,
-                    "location": raw_loc or None,
-                    "state": state_abbr,
-                    "email_status": new_recruiter.email_status,
-                    "email_confidence": new_recruiter.email_confidence,
-                    "data_source": new_recruiter.data_source,
-                    "notes": new_recruiter.notes,
-                    "quality_score": confidence,
-                    "completeness_score": 85,
-                    "is_active": True,
-                    "created_at": datetime.utcnow().isoformat(),
-                    "updated_at": datetime.utcnow().isoformat(),
-                }
-                promoted_records_for_parquet.append(promoted_dict)
-
-        db.commit()
-
-        if promoted_records_for_parquet:
-            try:
-                from .parquet_writer import parquet_writer
-                parquet_writer.append_records(promoted_records_for_parquet)
-                logger.info("[DB_AUTO_ENRICHER] Parquet Dual-Sync: Appended %d promoted recruiters to DuckDB Parquet", len(promoted_records_for_parquet))
-            except Exception as pq_err:
-                logger.warning("[DB_AUTO_ENRICHER] Parquet dual-sync warning: %s", pq_err)
-
-        # Pillar 5: Closed-Loop Autonomous Flywheel
-        # Auto-enroll newly promoted verified candidates into active auto-enroll campaigns
-        if results["promoted_new"] > 0:
-            try:
-                from .sequence_scheduler import auto_enroll_recruiter
-                auto_enrolled_total = 0
-                for rec_item in promoted_records_for_parquet:
-                    r_id = rec_item.get("recruiter_id")
-                    r_email = rec_item.get("email")
-                    r_name = rec_item.get("recruiter_name", "")
-                    r_title = rec_item.get("title", "")
-                    r_conf = rec_item.get("email_confidence", 0)
-                    if r_id and r_email and r_conf >= 70:
-                        enrolled = auto_enroll_recruiter(
-                            db=db,
-                            recruiter_id=r_id,
-                            email=r_email,
-                            name=r_name,
-                            title=r_title,
-                            confidence=r_conf,
-                            source="db_auto_enricher",
-                        )
-                        if enrolled:
-                            auto_enrolled_total += len(enrolled)
-                if auto_enrolled_total > 0:
-                    db.commit()
-                    logger.info("[DB_AUTO_ENRICHER] Flywheel Auto-Enrollment: Enrolled %d newly promoted recruiters into campaigns", auto_enrolled_total)
-            except Exception as auto_enroll_err:
-                logger.warning("[DB_AUTO_ENRICHER] Flywheel auto-enrollment warning: %s", auto_enroll_err)
-
-        # Frontier 2: Zero-Cost Multi-Surface Waterfall OSINT Enrichment
-        if results["promoted_new"] > 0:
-            try:
-                from .waterfall_osint_engine import waterfall_osint_engine
-                for rec_item in promoted_records_for_parquet:
-                    r_id = rec_item.get("recruiter_id")
-                    if r_id:
-                        waterfall_osint_engine.enrich_recruiter(db=db, recruiter_id=r_id)
-            except Exception as osint_err:
-                logger.debug("[DB_AUTO_ENRICHER] Waterfall OSINT hook notice: %s", osint_err)
-
-        logger.info("[DB_AUTO_ENRICHER] Reconciled batch: %d processed, %d enriched, %d promoted",
-                    results["processed_count"], results["enriched_existing"], results["promoted_new"])
+        results = universal_funnel.process_staging_batch(db=db, limit=limit)
+        self.stats["total_processed"] += results.get("processed_count", 0)
+        self.stats["existing_enriched"] += results.get("enriched_existing", 0)
+        self.stats["new_promoted"] += results.get("promoted_new", 0)
+        logger.info("[DB_AUTO_ENRICHER] Universal Funnel batch complete: %d processed, %d enriched, %d promoted",
+                    results.get("processed_count", 0), results.get("enriched_existing", 0), results.get("promoted_new", 0))
         return results
 
     def autonomous_sync_parquet(self, db: Session) -> int:
         """
         Autonomous self-healing Parquet synchronizer.
         Automatically identifies any PostgreSQL recruiters with data_source LIKE 'web_intelligence:%'
-        that are missing from DuckDB Parquet and appends them with schema alignment.
+        or 'universal_funnel:%' that are missing from DuckDB Parquet and appends them with schema alignment.
         Zero manual user clicks required.
         """
         try:
@@ -479,7 +69,8 @@ class DatabaseAutoEnricher:
             from .recruiter_store import PARQUET_FILE, recruiter_store, safe_duckdb_connect
 
             promoted_recs = db.query(Recruiter).filter(
-                Recruiter.data_source.like("web_intelligence:%")
+                (Recruiter.data_source.like("web_intelligence:%")) |
+                (Recruiter.data_source.like("universal_funnel:%"))
             ).all()
 
             if not promoted_recs:

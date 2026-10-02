@@ -50,14 +50,17 @@ export default function WebHarvestAdmin() {
   // Hover state for table rows
   const [hoveredRow, setHoveredRow] = useState(null);
 
-  const fetchTelemetryAndReports = async (silent = false) => {
+  const fetchTelemetryAndReports = async (silent = false, statusOverride = null) => {
     if (!silent) setLoading(true);
     else setIsRefreshing(true);
+
+    const activeStatus = statusOverride !== null ? statusOverride : filterStatus;
+    const statusParam = activeStatus && activeStatus !== 'ALL' ? `&status=${activeStatus}` : '';
 
     try {
       const [statsRes, reportsRes, multiRes, bufferRes] = await Promise.all([
         api.get('/api/enrichment/web-harvest-stats').catch(() => ({ data: null })),
-        api.get('/api/enrichment/web-harvest-reports?limit=100').catch(() => ({ data: { reports: [] } })),
+        api.get(`/api/enrichment/web-harvest-reports?limit=100${statusParam}`).catch(() => ({ data: { reports: [] } })),
         api.get('/api/enrichment/multi-source-stats').catch(() => ({ data: null })),
         api.get('/api/enrichment/offline-buffer-status').catch(() => ({ data: null })),
       ]);
@@ -906,7 +909,10 @@ export default function WebHarvestAdmin() {
               {['COMMITTED', 'PENDING', 'REVIEW', 'REJECTED', 'ALL'].map((status) => (
                 <button
                   key={status}
-                  onClick={() => setFilterStatus(status)}
+                  onClick={() => {
+                    setFilterStatus(status);
+                    fetchTelemetryAndReports(true, status);
+                  }}
                   style={{
                     padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700,
                     border: 'none', cursor: 'pointer',

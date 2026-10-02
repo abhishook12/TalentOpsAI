@@ -83,7 +83,7 @@ PLATFORM_NAMES = frozenset({
     'nexxt', 'upwork', 'fiverr', 'usajobs', 'linkup', 'greenhouse',
     'lever', 'workday', 'icims', 'smartrecruiters', 'jobvite',
     'bamboohr', 'ashby', 'breezy', 'recruitee', 'talentscout',
-    'talentops', 'bing', 'yahoo', 'duckduckgo', 'google'
+    'talentops', 'bing', 'yahoo', 'duckduckgo'
 })
 
 PRONOUNS = re.compile(

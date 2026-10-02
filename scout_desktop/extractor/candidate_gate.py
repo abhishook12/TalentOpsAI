@@ -774,7 +774,7 @@ def create_candidate_if_valid(
         is_valid = False
         reasons.append("TITLE_COMPANY_ONLY: Corroborated title & company found, but held in Review Queue awaiting stable profile URL or verified contact")
         reasons.append("MISSING_STABLE_ANCHOR: No canonical profile URL, verified email, or verified phone found")
-    elif has_strong_profile and has_partial_employment:
+    elif has_strong_profile:
         decision = "REVIEW_REQUIRED"
         status = "REVIEW_REQUIRED"
         is_valid = False

@@ -51,8 +51,8 @@ class EntityTypeClassifier:
     
     def classify(self,
                  raw_name: Optional[str],
-                 raw_title: Optional[str],
-                 raw_company: Optional[str],
+                 raw_title: Optional[str] = None,
+                 raw_company: Optional[str] = None,
                  raw_email: Optional[str] = None,
                  raw_phone: Optional[str] = None,
                  source_url: Optional[str] = None,
@@ -75,6 +75,8 @@ class EntityTypeClassifier:
         # Clean relative timestamp noise e.g. "Fineta Consulting · 20 minutes ago"
         name = re.sub(r"\s*[·•|]\s*\d+\s*(?:seconds?|minutes?|hours?|days?|weeks?|months?|years?|secs?|mins?|hrs?|d|w|m|h|y)\s*ago.*$", "", name, flags=re.IGNORECASE).strip()
         name = re.sub(r"\s*[·•|]\s*(?:reposted|shared|liked|commented).*$", "", name, flags=re.IGNORECASE).strip()
+        # Clean page header prefixes e.g. "About A3 Staffing Solutions" -> "A3 Staffing Solutions"
+        name = re.sub(r"^(?:about|overview of|welcome to)\s+", "", name, flags=re.IGNORECASE).strip()
 
         title = (raw_title or '').strip()
         company = (raw_company or '').strip()
@@ -236,6 +238,10 @@ class EntityTypeClassifier:
             r'^(liked by|commented on|shared by|posted by)\b',
             r'^(add to|remove from|save to|bookmark)\b',
             r'\b(?:current openings|job openings|career opportunities|latest openings)\b',
+            # Chat presence, activity status & system indicators
+            r'\b(?:status is (?:offline|online|away|busy|available|dnd|inactive)|active (?:now|\d+m ago)|(?:last|recently) seen)\b',
+            # Social / company profile counts & aggregated indicators
+            r'^\d+\s+(?:associated\s+members?|employees?|alumni|followers?|connections?|members?)\b',
         ]
         for pat in NOISE_PATTERNS:
             if re.search(pat, name_lower):

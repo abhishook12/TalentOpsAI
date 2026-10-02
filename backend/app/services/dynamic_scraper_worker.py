@@ -72,7 +72,7 @@ class DynamicScraperWorker:
 
         return False
 
-    def fetch_fast_impersonated(self, url: str, timeout: int = 10) -> Tuple[Optional[str], int]:
+    def fetch_fast_impersonated(self, url: str, timeout: int = 6) -> Tuple[Optional[str], int]:
         """
         Attempts fast fetch using curl_cffi with full browser TLS impersonation.
         Bypasses JA3/JA4 TLS fingerprinting and standard bot blocks without spinning up a browser.
@@ -196,14 +196,20 @@ class DynamicScraperWorker:
 
                         # Navigate and wait for DOM hydration
                         wait_state = "networkidle" if wait_network_idle else "domcontentloaded"
+                        nav_success = False
                         try:
                             page.goto(url, wait_until=wait_state, timeout=timeout_ms)
+                            nav_success = True
                         except Exception:
                             # Fallback to domcontentloaded if networkidle times out
                             try:
                                 page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms // 2)
+                                nav_success = True
                             except Exception as nav_err:
                                 logger.debug("[DYNAMIC_SCRAPER] Goto failed for %s: %s", url, nav_err)
+
+                        if not nav_success:
+                            return None
 
                         # Brief settling delay for client JS event loops
                         page.wait_for_timeout(1000)
@@ -304,9 +310,13 @@ class DynamicScraperWorker:
             return html, "tls_impersonate"
 
         # Tier 2: Dynamic headless rendering
+        # Skip headless browser elevation if the host is completely unreachable (0), timed out, or returns 404/5xx
+        if status_code in (404, 410, 500, 502, 503, 504, 0) or not html:
+            return html, "failed"
+
         logger.info("[DYNAMIC_SCRAPER] Elevating to Headless Playwright renderer for %s (status=%d)", url, status_code)
         rendered = self.render_with_headless_browser(url)
-        if rendered:
+        if rendered and len(rendered) > 500:
             return rendered, "headless_browser"
 
         # Return whatever static HTML we had if browser failed

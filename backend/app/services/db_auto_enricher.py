@@ -404,7 +404,7 @@ class DatabaseAutoEnricher:
             if not promoted_recs:
                 return 0
 
-            con = safe_duckdb_connect(memory_limit="64MB", threads=1)
+            con = safe_duckdb_connect(threads=1)
             p_path = PARQUET_FILE.replace("\\", "/")
             existing_emails = set()
             existing_ids = set()

@@ -73,7 +73,7 @@ class ParquetWriter:
 
         with self._lock:
             start_time = time.time()
-            con = safe_duckdb_connect(memory_limit="128MB", threads=1)
+            con = safe_duckdb_connect(threads=1)
             
             schema_cols = self._get_parquet_schema(con)
             
@@ -141,7 +141,7 @@ class ParquetWriter:
             tmp_file = f"{PARQUET_FILE}.{os.getpid()}.update.tmp"
             
             try:
-                con = safe_duckdb_connect(memory_limit="128MB", threads=1)
+                con = safe_duckdb_connect(threads=1)
                 target_p = PARQUET_FILE.replace(os.sep, "/")
                 
                 # Fetch schema column names

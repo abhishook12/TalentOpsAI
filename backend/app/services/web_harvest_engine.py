@@ -665,8 +665,13 @@ class WebHarvestEngine:
                     for dp in reversed(discovered_nav_paths):
                         if dp not in paths_to_try:
                             paths_to_try.insert(0, dp)
+            else:
+                # If homepage is down/unreachable, do not waste time hammering 12 dead subpaths
+                logger.debug("[WEBHARVEST] Root homepage unreachable for %s. Skipping subpath crawl.", domain)
+                return []
         except Exception as home_err:
             logger.debug("[WEBHARVEST] Home probe failed for %s: %s", domain, home_err)
+            return []
 
         # Step 0.5: If home page yielded few links, probe XML sitemap for team directories
         if len(discovered_nav_paths) < 2:

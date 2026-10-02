@@ -104,14 +104,14 @@ def _get_duckdb():
 
 def safe_duckdb_connect(memory_limit: Optional[str] = None, threads: Optional[int] = None, read_only: bool = False):
     """
-    Spawns a resource-constrained DuckDB connection to prevent Linux OOM exit 137
-    and CPU starvation in constrained environments (Render Free Tier 512MB RAM).
+    Spawns a resource-managed DuckDB connection with disk-spill support to prevent
+    OOM errors on large Parquet dataset operations while respecting container memory limits.
     """
     duckdb = _get_duckdb()
     is_render = bool(os.getenv("RENDER") or os.getenv("RENDER_SERVICE_ID") or os.getenv("IS_PRODUCTION", "false").lower() == "true")
     
     if memory_limit is None:
-        memory_limit = "64MB" if is_render else "128MB"
+        memory_limit = "256MB" if is_render else "2GB"
     if threads is None:
         threads = 1 if is_render else 2
 
@@ -120,6 +120,10 @@ def safe_duckdb_connect(memory_limit: Optional[str] = None, threads: Optional[in
         con.execute(f"PRAGMA max_memory='{memory_limit}';")
         con.execute(f"PRAGMA threads={threads};")
         con.execute("PRAGMA preserve_insertion_order=false;")
+        import tempfile
+        spill_dir = os.path.join(tempfile.gettempdir(), "duckdb_spill").replace("\\", "/")
+        os.makedirs(spill_dir, exist_ok=True)
+        con.execute(f"PRAGMA temp_directory='{spill_dir}';")
     except Exception as pragma_err:
         logger.debug("safe_duckdb_connect PRAGMA note: %s", pragma_err)
     return con

@@ -176,11 +176,55 @@ class DatabaseAutoEnricher:
 
             raw_name = clean_name
 
+            # ── Intelligent Company Resolution & Noise Elimination ──────
+            from ..utils.normalizer import is_platform_name, is_ui_action, clean_company
+            from .discovery_processor import BOGUS_COMPANY_NAMES
+
+            cand_company = clean_company(raw_company) if raw_company else None
+            if not cand_company or is_platform_name(cand_company) or cand_company.lower().strip() in BOGUS_COMPANY_NAMES:
+                cand_company = None
+                # Try inferring company from LinkedIn company URL (e.g. /company/fuse3-solutions/)
+                if staged.source_url:
+                    comp_match = re.search(r'/company/([^/?#]+)', staged.source_url)
+                    if comp_match:
+                        slug = comp_match.group(1).replace('-', ' ').strip()
+                        if slug and not is_platform_name(slug):
+                            cand_company = slug.title()
+                # Try inferring company from page title (e.g. "Fuse3 Solutions: People | LinkedIn")
+                if not cand_company and staged.source_page_title:
+                    title_match = re.search(r'^([^:|]+)(?::\s*People|\s*\|\s*LinkedIn)', staged.source_page_title, re.IGNORECASE)
+                    if title_match:
+                        pt_comp = title_match.group(1).strip()
+                        if pt_comp and not is_platform_name(pt_comp):
+                            cand_company = pt_comp
+
+            # Clean Title: Eliminate UI actions like "Contact"
+            cand_title = (staged.raw_title or "").strip()
+            if not cand_title or is_ui_action(cand_title) or cand_title.lower() in ('contact', 'view profile', 'connect', 'message', 'follow', 'more'):
+                cand_title = "Talent Acquisition Specialist" if "recruiter" in (staged.source_url or "").lower() else "Staffing Professional"
+
+            # ── HARD CONTACT INTELLIGENCE GATE ──────────────────────────
+            # A candidate MUST have at least ONE actionable contact channel:
+            # 1. Real discovered email (NOT @unknown.com, NOT @noemail.talentops)
+            # 2. Valid individual LinkedIn profile URL (linkedin.com/in/...)
+            # 3. Real phone number (>= 7 digits)
+            has_real_email = bool(raw_email and '@' in raw_email and not raw_email.endswith('@unknown.com') and not raw_email.endswith('@noemail.talentops'))
+            has_linkedin = bool(staged.raw_linkedin and 'linkedin.com/in/' in staged.raw_linkedin.lower())
+            has_phone = bool(staged.raw_phone and len(staged.raw_phone.strip()) >= 7)
+
+            if not has_real_email and not has_linkedin and not has_phone:
+                staged.processing_status = "review"
+                staged.decision = "REVIEW_NO_CONTACT_INTEL"
+                staged.decision_reason = f"Candidate '{raw_name}' lacks actionable contact info (no email, no LinkedIn profile URL, no phone). Held in Review."
+                staged.processed_at = datetime.utcnow()
+                results["skipped"] += 1
+                continue
+
             # Resolve or lookup company
             company = None
-            if raw_company:
+            if cand_company:
                 company = db.query(Company).filter(
-                    func.lower(Company.company_name) == raw_company.lower()
+                    func.lower(Company.company_name) == cand_company.lower()
                 ).first()
 
             # Check if this recruiter already exists in the master catalog
@@ -200,8 +244,8 @@ class DatabaseAutoEnricher:
                 # ── ENRICHMENT MODE (NON-DESTRUCTIVE) ──────────────────────────
                 fields_enriched = []
 
-                if not existing_recruiter.title and staged.raw_title:
-                    existing_recruiter.title = staged.raw_title
+                if not existing_recruiter.title and cand_title:
+                    existing_recruiter.title = cand_title
                     fields_enriched.append("title")
 
                 if not existing_recruiter.phone and staged.raw_phone:
@@ -213,7 +257,6 @@ class DatabaseAutoEnricher:
                     fields_enriched.append("linkedin")
 
                 if staged.raw_location and not existing_recruiter.state:
-                    # Check for 2-letter state code
                     st_m = re.search(r"\b([A-Z]{2})\b", staged.raw_location)
                     if st_m:
                         existing_recruiter.state = st_m.group(1)
@@ -246,13 +289,13 @@ class DatabaseAutoEnricher:
             else:
                 # ── PROMOTION MODE (NEW CONTACT) ──────────────────────────────
                 # Ensure company exists or create lightweight company shell
-                if not company and raw_company:
+                if not company and cand_company:
                     clean_dom = ""
                     if raw_email and "@" in raw_email:
                         clean_dom = raw_email.split("@")[1]
                     company = Company(
-                        company_name=raw_company,
-                        normalized_company_name=raw_company.lower().strip(),
+                        company_name=cand_company,
+                        normalized_company_name=cand_company.lower().strip(),
                         primary_domain=clean_dom,
                     )
                     db.add(company)
@@ -283,17 +326,22 @@ class DatabaseAutoEnricher:
                     except Exception:
                         pass
 
+                # Derive clean email - NEVER use @unknown.com
+                final_email = raw_email if has_real_email else None
+                if not final_email and company and company.primary_domain and company.primary_domain not in ('unknown.com', 'linkedin.com'):
+                    final_email = f"{raw_name.lower().replace(' ', '.')}@{company.primary_domain}"
+
                 new_recruiter = Recruiter(
                     recruiter_name=raw_name,
-                    title=staged.raw_title or "Talent Acquisition Specialist",
+                    title=cand_title,
                     company_id=company.company_id if company else None,
-                    email=raw_email if raw_email else f"{raw_name.lower().replace(' ', '.')}@{company.primary_domain or 'unknown.com'}",
+                    email=final_email,
                     phone=staged.raw_phone,
                     linkedin=staged.raw_linkedin,
                     location=raw_loc or None,
                     state=state_abbr,
-                    email_status=email_status,
-                    email_confidence=confidence,
+                    email_status=email_status if final_email else "UNVERIFIED",
+                    email_confidence=confidence if final_email else 0,
                     data_source=f"web_intelligence:{staged.extraction_source}",
                     notes=f"Auto-harvested via {staged.extraction_source} on {datetime.utcnow().strftime('%Y-%m-%d')}",
                     email_generated=True if staged.extraction_source in ("search_xray", "web_harvest") else False,

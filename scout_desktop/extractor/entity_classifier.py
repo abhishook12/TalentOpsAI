@@ -93,7 +93,7 @@ GENERIC_EMAIL_PREFIXES = frozenset({
 def is_job_posting_title(text: Optional[str]) -> bool:
     """
     Check if a text phrase represents a job posting title rather than a person name.
-    e.g. 'High School Mathematics Teacher', 'Transmission Project Manager', 'Senior React Developer'
+    e.g. 'High School Mathematics Teacher', 'Transmission Project Manager', 'Senior React Developer', 'End User Computing Administrator'
     """
     if not text:
         return False
@@ -107,17 +107,19 @@ def is_job_posting_title(text: Optional[str]) -> bool:
         "specialist", "mathematics", "math", "science", "english", "project",
         "transmission", "cloud", "order", "servicenow", "developer", "phlebotomist",
         "collector", "specimen", "software", "data", "quality", "full-time",
-        "part-time", "contract", "remote", "hybrid", "entry-level"
+        "part-time", "contract", "remote", "hybrid", "entry-level", "computing", "network",
+        "security", "infrastructure", "systems", "operations"
     } for w in words)
 
-    if has_role_noun and has_discipline and len(words) >= 2:
+    if has_role_noun and (has_discipline or len(words) >= 3):
         return True
 
     # Multi-word role phrases
     low = text.strip().lower()
     if any(phrase in low for phrase in [
         "we are hiring", "now hiring", "job opening", "immediate opening",
-        "position available", "career opportunity", "vacancy for", "urgent requirement"
+        "position available", "career opportunity", "vacancy for", "urgent requirement",
+        "hiring:"
     ]):
         return True
 
@@ -258,7 +260,13 @@ class DesktopEntityTypeClassifier:
                         }
 
         # Fallback check: Did a company name slip through without legal suffix?
-        if is_valid_company_name(name):
+        clean_comp = re.sub(r'[^\w\s]', ' ', name.lower()).strip()
+        comp_words = clean_comp.split()
+        is_actual_company = (
+            name.lower() in KNOWN_STANDALONE_CORPS
+            or (comp_words and comp_words[-1] in {"inc", "llc", "corp", "ltd", "gmbh", "pvt", "plc", "co", "corporation", "company", "limited", "group", "holdings", "enterprises", "solutions", "services", "consulting", "technologies", "systems", "partners", "associates", "agency", "staffing", "recruiting"})
+        )
+        if is_actual_company:
             signals.append("fallback_company_name_detected")
             return {
                 "entity_type": ENTITY_COMPANY,

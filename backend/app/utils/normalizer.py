@@ -246,7 +246,7 @@ def is_platform_name(text: Optional[str]) -> bool:
 def is_job_posting_title(text: Optional[str]) -> bool:
     """
     Check if a text phrase represents a job posting title rather than a person name.
-    e.g. 'High School Mathematics Teacher', 'Transmission Project Manager', 'Mobile Phlebotomist'
+    e.g. 'High School Mathematics Teacher', 'Transmission Project Manager', 'End User Computing Administrator'
     """
     if not text:
         return False
@@ -257,9 +257,28 @@ def is_job_posting_title(text: Optional[str]) -> bool:
     # Check if any word is a common job role noun
     has_role_noun = any(w in JOB_ROLE_NOUNS for w in words)
     # Check for level/discipline qualifiers
-    has_discipline = any(w in {'senior', 'junior', 'lead', 'principal', 'staff', 'head', 'vp', 'director', 'specialist', 'mathematics', 'math', 'science', 'english', 'project', 'transmission', 'cloud', 'order', 'servicenow', 'developer', 'phlebotomist', 'collector', 'specimen'} for w in words)
+    has_discipline = any(w in {
+        'senior', 'junior', 'lead', 'principal', 'staff', 'head', 'vp', 'director',
+        'specialist', 'mathematics', 'math', 'science', 'english', 'project',
+        'transmission', 'cloud', 'order', 'servicenow', 'developer', 'phlebotomist',
+        'collector', 'specimen', 'software', 'data', 'quality', 'full-time',
+        'part-time', 'contract', 'remote', 'hybrid', 'entry-level', 'computing',
+        'network', 'security', 'infrastructure', 'systems', 'operations'
+    } for w in words)
 
-    return has_role_noun or (len(words) >= 3 and has_discipline)
+    if has_role_noun and (has_discipline or len(words) >= 3):
+        return True
+
+    # Multi-word role phrases
+    low = text.strip().lower()
+    if any(phrase in low for phrase in [
+        "we are hiring", "now hiring", "job opening", "immediate opening",
+        "position available", "career opportunity", "vacancy for", "urgent requirement",
+        "hiring:"
+    ]):
+        return True
+
+    return False
 
 COMPANY_NOISE_PATTERNS = {
     'ask gemini', 'chatgpt', 'copilot', 'claude', 'signalhire', 'contactout',

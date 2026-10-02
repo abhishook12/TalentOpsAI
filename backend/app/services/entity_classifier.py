@@ -242,6 +242,8 @@ class EntityTypeClassifier:
             r'\b(?:status is (?:offline|online|away|busy|available|dnd|inactive)|active (?:now|\d+m ago)|(?:last|recently) seen)\b',
             # Social / company profile counts & aggregated indicators
             r'^\d+\s+(?:associated\s+members?|employees?|alumni|followers?|connections?|members?)\b',
+            # Mashed URLs, search results snippets, domains
+            r'(?:https?://|https?www|https?[a-z0-9]|\.(?:com|org|net|io|ai|in|co|edu|gov|dev|app|tech|me|biz|info|xyz)\b)',
         ]
         for pat in NOISE_PATTERNS:
             if re.search(pat, name_lower):

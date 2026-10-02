@@ -83,152 +83,37 @@ class DiscoveryProcessor:
     def process_pending_batch(self, limit: int = 100) -> dict:
         """
         Process pending staging records in batches.
-        
-        HARD ENTITY ROUTING ARCHITECTURE:
-        1. Classify every record into an entity type (PERSON, COMPANY, JOB_POSTING, etc.)
-        2. Route each type to its own dedicated processing path
-        3. No crossover — companies NEVER enter the person pipeline, and vice versa
+        Permanently routes 100% of records through the Universal Ingestion Funnel.
+        Zero legacy bypass, zero fake emails.
         """
         try:
-            records = self.db.query(DiscoveryStaging).filter(
-                DiscoveryStaging.processing_status.in_(['pending', 'batched'])
-            ).order_by(DiscoveryStaging.created_at.asc()).limit(limit).all()
-
-            if not records:
-                return {
-                    'processed': 0, 'persons_committed': 0, 'companies_committed': 0,
-                    'jobs_captured': 0, 'contacts_captured': 0, 'signals_captured': 0,
-                    'noise_rejected': 0, 'grounding_rejected': 0,
-                }
-
-            # ═══════════════════════════════════════════════════════════
-            # PHASE 1: HARD ENTITY TYPE CLASSIFICATION
-            # Every record gets classified BEFORE any processing.
-            # ═══════════════════════════════════════════════════════════
-            from .entity_classifier import entity_classifier, ENTITY_PERSON, ENTITY_COMPANY, ENTITY_JOB_POSTING, ENTITY_CONTACT_INFO, ENTITY_MARKET_SIGNAL, ENTITY_NOISE
-            
-            # Entity type buckets — hard walls between them
-            person_records = []
-            company_records = []
-            job_records = []
-            contact_records = []
-            signal_records = []
-            noise_count = 0
-            
-            for r in records:
-                classification = entity_classifier.classify(
-                    raw_name=r.raw_name,
-                    raw_title=r.raw_title,
-                    raw_company=r.raw_company,
-                    raw_email=r.raw_email,
-                    raw_phone=r.raw_phone,
-                    source_url=r.source_url,
-                    source_page_title=r.source_page_title,
-                    extraction_source=getattr(r, 'extraction_source', None),
-                )
-                
-                entity_type = classification['entity_type']
-                confidence = classification['confidence']
-                reason = classification['reason']
-                
-                # Stamp the entity_type on the staging record
-                r.entity_type = entity_type
-                
-                if entity_type == ENTITY_NOISE:
-                    r.processing_status = 'rejected'
-                    r.decision = 'REJECT_NOISE'
-                    r.decision_reason = f'Entity classified as NOISE: {reason}'
-                    r.identity_confidence = 0.0
-                    r.processed_at = datetime.now(timezone.utc)
-                    self.db.add(r)
-                    noise_count += 1
-                elif entity_type == ENTITY_COMPANY:
-                    company_records.append(r)
-                elif entity_type == ENTITY_JOB_POSTING:
-                    job_records.append(r)
-                elif entity_type == ENTITY_CONTACT_INFO:
-                    contact_records.append(r)
-                elif entity_type == ENTITY_MARKET_SIGNAL:
-                    signal_records.append(r)
-                else:  # ENTITY_PERSON
-                    person_records.append(r)
-            
-            self.db.flush()
-            
-            logger.info(
-                "Entity classification: %d PERSON, %d COMPANY, %d JOB, %d CONTACT, %d SIGNAL, %d NOISE",
-                len(person_records), len(company_records), len(job_records),
-                len(contact_records), len(signal_records), noise_count
-            )
-
-            # ═══════════════════════════════════════════════════════════
-            # PHASE 2: DEDICATED PROCESSING PATHS (Hard Walls)
-            # Each entity type has its own processing method.
-            # ═══════════════════════════════════════════════════════════
-            
-            # PATH A: COMPANY entities → Company table
-            companies_committed = self._process_company_entities(company_records)
-            
-            # PATH B: JOB_POSTING entities → Knowledge Graph (KnowledgeEntity + KnowledgeSignal)
-            jobs_captured = self._process_job_entities(job_records)
-            
-            # PATH C: CONTACT_INFO entities → Knowledge Graph (company contact enrichment)
-            contacts_captured = self._process_contact_entities(contact_records)
-            
-            # PATH D: MARKET_SIGNAL entities → Knowledge Graph signals
-            signals_captured = self._process_signal_entities(signal_records)
-            
-            # PATH E: PERSON entities → Evidence Grounding → Cluster → Resolve → Master DB
-            person_stats = self._process_person_entities(person_records)
-            
-            # Commit all changes
-            self.db.commit()
+            from .ingestion_funnel import universal_funnel
+            funnel_res = universal_funnel.process_staging_batch(db=self.db, limit=limit)
             
             stats = {
-                'processed': len(records),
-                'persons_committed': person_stats.get('new', 0) + person_stats.get('enriched', 0),
-                'companies_committed': companies_committed,
-                'jobs_captured': jobs_captured,
-                'contacts_captured': contacts_captured,
-                'signals_captured': signals_captured,
-                'noise_rejected': noise_count,
-                'grounding_rejected': person_stats.get('rejected', 0),
+                'processed': funnel_res.get('processed_count', 0),
+                'persons_committed': funnel_res.get('promoted_new', 0) + funnel_res.get('enriched_existing', 0),
+                'companies_committed': funnel_res.get('companies_routed', 0),
+                'jobs_captured': funnel_res.get('jobs_captured', 0),
+                'contacts_captured': 0,
+                'signals_captured': 0,
+                'noise_rejected': funnel_res.get('rejected_noise', 0),
+                'grounding_rejected': funnel_res.get('held_review', 0),
                 # Legacy compatibility keys
-                'new': person_stats.get('new', 0),
-                'enriched': person_stats.get('enriched', 0),
-                'duplicate': person_stats.get('duplicate', 0),
-                'review': person_stats.get('review', 0),
-                'ignored': person_stats.get('ignored', 0),
-                'conflict': person_stats.get('conflict', 0),
-                'rejected': noise_count + person_stats.get('rejected', 0),
-                'companies_committed': companies_committed,
+                'new': funnel_res.get('promoted_new', 0),
+                'enriched': funnel_res.get('enriched_existing', 0),
+                'duplicate': 0,
+                'review': funnel_res.get('held_review', 0),
+                'ignored': 0,
+                'conflict': 0,
+                'rejected': funnel_res.get('rejected_noise', 0),
+                'companies_committed': funnel_res.get('companies_routed', 0),
             }
-            
-            # High-Speed Master DB Sync
-            if stats.get('new', 0) > 0 or stats.get('enriched', 0) > 0 or companies_committed > 0:
-                try:
-                    from ..olap_sidecar import olap_sidecar
-                    olap_sidecar.invalidate()
-                except Exception as ie:
-                    logger.debug("OlapSidecar invalidation note: %s", ie)
-                try:
-                    from .sync_layer import sync_manager
-                    sync_manager.request_sync()
-                    logger.info("Triggered real-time sync_manager reload for live search & DB consistency")
-                except Exception as se:
-                    logger.debug("SyncManager notification note: %s", se)
-                try:
-                    from ..routes.analytics import analytics_cache
-                    analytics_cache.clear()
-                    logger.info("Cleared analytics cache for immediate UI freshness")
-                except Exception as ce:
-                    logger.debug("AnalyticsCache clear note: %s", ce)
-            
-            logger.info("Discovery batch processed: %s", stats)
+            logger.info("Universal Funnel batch processed via DiscoveryProcessor: %s", stats)
             return stats
 
         except Exception as e:
-            logger.error("Error in batch processing: %s", e, exc_info=True)
+            logger.error("Error in batch processing via Funnel: %s", e, exc_info=True)
             self.db.rollback()
             return {'processed': 0, 'error': str(e)}
 

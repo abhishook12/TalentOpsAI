@@ -526,7 +526,7 @@ def validate_human_name(raw_name: Optional[str]) -> Tuple[bool, Optional[str], O
         return False, None, 'Organization/company name detected'
 
     # Reject URLs, domains, and web search snippets
-    if re.search(r'(?:https?://|www\.|httpswww|\.com\b|\.org\b|\.net\b|\.io\b|\.co/|\.edu\b)', name.lower()):
+    if re.search(r'(?:https?://|https?www|https?[a-z0-9]|\.(?:com|org|net|io|ai|in|co|edu|gov|dev|app|tech|me|biz|info|xyz)\b)', name.lower()):
         return False, None, f"Name contains URL or domain markers ('{name}')"
 
     # Reject corrupt unicode replacement characters

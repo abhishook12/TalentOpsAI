@@ -354,10 +354,10 @@ class DiscoveryProcessor:
                     owner_user_id=owner_id,
                     entity_type='JOB_POSTING',
                     canonical_name=job_title[:255],
-                    primary_identifier=r.source_url or r.discovery_id,
+                    primary_identifier=(r.source_url or r.discovery_id or f"job_{r.id}")[:255],
                     attributes_json=json.dumps(attrs),
                     confidence=0.80,
-                    source_url=r.source_url,
+                    source_url=(r.source_url or "")[:500] if r.source_url else None,
                 )
                 self.db.add(entity)
                 self.db.flush()
@@ -366,11 +366,11 @@ class DiscoveryProcessor:
                     owner_user_id=owner_id,
                     entity_id=entity.id,
                     signal_type='JOB_POSTING',
-                    title=f'{job_title} at {job_company}',
+                    title=f'{job_title} at {job_company}'[:255],
                     description=r.about_summary,
                     payload_json=json.dumps(attrs),
                     confidence=0.80,
-                    source_url=r.source_url,
+                    source_url=(r.source_url or "")[:500] if r.source_url else None,
                 )
                 self.db.add(signal)
 
@@ -424,10 +424,10 @@ class DiscoveryProcessor:
                     owner_user_id=owner_id,
                     entity_type='CONTACT_INFO',
                     canonical_name=contact_label[:255],
-                    primary_identifier=r.raw_email or r.raw_phone or r.source_url,
+                    primary_identifier=(r.raw_email or r.raw_phone or r.source_url or f"contact_{r.id}")[:255],
                     attributes_json=json.dumps(attrs),
                     confidence=0.70,
-                    source_url=r.source_url,
+                    source_url=(r.source_url or "")[:500] if r.source_url else None,
                 )
                 self.db.add(entity)
 
@@ -474,7 +474,7 @@ class DiscoveryProcessor:
                     description=r.raw_title or r.about_summary,
                     payload_json=json.dumps(attrs),
                     confidence=0.70,
-                    source_url=r.source_url,
+                    source_url=(r.source_url or "")[:500] if r.source_url else None,
                 )
                 self.db.add(signal)
 
@@ -694,6 +694,17 @@ class DiscoveryProcessor:
                 clean_titles.append(t)
             if c and not is_platform_name(c):
                 clean_companies.append(c)
+
+        # Fallback: Infer company from LinkedIn URL path if all raw companies were platform names or empty
+        if not clean_companies:
+            for r in cluster:
+                if r.source_url:
+                    comp_match = re.search(r'/company/([^/?#]+)', r.source_url)
+                    if comp_match:
+                        slug = comp_match.group(1).replace('-', ' ').strip()
+                        if slug and not is_platform_name(slug):
+                            clean_companies.append(slug.title())
+                            break
 
         # Most reliable values across observations
         raw_canonical = most_common([r.raw_name for r in cluster])

@@ -124,10 +124,10 @@ class DatabaseAutoEnricher:
                         owner_user_id=staged.owner_user_id or 1,
                         entity_type="JOB_POSTING",
                         canonical_name=job_title[:255],
-                        primary_identifier=staged.source_url or staged.discovery_id,
+                        primary_identifier=(staged.source_url or staged.discovery_id or f"job_{staged.id}")[:255],
                         attributes_json=f'{{"company": "{raw_company}", "source": "{staged.extraction_source}"}}',
                         confidence=0.85,
-                        source_url=staged.source_url,
+                        source_url=(staged.source_url or "")[:500] if staged.source_url else None,
                     )
                     db.add(k_entity)
                     db.flush()
@@ -135,10 +135,10 @@ class DatabaseAutoEnricher:
                         owner_user_id=staged.owner_user_id or 1,
                         entity_id=k_entity.id,
                         signal_type="JOB_POSTING",
-                        title=f"{job_title} at {raw_company}",
+                        title=f"{job_title} at {raw_company}"[:255],
                         description=staged.about_summary or staged.raw_title,
                         confidence=0.85,
-                        source_url=staged.source_url,
+                        source_url=(staged.source_url or "")[:500] if staged.source_url else None,
                     )
                     db.add(k_sig)
                 except Exception as je:
@@ -203,9 +203,36 @@ class DatabaseAutoEnricher:
             if not cand_title or is_ui_action(cand_title) or cand_title.lower() in ('contact', 'view profile', 'connect', 'message', 'follow', 'more'):
                 cand_title = "Talent Acquisition Specialist" if "recruiter" in (staged.source_url or "").lower() else "Staffing Professional"
 
+            # ── Smart Corporate Email Pattern Resolution & Deliverability Check ──
+            # For candidates with a confirmed company who lack an email:
+            # 1. Research company's corporate domain & pattern (mined from existing colleagues or DB)
+            # 2. Formulate email permutation(s)
+            # 3. Test deliverability via live SMTP & DNS MX handshake
+            synthesized_email = None
+            email_status = "PATTERN_PREDICTED"
+            email_conf = staged.quality_score or 75
+
+            if not raw_email and cand_company:
+                try:
+                    from .email_intelligence_service import email_intelligence
+                    intel_res = email_intelligence.resolve_and_enrich_candidate(
+                        full_name=raw_name,
+                        company_name=cand_company,
+                        db=db
+                    )
+                    if intel_res and intel_res.get("email") and intel_res.get("status") in ("SMTP_VERIFIED", "PATTERN_VERIFIED", "MX_VERIFIED"):
+                        synthesized_email = intel_res["email"]
+                        raw_email = synthesized_email
+                        email_status = intel_res["status"]
+                        email_conf = int(intel_res.get("confidence", 0.85) * 100)
+                        logger.info("🎯 Synthesized deliverable email for %s at %s: %s (Status: %s)",
+                                    raw_name, cand_company, synthesized_email, email_status)
+                except Exception as intel_err:
+                    logger.debug("Candidate email intelligence error in enricher: %s", intel_err)
+
             # ── HARD CONTACT INTELLIGENCE GATE ──────────────────────────
             # A candidate MUST have at least ONE actionable contact channel:
-            # 1. Real discovered email (NOT @unknown.com, NOT @noemail.talentops)
+            # 1. Real discovered / deliverable corporate email (NOT @unknown.com, NOT @noemail.talentops)
             # 2. Valid individual LinkedIn profile URL (linkedin.com/in/...)
             # 3. Real phone number (>= 7 digits)
             has_real_email = bool(raw_email and '@' in raw_email and not raw_email.endswith('@unknown.com') and not raw_email.endswith('@noemail.talentops'))
@@ -289,10 +316,11 @@ class DatabaseAutoEnricher:
             else:
                 # ── PROMOTION MODE (NEW CONTACT) ──────────────────────────────
                 # Ensure company exists or create lightweight company shell
+                clean_dom = ""
+                if raw_email and "@" in raw_email:
+                    clean_dom = raw_email.split("@")[1]
+
                 if not company and cand_company:
-                    clean_dom = ""
-                    if raw_email and "@" in raw_email:
-                        clean_dom = raw_email.split("@")[1]
                     company = Company(
                         company_name=cand_company,
                         normalized_company_name=cand_company.lower().strip(),
@@ -300,22 +328,27 @@ class DatabaseAutoEnricher:
                     )
                     db.add(company)
                     db.flush()
+                elif company and (not company.primary_domain or company.primary_domain in ('unknown.com', 'linkedin.com')) and clean_dom and clean_dom not in ('unknown.com', 'linkedin.com'):
+                    company.primary_domain = clean_dom
 
-                # Live Port 25 SMTP deliverability check before promotion
-                email_status = "PATTERN_PREDICTED"
-                confidence = staged.quality_score or 75
+                # Live Port 25 SMTP deliverability check before promotion (if not already verified by email_intelligence)
+                if not synthesized_email:
+                    email_status = "PATTERN_PREDICTED"
+                    confidence = staged.quality_score or 75
 
-                if raw_email:
-                    try:
-                        probe = smtp_prober.probe_mailbox(raw_email)
-                        if probe.smtp_code == 250:
-                            email_status = "SMTP_VERIFIED"
-                            confidence = 100
-                            self.stats["emails_smtp_verified"] += 1
-                        elif probe.smtp_code == 550:
-                            email_status = "BOUNCED"
-                    except Exception:
-                        pass
+                    if raw_email:
+                        try:
+                            probe = smtp_prober.probe_mailbox(raw_email)
+                            if probe.smtp_code == 250:
+                                email_status = "SMTP_VERIFIED"
+                                confidence = 100
+                                self.stats["emails_smtp_verified"] += 1
+                            elif probe.smtp_code == 550:
+                                email_status = "BOUNCED"
+                        except Exception:
+                            pass
+                else:
+                    confidence = email_conf
 
                 raw_loc = (staged.raw_location or "").strip()
                 state_abbr = None

@@ -126,6 +126,20 @@ KNOWN_COMPANY_DOMAINS: Dict[str, str] = {
     "jp morgan": "jpmorgan.com",
     "jpmorgan chase": "jpmorgan.com",
     "blackrock": "blackrock.com",
+    # Staffing & Recruiting Firms
+    "fuse3 solutions": "fuse3solutions.com",
+    "fuse3": "fuse3solutions.com",
+    "fuse3solutions": "fuse3solutions.com",
+    "aerotek": "aerotek.com",
+    "teksystems": "teksystems.com",
+    "robert half": "roberthalf.com",
+    "randstad": "randstad.com",
+    "apex systems": "apexsystems.com",
+    "insight global": "insightglobal.com",
+    "kelly services": "kellyservices.com",
+    "adecco": "adecco.com",
+    "manpowergroup": "manpowergroup.com",
+    "kforce": "kforce.com",
 }
 
 # ── Seed Company Email Formulas (Known Ground Truth) ──────────────────────────
@@ -153,6 +167,7 @@ SEEDED_COMPANY_PATTERNS: Dict[str, Dict[str, Any]] = {
     "infosys.com": {"pattern": "first.last", "confidence": 0.85},
     "accenture.com": {"pattern": "first.last", "confidence": 0.90},
     "deloitte.com": {"pattern": "first.last", "confidence": 0.90},
+    "fuse3solutions.com": {"pattern": "first.last", "confidence": 0.95},
 }
 
 # Free / personal webmail domains to exclude from corporate pattern extrapolation
@@ -329,9 +344,12 @@ class EmailIntelligenceService:
         # 2. Database lookup in existing companies table
         if db:
             try:
+                full_slug = re.sub(r'[^a-z0-9]', '', norm_name)
                 comp = db.query(Company).filter(
                     (Company.company_name.ilike(company_name)) |
-                    (Company.canonical_name.ilike(stripped))
+                    (Company.canonical_name.ilike(stripped)) |
+                    (sqlfunc.replace(sqlfunc.lower(Company.company_name), ' ', '') == full_slug) |
+                    (sqlfunc.replace(sqlfunc.lower(Company.canonical_name), ' ', '') == full_slug)
                 ).first()
 
                 if comp:
@@ -346,10 +364,30 @@ class EmailIntelligenceService:
             except Exception as e:
                 logger.debug("Database company domain lookup error: %s", e)
 
-        # 3. Clean slug heuristic
-        clean_slug = re.sub(r"[^a-z0-9]", "", stripped)
-        if len(clean_slug) >= 2:
-            return f"{clean_slug}.com"
+        # 3. Clean slug heuristic with live MX validation
+        full_slug = re.sub(r"[^a-z0-9]", "", norm_name)
+        stripped_slug = re.sub(r"[^a-z0-9]", "", stripped)
+
+        if len(full_slug) >= 2:
+            candidate_full = f"{full_slug}.com"
+            try:
+                if cls.verify_mx(candidate_full)["has_mx"]:
+                    return candidate_full
+            except Exception:
+                pass
+
+        if len(stripped_slug) >= 2 and stripped_slug != full_slug:
+            candidate_stripped = f"{stripped_slug}.com"
+            try:
+                if cls.verify_mx(candidate_stripped)["has_mx"]:
+                    return candidate_stripped
+            except Exception:
+                pass
+
+        if len(full_slug) >= 2:
+            return f"{full_slug}.com"
+        if len(stripped_slug) >= 2:
+            return f"{stripped_slug}.com"
 
         return None
 
@@ -468,6 +506,53 @@ class EmailIntelligenceService:
         return candidates
 
     @classmethod
+    def deduce_pattern(cls, email: str, full_name: str, domain: Optional[str] = None) -> Optional[str]:
+        """
+        Deduces the company's email formula pattern from an observed email address and candidate name.
+        Returns one of: 'first.last', 'f_last', 'first', 'first_last', 'first_underscore_last',
+        'f.last', 'first_l', 'last.first', 'last_f', 'last.f', 'last'.
+        """
+        if not email or "@" not in email or not full_name:
+            return None
+
+        email = email.lower().strip()
+        local_part, dom = email.split("@", 1)
+
+        tokens = cls.clean_name_tokens(full_name)
+        if not tokens:
+            return None
+
+        first = tokens["first"]
+        last = tokens["last"]
+        f_init = tokens["first_initial"]
+        l_init = tokens["last_initial"]
+
+        if last and local_part == f"{first}.{last}":
+            return "first.last"
+        elif last and local_part == f"{f_init}{last}":
+            return "f_last"
+        elif local_part == first:
+            return "first"
+        elif last and local_part == f"{first}{last}":
+            return "first_last"
+        elif last and local_part == f"{first}_{last}":
+            return "first_underscore_last"
+        elif last and local_part == f"{f_init}.{last}":
+            return "f.last"
+        elif last and local_part == f"{first}{l_init}":
+            return "first_l"
+        elif last and local_part == f"{last}.{first}":
+            return "last.first"
+        elif last and local_part == f"{last}{f_init}":
+            return "last_f"
+        elif last and local_part == f"{last}.{f_init}":
+            return "last.f"
+        elif last and local_part == last:
+            return "last"
+
+        return None
+
+    @classmethod
     def learn_pattern_from_email(
         cls,
         email: str,
@@ -489,40 +574,7 @@ class EmailIntelligenceService:
         if domain in FREE_EMAIL_DOMAINS:
             return None
 
-        tokens = cls.clean_name_tokens(full_name)
-        if not tokens:
-            return None
-
-        first = tokens["first"]
-        last = tokens["last"]
-        f_init = tokens["first_initial"]
-        l_init = tokens["last_initial"]
-
-        # Reverse-engineer pattern
-        deduced_pattern = None
-        if last and local_part == f"{first}.{last}":
-            deduced_pattern = "first.last"
-        elif last and local_part == f"{f_init}{last}":
-            deduced_pattern = "f_last"
-        elif local_part == first:
-            deduced_pattern = "first"
-        elif last and local_part == f"{first}{last}":
-            deduced_pattern = "first_last"
-        elif last and local_part == f"{first}_{last}":
-            deduced_pattern = "first_underscore_last"
-        elif last and local_part == f"{f_init}.{last}":
-            deduced_pattern = "f.last"
-        elif last and local_part == f"{first}{l_init}":
-            deduced_pattern = "first_l"
-        elif last and local_part == f"{last}.{first}":
-            deduced_pattern = "last.first"
-        elif last and local_part == f"{last}{f_init}":
-            deduced_pattern = "last_f"
-        elif last and local_part == f"{last}.{f_init}":
-            deduced_pattern = "last.f"
-        elif last and local_part == last:
-            deduced_pattern = "last"
-
+        deduced_pattern = cls.deduce_pattern(email, full_name, domain)
         if not deduced_pattern:
             return None
 
@@ -668,6 +720,28 @@ class EmailIntelligenceService:
             except Exception as e:
                 logger.debug("Failed querying DB pattern: %s", e)
 
+        # ── Cross-Colleague Corporate Pattern Mining ─────────────────
+        # If no pattern in registry, mine existing colleagues at this company in Recruiters table
+        if not known_pattern and db:
+            try:
+                from ..models.models import Recruiter
+                colleague = db.query(Recruiter).filter(
+                    Recruiter.email.ilike(f"%@{domain}"),
+                    Recruiter.recruiter_name != None,
+                    ~Recruiter.email.ilike("%@unknown.com"),
+                    ~Recruiter.email.ilike("%@noemail.talentops")
+                ).order_by(Recruiter.recruiter_id.desc()).first()
+
+                if colleague and colleague.email and colleague.recruiter_name:
+                    inferred_pat = cls.deduce_pattern(colleague.email, colleague.recruiter_name, domain)
+                    if inferred_pat:
+                        known_pattern = inferred_pat
+                        cls.learn_pattern_from_email(colleague.email, colleague.recruiter_name, company_name, db)
+                        logger.info("⚡ Discovered corporate email pattern '%s' for %s from colleague %s (%s)",
+                                    inferred_pat, domain, colleague.recruiter_name, colleague.email)
+            except Exception as col_err:
+                logger.debug("Colleague email pattern mining error: %s", col_err)
+
         # Fallback to static seed dictionary if no empirical DB pattern exists yet
         if not known_pattern and domain in SEEDED_COMPANY_PATTERNS:
             known_pattern = SEEDED_COMPANY_PATTERNS[domain]["pattern"]
@@ -686,21 +760,53 @@ class EmailIntelligenceService:
         # Check domain MX status
         mx_info = cls.verify_mx(domain)
         best = permutations[0]
+        delivery_status = "MX_VERIFIED" if mx_info["has_mx"] else "MX_UNREACHABLE"
+        deliverability_score = best["confidence"]
 
-        # Calculate final confidence
-        confidence = best["confidence"]
+        # ── Live Deliverability Probing & Alternative Testing ────────
         if mx_info["has_mx"]:
-            # Boost confidence when MX server is actively responding
-            confidence = min(0.98, confidence + 0.10)
-            status = "PATTERN_VERIFIED" if known_pattern else "MX_VERIFIED"
+            deliverability_score = min(0.98, deliverability_score + 0.10)
+            delivery_status = "PATTERN_VERIFIED" if known_pattern else "MX_VERIFIED"
+
+            # Run non-intrusive Port 25 SMTP mailbox existence probe
+            try:
+                from .smtp_prober import smtp_prober
+                probe = smtp_prober.probe_mailbox(best["email"])
+                if probe.smtp_code == 250:
+                    delivery_status = "SMTP_VERIFIED"
+                    deliverability_score = 1.0 if not probe.is_catchall else 0.92
+                    # Lock in newly validated pattern for this company
+                    if not known_pattern and db and not probe.is_catchall:
+                        cls.learn_pattern_from_email(best["email"], full_name, company_name, db)
+                elif probe.smtp_code == 550:
+                    # Mailbox rejected by destination server! Test alternative permutations
+                    found_working_alt = False
+                    for alt in permutations[1:4]:
+                        alt_probe = smtp_prober.probe_mailbox(alt["email"])
+                        if alt_probe.smtp_code == 250:
+                            best = alt
+                            delivery_status = "SMTP_VERIFIED"
+                            deliverability_score = 1.0 if not alt_probe.is_catchall else 0.92
+                            found_working_alt = True
+                            if not known_pattern and db and not alt_probe.is_catchall:
+                                cls.learn_pattern_from_email(best["email"], full_name, company_name, db)
+                            break
+                    if not found_working_alt:
+                        delivery_status = "BOUNCED"
+                        deliverability_score = 0.10
+                elif probe.is_catchall:
+                    delivery_status = "PATTERN_VERIFIED" if known_pattern else "CATCHALL_VERIFIED"
+                    deliverability_score = 0.88
+            except Exception as probe_err:
+                logger.debug("SMTP probe note during candidate resolution: %s", probe_err)
         else:
-            confidence = max(0.30, confidence - 0.20)
-            status = "MX_UNREACHABLE"
+            deliverability_score = max(0.30, deliverability_score - 0.20)
+            delivery_status = "MX_UNREACHABLE"
 
         return {
-            "email": best["email"],
-            "status": status,
-            "confidence": round(confidence, 2),
+            "email": best["email"] if delivery_status != "BOUNCED" else None,
+            "status": delivery_status,
+            "confidence": round(deliverability_score, 2),
             "pattern": best["pattern"],
             "domain": domain,
             "provider": mx_info["provider"],

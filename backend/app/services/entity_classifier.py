@@ -92,25 +92,25 @@ class EntityTypeClassifier:
         if noise_result:
             return noise_result
         
-        # ── GATE 2: JOB_POSTING Detection (Prioritized so Job Titles are not classified as Companies) ──
+        # ── GATE 2: MARKET_SIGNAL Detection (High-Precision Industry Trends & Reports) ──
+        signal_result = self._check_market_signal(name, name_lower, title, title_lower, url, page_title, signals)
+        if signal_result:
+            return signal_result
+
+        # ── GATE 3: JOB_POSTING Detection (Prioritized so Job Titles are not classified as Companies) ──
         job_result = self._check_job_posting(name, name_lower, title, title_lower, url, page_title, signals)
         if job_result:
             return job_result
         
-        # ── GATE 3: CONTACT_INFO Detection (Prioritized so Generic Desks are classified as Contacts) ────
+        # ── GATE 4: CONTACT_INFO Detection (Prioritized so Generic Desks are classified as Contacts) ────
         contact_result = self._check_contact_info(name, name_lower, title_lower, email, raw_phone, url, signals)
         if contact_result:
             return contact_result
         
-        # ── GATE 4: COMPANY Detection ────────────────────────────────
+        # ── GATE 5: COMPANY Detection ────────────────────────────────
         company_result = self._check_company(name, name_lower, title, title_lower, company, email, url, page_title, signals)
         if company_result:
             return company_result
-        
-        # ── GATE 5: MARKET_SIGNAL Detection ──────────────────────────
-        signal_result = self._check_market_signal(name, name_lower, title, title_lower, url, page_title, signals)
-        if signal_result:
-            return signal_result
         
         # ── DEFAULT: PERSON ──────────────────────────────────────────
         # Import validate_human_name to double-check
@@ -371,9 +371,14 @@ class EntityTypeClassifier:
             reasons.append('page title indicates job listing')
             signals.append('job_page_title')
         
-        # Signal 4: Name contains hiring-specific keywords
-        JOB_KEYWORDS = ['hiring', 'we are hiring', 'now hiring', 'job opening', 'vacancy', 'position available', 'apply now', 'immediate opening']
-        if any(kw in name_lower for kw in JOB_KEYWORDS):
+        # Signal 4: Name contains hiring-specific keywords (excluding market trend reports like "hiring surge")
+        JOB_KEYWORDS = ['we are hiring', 'now hiring', 'actively hiring', 'job opening', 'vacancy', 'position available', 'apply now', 'immediate opening']
+        has_job_keyword = any(kw in name_lower for kw in JOB_KEYWORDS)
+        if not has_job_keyword and re.search(r'\bhiring\b', name_lower):
+            if not re.search(r'hiring\s+(surge|trend|freeze|spree|report|data|survey|outlook)', name_lower):
+                has_job_keyword = True
+
+        if has_job_keyword:
             confidence += 0.30
             reasons.append('name contains hiring keywords')
             signals.append('hiring_keywords')

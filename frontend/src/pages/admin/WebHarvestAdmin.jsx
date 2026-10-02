@@ -28,6 +28,7 @@ export default function WebHarvestAdmin() {
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [filterStatus, setFilterStatus] = useState('COMMITTED');
+  const [filterEntityType, setFilterEntityType] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
 
   // Offline buffer state
@@ -172,6 +173,10 @@ export default function WebHarvestAdmin() {
       if (filterStatus === 'REVIEW' && item.processing_status !== 'review') return false;
       if (filterStatus === 'REJECTED' && item.processing_status !== 'rejected' && !(item.decision || '').toUpperCase().includes('REJECT')) return false;
     }
+    if (filterEntityType !== 'ALL') {
+      const it = (item.entity_type || 'PERSON').toUpperCase();
+      if (it !== filterEntityType) return false;
+    }
     if (searchTerm) {
       const q = searchTerm.toLowerCase();
       const matchName = (item.name || '').toLowerCase().includes(q);
@@ -179,7 +184,8 @@ export default function WebHarvestAdmin() {
       const matchEmail = (item.email || '').toLowerCase().includes(q);
       const matchUrl = (item.source_url || '').toLowerCase().includes(q);
       const matchSource = (item.extraction_source || '').toLowerCase().includes(q);
-      return matchName || matchCompany || matchEmail || matchUrl || matchSource;
+      const matchType = (item.entity_type || '').toLowerCase().includes(q);
+      return matchName || matchCompany || matchEmail || matchUrl || matchSource || matchType;
     }
     return true;
   });
@@ -870,6 +876,31 @@ export default function WebHarvestAdmin() {
               />
             </div>
 
+            {/* Entity Type Filter */}
+            <div style={{ display: 'flex', gap: 4, background: 'var(--panel-bg)', padding: 3, borderRadius: 8, border: '1px solid var(--card-border)' }}>
+              {[
+                { id: 'ALL', label: 'All Entities' },
+                { id: 'PERSON', label: 'People' },
+                { id: 'COMPANY', label: 'Companies' },
+                { id: 'JOB_POSTING', label: 'Jobs' },
+                { id: 'CONTACT_INFO', label: 'Contacts' },
+                { id: 'MARKET_SIGNAL', label: 'Signals' },
+              ].map((et) => (
+                <button
+                  key={et.id}
+                  onClick={() => setFilterEntityType(et.id)}
+                  style={{
+                    padding: '4px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700,
+                    border: 'none', cursor: 'pointer',
+                    background: filterEntityType === et.id ? 'var(--card-bg)' : 'transparent',
+                    color: filterEntityType === et.id ? '#38bdf8' : 'var(--text-muted)'
+                  }}
+                >
+                  {et.label}
+                </button>
+              ))}
+            </div>
+
             {/* Status Filter */}
             <div style={{ display: 'flex', gap: 4, background: 'var(--panel-bg)', padding: 3, borderRadius: 8, border: '1px solid var(--card-border)' }}>
               {['COMMITTED', 'PENDING', 'REVIEW', 'REJECTED', 'ALL'].map((status) => (
@@ -904,7 +935,7 @@ export default function WebHarvestAdmin() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, textAlign: 'left' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--card-border, #27272a)', background: 'rgba(255, 255, 255, 0.03)', color: '#d4d4d8', fontSize: 11, textTransform: 'uppercase' }}>
-                  <th style={{ padding: '12px 14px', fontWeight: 800 }}>Candidate & Title ({filteredReports.length})</th>
+                  <th style={{ padding: '12px 14px', fontWeight: 800 }}>Discovered Entity & Title ({filteredReports.length})</th>
                   <th style={{ padding: '12px 14px', fontWeight: 800 }}>Company & Geo</th>
                   <th style={{ padding: '12px 14px', fontWeight: 800 }}>Contact Intelligence</th>
                   <th style={{ padding: '12px 14px', fontWeight: 800 }}>Provenance & Source URL</th>
@@ -934,8 +965,33 @@ export default function WebHarvestAdmin() {
                     >
                       {/* Candidate Name & Title */}
                       <td style={{ padding: '12px 14px' }}>
-                        <div style={{ fontWeight: 800, color: '#ffffff', fontSize: 13 }}>
-                          {row.name || '—'}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                          <span style={{
+                            display: 'inline-block', fontSize: 9, fontWeight: 800, padding: '1px 5px', borderRadius: 4,
+                            background: (row.entity_type === 'COMPANY' ? 'rgba(192, 132, 252, 0.15)' :
+                                         row.entity_type === 'JOB_POSTING' ? 'rgba(251, 191, 36, 0.15)' :
+                                         row.entity_type === 'CONTACT_INFO' ? 'rgba(52, 211, 153, 0.15)' :
+                                         row.entity_type === 'MARKET_SIGNAL' ? 'rgba(244, 63, 94, 0.15)' :
+                                         'rgba(56, 189, 248, 0.15)'),
+                            color: (row.entity_type === 'COMPANY' ? '#c084fc' :
+                                    row.entity_type === 'JOB_POSTING' ? '#fbbf24' :
+                                    row.entity_type === 'CONTACT_INFO' ? '#34d399' :
+                                    row.entity_type === 'MARKET_SIGNAL' ? '#f43f5e' :
+                                    '#38bdf8'),
+                            border: `1px solid ${
+                              row.entity_type === 'COMPANY' ? 'rgba(192, 132, 252, 0.3)' :
+                              row.entity_type === 'JOB_POSTING' ? 'rgba(251, 191, 36, 0.3)' :
+                              row.entity_type === 'CONTACT_INFO' ? 'rgba(52, 211, 153, 0.3)' :
+                              row.entity_type === 'MARKET_SIGNAL' ? 'rgba(244, 63, 94, 0.3)' :
+                              'rgba(56, 189, 248, 0.3)'
+                            }`,
+                            textTransform: 'uppercase', letterSpacing: '0.04em'
+                          }}>
+                            {row.entity_type || 'PERSON'}
+                          </span>
+                          <span style={{ fontWeight: 800, color: '#ffffff', fontSize: 13 }}>
+                            {row.name || '—'}
+                          </span>
                         </div>
                         <div style={{ color: row.title ? '#d4d4d8' : '#a1a1aa', fontSize: 11, marginTop: 2, fontWeight: 500 }}>
                           {row.title || '—'}

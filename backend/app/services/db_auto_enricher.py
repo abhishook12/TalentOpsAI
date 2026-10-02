@@ -61,12 +61,120 @@ class DatabaseAutoEnricher:
             raw_email = (staged.raw_email or "").strip().lower()
             raw_company = (staged.raw_company or "").strip()
 
-            if not raw_name or len(raw_name.split()) < 2:
+            from .entity_classifier import (
+                entity_classifier,
+                ENTITY_PERSON, ENTITY_COMPANY, ENTITY_JOB_POSTING,
+                ENTITY_CONTACT_INFO, ENTITY_MARKET_SIGNAL, ENTITY_NOISE
+            )
+            from ..utils.normalizer import validate_human_name, is_company_name, clean_company
+
+            classification = entity_classifier.classify(
+                raw_name=staged.raw_name,
+                raw_title=staged.raw_title,
+                raw_company=staged.raw_company,
+                raw_email=staged.raw_email,
+                raw_phone=staged.raw_phone,
+                source_url=staged.source_url,
+                source_page_title=staged.source_page_title,
+                extraction_source=staged.extraction_source,
+            )
+            entity_type = classification["entity_type"]
+            staged.entity_type = entity_type
+
+            # ── HARD WALL 1: NOISE ─────────────────────────────────────
+            if entity_type == ENTITY_NOISE:
                 staged.processing_status = "rejected"
-                staged.decision = "REJECTED_INVALID_NAME"
-                staged.decision_reason = "Name missing or insufficient tokens"
+                staged.decision = "REJECTED_NOISE"
+                staged.decision_reason = f"Classified as NOISE: {classification['reason']}"
                 results["skipped"] += 1
                 continue
+
+            # ── HARD WALL 2: COMPANY ───────────────────────────────────
+            if entity_type == ENTITY_COMPANY:
+                comp_name = clean_company(raw_name or raw_company) or (raw_name or raw_company)
+                if comp_name:
+                    existing_c = db.query(Company).filter(
+                        func.lower(Company.company_name) == comp_name.lower().strip()
+                    ).first()
+                    if not existing_c:
+                        new_c = Company(
+                            company_name=comp_name,
+                            normalized_company_name=comp_name.lower().strip(),
+                            primary_domain=raw_email.split("@")[1] if "@" in raw_email else "",
+                            industry=staged.raw_title or None,
+                            location=staged.raw_location or None,
+                            verification_status="verified_web_harvest",
+                            trust_score=85,
+                            data_source=f"web_intelligence:{staged.extraction_source}",
+                        )
+                        db.add(new_c)
+                        db.flush()
+                staged.processing_status = "committed"
+                staged.decision = "COMPANY_COMMITTED"
+                staged.decision_reason = f"Routed to Company catalog: {comp_name}"
+                staged.processed_at = datetime.utcnow()
+                continue
+
+            # ── HARD WALL 3: JOB_POSTING ───────────────────────────────
+            if entity_type == ENTITY_JOB_POSTING:
+                try:
+                    from ..models.knowledge_models import KnowledgeEntity, KnowledgeSignal
+                    job_title = raw_name or staged.raw_title or "Job Vacancy"
+                    k_entity = KnowledgeEntity(
+                        owner_user_id=staged.owner_user_id or 1,
+                        entity_type="JOB_POSTING",
+                        canonical_name=job_title[:255],
+                        primary_identifier=staged.source_url or staged.discovery_id,
+                        attributes_json=f'{{"company": "{raw_company}", "source": "{staged.extraction_source}"}}',
+                        confidence=0.85,
+                        source_url=staged.source_url,
+                    )
+                    db.add(k_entity)
+                    db.flush()
+                    k_sig = KnowledgeSignal(
+                        owner_user_id=staged.owner_user_id or 1,
+                        entity_id=k_entity.id,
+                        signal_type="JOB_POSTING",
+                        title=f"{job_title} at {raw_company}",
+                        description=staged.about_summary or staged.raw_title,
+                        confidence=0.85,
+                        source_url=staged.source_url,
+                    )
+                    db.add(k_sig)
+                except Exception as je:
+                    logger.debug("Knowledge entity job capture note: %s", je)
+                staged.processing_status = "committed"
+                staged.decision = "JOB_CAPTURED"
+                staged.decision_reason = f"Routed to Knowledge Graph: {raw_name}"
+                staged.processed_at = datetime.utcnow()
+                continue
+
+            # ── HARD WALL 4: CONTACT_INFO ──────────────────────────────
+            if entity_type == ENTITY_CONTACT_INFO:
+                staged.processing_status = "committed"
+                staged.decision = "CONTACT_CAPTURED"
+                staged.decision_reason = f"Routed to Company Contact Intel: {raw_name}"
+                staged.processed_at = datetime.utcnow()
+                continue
+
+            # ── HARD WALL 5: MARKET_SIGNAL ─────────────────────────────
+            if entity_type == ENTITY_MARKET_SIGNAL:
+                staged.processing_status = "committed"
+                staged.decision = "SIGNAL_CAPTURED"
+                staged.decision_reason = f"Routed to Market Signal: {raw_name}"
+                staged.processed_at = datetime.utcnow()
+                continue
+
+            # ── HARD WALL 6: PERSON (Must pass strict human validation) ─
+            is_human, clean_name, rej_reason = validate_human_name(raw_name)
+            if not is_human or is_company_name(raw_name):
+                staged.processing_status = "rejected"
+                staged.decision = "REJECTED_INVALID_NAME"
+                staged.decision_reason = f"Person validation rejected: {rej_reason or 'Company name detected'}"
+                results["skipped"] += 1
+                continue
+
+            raw_name = clean_name
 
             # Resolve or lookup company
             company = None

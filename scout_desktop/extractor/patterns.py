@@ -1363,7 +1363,7 @@ def is_valid_person_name(text: Optional[str]) -> bool:
         "with regards", "sincerely", "cheers", "yours truly", "respectfully"
     )
     UI_ACTION_PREFIXES = (
-        "the ", "review ", "delete ", "archive ", "sent ", "flagged ", "unread ", "mark ",
+        "the ", "review ", "delete ", "archive ", "sent ", "flagged ", "unread ", "mark as ", "mark all ",
         "reply ", "forward ", "subject ", "re: ", "fw: ", "fwd: ", "date added", "job type",
         "distance from", "directions to", "web results", "search results", "tell me "
     )
@@ -1453,7 +1453,7 @@ def is_valid_person_name(text: Optional[str]) -> bool:
             rest = w[1:]
             if any(c.isupper() for c in rest):
                 # Check if valid prefix (Mc, Mac, O', Fitz) or standard hyphenated name
-                is_valid_prefix = bool(re.match(r"^(?:Mc[A-Z\u00C0-\u024F][a-z\u00C0-\u024F]+|Mac[A-Z\u00C0-\u024F][a-z\u00C0-\u024F]+|O'[A-Z\u00C0-\u024F][a-z\u00C0-\u024F]+|Fitz[A-Z\u00C0-\u024F][a-z\u00C0-\u024F]+|[A-Z\u00C0-\u024F][a-z\u00C0-\u024F]+-[A-Z\u00C0-\u024F][a-z\u00C0-\u024F]+)$", w))
+                is_valid_prefix = bool(re.match(r"^(?:Mc[A-Z\u00C0-\u024F][a-z\u00C0-\u024F]+|Mac[A-Z\u00C0-\u024F][a-z\u00C0-\u024F]+|O'[A-Z\u00C0-\u024F][a-z\u00C0-\u024F]+|De[A-Z\u00C0-\u024F][a-z\u00C0-\u024F]+|Di[A-Z\u00C0-\u024F][a-z\u00C0-\u024F]+|Du[A-Z\u00C0-\u024F][a-z\u00C0-\u024F]+|Fitz[A-Z\u00C0-\u024F][a-z\u00C0-\u024F]+|Van[A-Z\u00C0-\u024F][a-z\u00C0-\u024F]+|Von[A-Z\u00C0-\u024F][a-z\u00C0-\u024F]+|Le[A-Z\u00C0-\u024F][a-z\u00C0-\u024F]+|La[A-Z\u00C0-\u024F][a-z\u00C0-\u024F]+|[A-Z\u00C0-\u024F][a-z\u00C0-\u024F]+-[A-Z\u00C0-\u024F][a-z\u00C0-\u024F]+)$", w))
                 if not is_valid_prefix:
                     return False
 

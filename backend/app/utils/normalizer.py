@@ -449,6 +449,10 @@ def validate_human_name(raw_name: Optional[str]) -> Tuple[bool, Optional[str], O
     if is_company_name(name):
         return False, None, 'Organization/company name detected'
 
+    # Reject URLs, domains, and web search snippets
+    if re.search(r'(?:https?://|www\.|httpswww|\.com\b|\.org\b|\.net\b|\.io\b|\.co/|\.edu\b)', name.lower()):
+        return False, None, f"Name contains URL or domain markers ('{name}')"
+
     # Reject corrupt unicode replacement characters
     if "\ufffd" in name or "\\ufffd" in name:
         return False, None, f"Name contains corrupt OCR unicode characters ('{name}')"
@@ -528,7 +532,7 @@ def validate_human_name(raw_name: Optional[str]) -> Tuple[bool, Optional[str], O
         "with regards", "sincerely", "cheers", "yours truly", "respectfully"
     )
     UI_ACTION_PREFIXES = (
-        "the ", "review ", "delete ", "archive ", "sent ", "flagged ", "unread ", "mark ",
+        "the ", "review ", "delete ", "archive ", "sent ", "flagged ", "unread ", "mark as ", "mark all ",
         "reply ", "forward ", "subject ", "re: ", "fw: ", "fwd: ", "date added", "job type",
         "distance from", "directions to", "web results", "search results", "tell me "
     )
@@ -599,7 +603,7 @@ def validate_human_name(raw_name: Optional[str]) -> Tuple[bool, Optional[str], O
             # Allow surname in all-caps as last word (e.g. "John SMITH")
             if idx == len(words) - 1 and len(words) >= 2 and words[0][0].isupper() and w.isupper():
                 continue
-            is_valid_prefix = bool(re.match(r"^(?:Mc[A-Z][a-z]+|Mac[A-Z][a-z]+|O'[A-Z][a-z]+|[A-Z][a-z]+-[A-Z][a-z]+)$", w))
+            is_valid_prefix = bool(re.match(r"^(?:Mc[A-Z][a-z]+|Mac[A-Z][a-z]+|O'[A-Z][a-z]+|De[A-Z][a-z]+|Di[A-Z][a-z]+|Du[A-Z][a-z]+|Fitz[A-Z][a-z]+|Van[A-Z][a-z]+|Von[A-Z][a-z]+|Le[A-Z][a-z]+|La[A-Z][a-z]+|[A-Z][a-z]+-[A-Z][a-z]+)$", w))
             if not is_valid_prefix:
                 return False, None, f"Name contains OCR internal uppercase glitch: '{w}'"
 

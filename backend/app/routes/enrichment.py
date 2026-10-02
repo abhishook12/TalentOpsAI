@@ -450,6 +450,7 @@ def get_web_harvest_reports(
         reports.append({
             "id": r.id,
             "discovery_id": r.discovery_id,
+            "entity_type": getattr(r, "entity_type", None) or "PERSON",
             "name": r.raw_name,
             "title": r.raw_title,
             "company": r.raw_company,

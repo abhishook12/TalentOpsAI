@@ -55,6 +55,7 @@ class DiscoveryStaging(Base):
     field_provenance = Column(Text, nullable=True)  # JSON mapping of field -> capture_id
     metadata_json = Column(Text, nullable=True)  # Badges, signals, firmographics, channels
     page_type = Column(String(50), nullable=True)
+    entity_type = Column(String(30), nullable=True, index=True)  # PERSON, COMPANY, JOB_POSTING, CONTACT_INFO, MARKET_SIGNAL, NOISE
     canonical_profile_url = Column(String(500), nullable=True)
     field_confidence_json = Column(Text, nullable=True)
     evidence_json = Column(Text, nullable=True)
@@ -95,6 +96,7 @@ class ResolvedPerson(Base):
     field_provenance = Column(Text, nullable=True)
     metadata_json = Column(Text, nullable=True)
     page_type = Column(String(50), nullable=True)
+    entity_type = Column(String(30), nullable=True, index=True)  # PERSON, COMPANY, JOB_POSTING, CONTACT_INFO, MARKET_SIGNAL, NOISE
     canonical_profile_url = Column(String(500), nullable=True)
     field_confidence_json = Column(Text, nullable=True)
     evidence_json = Column(Text, nullable=True)

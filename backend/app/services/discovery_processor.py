@@ -83,8 +83,11 @@ class DiscoveryProcessor:
     def process_pending_batch(self, limit: int = 100) -> dict:
         """
         Process pending staging records in batches.
-        Runs Evidence Grounding Gate, clusters valid records, resolves entities,
-        matches against master DB, makes decisions, and updates DB.
+        
+        HARD ENTITY ROUTING ARCHITECTURE:
+        1. Classify every record into an entity type (PERSON, COMPANY, JOB_POSTING, etc.)
+        2. Route each type to its own dedicated processing path
+        3. No crossover — companies NEVER enter the person pipeline, and vice versa
         """
         try:
             records = self.db.query(DiscoveryStaging).filter(
@@ -93,161 +96,116 @@ class DiscoveryProcessor:
 
             if not records:
                 return {
-                    'processed': 0,
-                    'new': 0,
-                    'enriched': 0,
-                    'duplicate': 0,
-                    'review': 0,
-                    'ignored': 0,
-                    'conflict': 0,
-                    'rejected': 0,
+                    'processed': 0, 'persons_committed': 0, 'companies_committed': 0,
+                    'jobs_captured': 0, 'contacts_captured': 0, 'signals_captured': 0,
+                    'noise_rejected': 0, 'grounding_rejected': 0,
                 }
 
-            # 1. HARD GATE: Evidence Grounding Check on Every Observation
-            grounded_records = []
-            rejected_count = 0
-
+            # ═══════════════════════════════════════════════════════════
+            # PHASE 1: HARD ENTITY TYPE CLASSIFICATION
+            # Every record gets classified BEFORE any processing.
+            # ═══════════════════════════════════════════════════════════
+            from .entity_classifier import entity_classifier, ENTITY_PERSON, ENTITY_COMPANY, ENTITY_JOB_POSTING, ENTITY_CONTACT_INFO, ENTITY_MARKET_SIGNAL, ENTITY_NOISE
+            
+            # Entity type buckets — hard walls between them
+            person_records = []
+            company_records = []
+            job_records = []
+            contact_records = []
+            signal_records = []
+            noise_count = 0
+            
             for r in records:
-                grounding = evaluate_evidence_grounding(
+                classification = entity_classifier.classify(
                     raw_name=r.raw_name,
                     raw_title=r.raw_title,
                     raw_company=r.raw_company,
-                    page_url=r.source_url,
-                    page_title=r.source_page_title,
-                    entity_type=getattr(r, 'entity_type', None),
+                    raw_email=r.raw_email,
+                    raw_phone=r.raw_phone,
+                    source_url=r.source_url,
+                    source_page_title=r.source_page_title,
+                    extraction_source=getattr(r, 'extraction_source', None),
                 )
-
-                if not grounding["is_grounded"]:
-                    # REJECT UNGROUNDED CLAIM: Never touch master DB
+                
+                entity_type = classification['entity_type']
+                confidence = classification['confidence']
+                reason = classification['reason']
+                
+                # Stamp the entity_type on the staging record
+                r.entity_type = entity_type
+                
+                if entity_type == ENTITY_NOISE:
                     r.processing_status = 'rejected'
-                    r.decision = 'REJECT_UNGROUNDED'
-                    r.decision_reason = "; ".join(grounding["rejection_reasons"])
+                    r.decision = 'REJECT_NOISE'
+                    r.decision_reason = f'Entity classified as NOISE: {reason}'
                     r.identity_confidence = 0.0
                     r.processed_at = datetime.now(timezone.utc)
                     self.db.add(r)
-                    rejected_count += 1
-                else:
-                    # Additional: Validate company name isn't system noise; if invalid, sanitize to None (do NOT reject human candidate)
-                    if r.raw_company:
-                        comp_valid, comp_reason = validate_company_for_person(
-                            r.raw_company, person_name=r.raw_name
-                        )
-                        if not comp_valid:
-                            logger.info("Sanitizing noise company '%s' for candidate '%s': %s", r.raw_company, r.raw_name, comp_reason)
-                            r.raw_company = None
-                    r.processing_status = 'batched'
-                    grounded_records.append(r)
-
-            self.db.commit()
-
-            if not grounded_records:
-                return {
-                    'processed': len(records),
-                    'new': 0,
-                    'enriched': 0,
-                    'duplicate': 0,
-                    'review': 0,
-                    'ignored': 0,
-                    'conflict': 0,
-                    'rejected': rejected_count,
-                }
-
-            # 1b. HARD INVARIANT: Separate Company/Organization Entities from Person Observations
-            from ..utils.normalizer import is_company_name, is_company_industry
-            candidate_records = []
-            company_committed_count = 0
-
-            for r in grounded_records:
-                is_comp = (
-                    is_company_name(r.raw_name) or
-                    (r.source_url and '/company/' in r.source_url and not r.raw_email and not r.raw_phone and (not r.raw_linkedin or '/company/' in r.raw_linkedin))
-                )
-
-                if is_comp:
-                    # Commit directly to Company table (NEVER create a fake recruiter)
-                    comp_name = r.raw_name or r.raw_company
-                    if comp_name:
-                        comp_name = clean_company(comp_name) or comp_name.strip()
-                    if comp_name and comp_name.lower().strip() not in BOGUS_COMPANY_NAMES:
-                        existing_comp = self.db.query(Company).filter(
-                            Company.company_name.ilike(comp_name)
-                        ).first()
-
-                        comp_website = None
-                        if r.metadata_json:
-                            try:
-                                m_dict = json.loads(r.metadata_json)
-                                comp_website = m_dict.get('website')
-                            except Exception:
-                                pass
-
-                        if not existing_comp:
-                            new_comp = Company(
-                                company_name=comp_name,
-                                canonical_name=comp_name,
-                                industry=r.raw_title or None,
-                                location=r.raw_location or None,
-                                website=comp_website,
-                                linkedin_url=r.raw_linkedin or None,
-                                metadata_json=r.metadata_json or None,
-                                verification_status="verified_extension",
-                                trust_score=90,
-                                data_source="extension_company_extractor",
-                            )
-                            self.db.add(new_comp)
-                            self.db.flush()
-                        else:
-                            # Enrich existing company with incoming details
-                            if not existing_comp.industry and r.raw_title:
-                                existing_comp.industry = r.raw_title
-                            if not existing_comp.location and r.raw_location:
-                                existing_comp.location = r.raw_location
-                            if not existing_comp.website and comp_website:
-                                existing_comp.website = comp_website
-                            if not existing_comp.linkedin_url and r.raw_linkedin:
-                                existing_comp.linkedin_url = r.raw_linkedin
-                            if not existing_comp.metadata_json and r.metadata_json:
-                                existing_comp.metadata_json = r.metadata_json
-                            self.db.add(existing_comp)
-                            self.db.flush()
-
-                        r.processing_status = 'committed'
-                        r.decision = 'COMPANY_COMMITTED'
-                        r.decision_reason = f'Recognized organizational entity: {comp_name}'
-                        r.identity_confidence = 1.0
-                        r.processed_at = datetime.now(timezone.utc)
-                        self.db.add(r)
-                        company_committed_count += 1
-                else:
-                    candidate_records.append(r)
-
+                    noise_count += 1
+                elif entity_type == ENTITY_COMPANY:
+                    company_records.append(r)
+                elif entity_type == ENTITY_JOB_POSTING:
+                    job_records.append(r)
+                elif entity_type == ENTITY_CONTACT_INFO:
+                    contact_records.append(r)
+                elif entity_type == ENTITY_MARKET_SIGNAL:
+                    signal_records.append(r)
+                else:  # ENTITY_PERSON
+                    person_records.append(r)
+            
             self.db.flush()
+            
+            logger.info(
+                "Entity classification: %d PERSON, %d COMPANY, %d JOB, %d CONTACT, %d SIGNAL, %d NOISE",
+                len(person_records), len(company_records), len(job_records),
+                len(contact_records), len(signal_records), noise_count
+            )
 
-            # 2. Cluster candidate observations into person identities
-            clusters = self._cluster_observations(candidate_records)
-            decisions = []
-
-            # 3. Resolve each cluster & match against master DB
-            for cluster in clusters:
-                resolved = self._resolve_cluster(cluster)
-                match, conf = self._match_master_db(resolved)
-                decision = self._make_decision(resolved, match, conf)
-                decisions.append(decision)
-
-            # 4. Execute decisions & commit
-            stats = self._execute_decisions(decisions)
-            stats['rejected'] = stats.get('rejected', 0) + rejected_count
-            stats['companies_committed'] = company_committed_count
-
-            # 5. Mark all staging records with processed timestamp
-            for record in grounded_records:
-                record.processed_at = datetime.now(timezone.utc)
-                self.db.add(record)
-
+            # ═══════════════════════════════════════════════════════════
+            # PHASE 2: DEDICATED PROCESSING PATHS (Hard Walls)
+            # Each entity type has its own processing method.
+            # ═══════════════════════════════════════════════════════════
+            
+            # PATH A: COMPANY entities → Company table
+            companies_committed = self._process_company_entities(company_records)
+            
+            # PATH B: JOB_POSTING entities → Knowledge Graph (KnowledgeEntity + KnowledgeSignal)
+            jobs_captured = self._process_job_entities(job_records)
+            
+            # PATH C: CONTACT_INFO entities → Knowledge Graph (company contact enrichment)
+            contacts_captured = self._process_contact_entities(contact_records)
+            
+            # PATH D: MARKET_SIGNAL entities → Knowledge Graph signals
+            signals_captured = self._process_signal_entities(signal_records)
+            
+            # PATH E: PERSON entities → Evidence Grounding → Cluster → Resolve → Master DB
+            person_stats = self._process_person_entities(person_records)
+            
+            # Commit all changes
             self.db.commit()
-
-            # High-Speed Master DB Sync: Notify sync_manager so Parquet, DuckDB, and Search index refresh instantly
-            if stats.get('new', 0) > 0 or stats.get('enriched', 0) > 0 or stats.get('companies_committed', 0) > 0:
+            
+            stats = {
+                'processed': len(records),
+                'persons_committed': person_stats.get('new', 0) + person_stats.get('enriched', 0),
+                'companies_committed': companies_committed,
+                'jobs_captured': jobs_captured,
+                'contacts_captured': contacts_captured,
+                'signals_captured': signals_captured,
+                'noise_rejected': noise_count,
+                'grounding_rejected': person_stats.get('rejected', 0),
+                # Legacy compatibility keys
+                'new': person_stats.get('new', 0),
+                'enriched': person_stats.get('enriched', 0),
+                'duplicate': person_stats.get('duplicate', 0),
+                'review': person_stats.get('review', 0),
+                'ignored': person_stats.get('ignored', 0),
+                'conflict': person_stats.get('conflict', 0),
+                'rejected': noise_count + person_stats.get('rejected', 0),
+                'companies_committed': companies_committed,
+            }
+            
+            # High-Speed Master DB Sync
+            if stats.get('new', 0) > 0 or stats.get('enriched', 0) > 0 or companies_committed > 0:
                 try:
                     from ..olap_sidecar import olap_sidecar
                     olap_sidecar.invalidate()
@@ -265,8 +223,7 @@ class DiscoveryProcessor:
                     logger.info("Cleared analytics cache for immediate UI freshness")
                 except Exception as ce:
                     logger.debug("AnalyticsCache clear note: %s", ce)
-
-            stats['processed'] = len(records)
+            
             logger.info("Discovery batch processed: %s", stats)
             return stats
 
@@ -274,6 +231,347 @@ class DiscoveryProcessor:
             logger.error("Error in batch processing: %s", e, exc_info=True)
             self.db.rollback()
             return {'processed': 0, 'error': str(e)}
+
+    # ═══════════════════════════════════════════════════════════════════
+    # HARD-WALLED ENTITY PROCESSING PATHS
+    # Each entity type has its own dedicated processing method.
+    # NO crossover between paths is possible.
+    # ═══════════════════════════════════════════════════════════════════
+
+    def _process_company_entities(self, records: List[DiscoveryStaging]) -> int:
+        """
+        PATH A: Process COMPANY entities.
+        Routes to Company table — NEVER creates Recruiter records.
+        """
+        committed = 0
+        for r in records:
+            comp_name = r.raw_name or r.raw_company
+            if not comp_name:
+                r.processing_status = 'rejected'
+                r.decision = 'REJECT_EMPTY_COMPANY'
+                r.decision_reason = 'Company entity has no name'
+                r.processed_at = datetime.now(timezone.utc)
+                self.db.add(r)
+                continue
+
+            comp_name = clean_company(comp_name) or comp_name.strip()
+            if 'http' in comp_name.lower() or 'www.' in comp_name.lower() or 'httpswww' in comp_name.lower():
+                r.processing_status = 'rejected'
+                r.decision = 'REJECT_URL_IN_COMPANY'
+                r.decision_reason = f'Company name contains URL artifacts: {comp_name}'
+                r.processed_at = datetime.now(timezone.utc)
+                self.db.add(r)
+                continue
+
+            if comp_name.lower().strip() in BOGUS_COMPANY_NAMES:
+                r.processing_status = 'rejected'
+                r.decision = 'REJECT_BOGUS_COMPANY'
+                r.decision_reason = f'Company name in bogus list: {comp_name}'
+                r.processed_at = datetime.now(timezone.utc)
+                self.db.add(r)
+                continue
+
+            existing_comp = self.db.query(Company).filter(
+                Company.company_name.ilike(comp_name[:255])
+            ).first()
+
+            comp_website = None
+            if r.metadata_json:
+                try:
+                    m_dict = json.loads(r.metadata_json)
+                    comp_website = m_dict.get('website')
+                except Exception:
+                    pass
+
+            c_ind = (r.raw_title or '').strip()[:100] or None
+            c_loc = (r.raw_location or '').strip()[:100] or None
+            c_web = (comp_website or '').strip()[:255] or None
+            c_li = (r.raw_linkedin or '').strip()[:255] or None
+
+            if not existing_comp:
+                new_comp = Company(
+                    company_name=comp_name[:255],
+                    canonical_name=comp_name[:255],
+                    industry=c_ind,
+                    location=c_loc,
+                    website=c_web,
+                    linkedin_url=c_li,
+                    metadata_json=r.metadata_json or None,
+                    verification_status="verified_extension",
+                    trust_score=90,
+                    data_source="entity_classifier_company",
+                )
+                self.db.add(new_comp)
+                self.db.flush()
+                logger.info("[COMPANY PATH] Created new company: %s", comp_name)
+            else:
+                # Enrich existing company
+                if not existing_comp.industry and c_ind:
+                    existing_comp.industry = c_ind
+                if not existing_comp.location and c_loc:
+                    existing_comp.location = c_loc
+                if not existing_comp.website and c_web:
+                    existing_comp.website = c_web
+                if not existing_comp.linkedin_url and c_li:
+                    existing_comp.linkedin_url = c_li
+                if not existing_comp.metadata_json and r.metadata_json:
+                    existing_comp.metadata_json = r.metadata_json
+                self.db.add(existing_comp)
+                self.db.flush()
+
+            r.processing_status = 'committed'
+            r.decision = 'COMPANY_COMMITTED'
+            r.decision_reason = f'Classified as COMPANY entity: {comp_name}'
+            r.identity_confidence = 1.0
+            r.processed_at = datetime.now(timezone.utc)
+            self.db.add(r)
+            committed += 1
+
+        self.db.flush()
+        return committed
+
+    def _process_job_entities(self, records: List[DiscoveryStaging]) -> int:
+        """
+        PATH B: Process JOB_POSTING entities.
+        Routes to KnowledgeEntity + KnowledgeSignal — NEVER creates Recruiter records.
+        """
+        captured = 0
+        for r in records:
+            try:
+                owner_id = r.owner_user_id
+                job_title = r.raw_name or r.raw_title or 'Unknown Position'
+                job_company = r.raw_company or 'Unknown Employer'
+
+                attrs = {
+                    'job_title': job_title,
+                    'company': job_company,
+                    'location': r.raw_location,
+                    'source_url': r.source_url,
+                    'extraction_source': getattr(r, 'extraction_source', None),
+                }
+
+                entity = KnowledgeEntity(
+                    owner_user_id=owner_id,
+                    entity_type='JOB_POSTING',
+                    canonical_name=job_title[:255],
+                    primary_identifier=r.source_url or r.discovery_id,
+                    attributes_json=json.dumps(attrs),
+                    confidence=0.80,
+                    source_url=r.source_url,
+                )
+                self.db.add(entity)
+                self.db.flush()
+
+                signal = KnowledgeSignal(
+                    owner_user_id=owner_id,
+                    entity_id=entity.id,
+                    signal_type='JOB_POSTING',
+                    title=f'{job_title} at {job_company}',
+                    description=r.about_summary,
+                    payload_json=json.dumps(attrs),
+                    confidence=0.80,
+                    source_url=r.source_url,
+                )
+                self.db.add(signal)
+
+                r.processing_status = 'committed'
+                r.decision = 'JOB_CAPTURED'
+                r.decision_reason = f'Classified as JOB_POSTING: {job_title}'
+                r.identity_confidence = 0.80
+                r.processed_at = datetime.now(timezone.utc)
+                self.db.add(r)
+                captured += 1
+            except Exception as e:
+                logger.warning("[JOB PATH] Error processing job entity: %s", e)
+                r.processing_status = 'rejected'
+                r.decision = 'ERROR'
+                r.decision_reason = str(e)[:500]
+                r.processed_at = datetime.now(timezone.utc)
+                self.db.add(r)
+
+        self.db.flush()
+        return captured
+
+    def _process_contact_entities(self, records: List[DiscoveryStaging]) -> int:
+        """
+        PATH C: Process CONTACT_INFO entities.
+        Routes to KnowledgeEntity — enriches company contact records.
+        NEVER creates Recruiter records.
+        """
+        captured = 0
+        for r in records:
+            try:
+                owner_id = r.owner_user_id
+                contact_label = r.raw_name or 'Company Contact'
+
+                attrs = {
+                    'contact_label': contact_label,
+                    'email': r.raw_email,
+                    'phone': r.raw_phone,
+                    'company': r.raw_company,
+                    'source_url': r.source_url,
+                }
+
+                # Try to link to existing company
+                if r.raw_company:
+                    comp = self.db.query(Company).filter(
+                        Company.company_name.ilike(r.raw_company)
+                    ).first()
+                    if comp:
+                        attrs['linked_company_id'] = comp.company_id
+
+                entity = KnowledgeEntity(
+                    owner_user_id=owner_id,
+                    entity_type='CONTACT_INFO',
+                    canonical_name=contact_label[:255],
+                    primary_identifier=r.raw_email or r.raw_phone or r.source_url,
+                    attributes_json=json.dumps(attrs),
+                    confidence=0.70,
+                    source_url=r.source_url,
+                )
+                self.db.add(entity)
+
+                r.processing_status = 'committed'
+                r.decision = 'CONTACT_CAPTURED'
+                r.decision_reason = f'Classified as CONTACT_INFO: {contact_label}'
+                r.identity_confidence = 0.70
+                r.processed_at = datetime.now(timezone.utc)
+                self.db.add(r)
+                captured += 1
+            except Exception as e:
+                logger.warning("[CONTACT PATH] Error processing contact entity: %s", e)
+                r.processing_status = 'rejected'
+                r.decision = 'ERROR'
+                r.decision_reason = str(e)[:500]
+                r.processed_at = datetime.now(timezone.utc)
+                self.db.add(r)
+
+        self.db.flush()
+        return captured
+
+    def _process_signal_entities(self, records: List[DiscoveryStaging]) -> int:
+        """
+        PATH D: Process MARKET_SIGNAL entities.
+        Routes to KnowledgeSignal — NEVER creates Recruiter records.
+        """
+        captured = 0
+        for r in records:
+            try:
+                owner_id = r.owner_user_id
+                signal_title = r.raw_name or 'Market Signal'
+
+                attrs = {
+                    'signal_title': signal_title,
+                    'description': r.raw_title,
+                    'company': r.raw_company,
+                    'source_url': r.source_url,
+                }
+
+                signal = KnowledgeSignal(
+                    owner_user_id=owner_id,
+                    signal_type='MARKET_SIGNAL',
+                    title=signal_title[:255],
+                    description=r.raw_title or r.about_summary,
+                    payload_json=json.dumps(attrs),
+                    confidence=0.70,
+                    source_url=r.source_url,
+                )
+                self.db.add(signal)
+
+                r.processing_status = 'committed'
+                r.decision = 'SIGNAL_CAPTURED'
+                r.decision_reason = f'Classified as MARKET_SIGNAL: {signal_title}'
+                r.identity_confidence = 0.70
+                r.processed_at = datetime.now(timezone.utc)
+                self.db.add(r)
+                captured += 1
+            except Exception as e:
+                logger.warning("[SIGNAL PATH] Error processing signal entity: %s", e)
+                r.processing_status = 'rejected'
+                r.decision = 'ERROR'
+                r.decision_reason = str(e)[:500]
+                r.processed_at = datetime.now(timezone.utc)
+                self.db.add(r)
+
+        self.db.flush()
+        return captured
+
+    def _process_person_entities(self, records: List[DiscoveryStaging]) -> dict:
+        """
+        PATH E: Process PERSON entities.
+        This is the ONLY path that can create Recruiter records.
+        Runs Evidence Grounding → Clustering → Resolution → Master DB matching.
+        """
+        grounded_records = []
+        rejected_count = 0
+
+        for r in records:
+            grounding = evaluate_evidence_grounding(
+                raw_name=r.raw_name,
+                raw_title=r.raw_title,
+                raw_company=r.raw_company,
+                page_url=r.source_url,
+                page_title=r.source_page_title,
+                entity_type='PERSON',  # Force person context
+            )
+
+            if not grounding["is_grounded"]:
+                r.processing_status = 'rejected'
+                r.decision = 'REJECT_UNGROUNDED'
+                r.decision_reason = "; ".join(grounding["rejection_reasons"])
+                r.identity_confidence = 0.0
+                r.processed_at = datetime.now(timezone.utc)
+                self.db.add(r)
+                rejected_count += 1
+            else:
+                # SAFETY NET: Double-check this isn't a company that slipped through
+                if is_company_name(r.raw_name):
+                    r.processing_status = 'rejected'
+                    r.decision = 'REJECT_COMPANY_IN_PERSON_PATH'
+                    r.decision_reason = f'Company name detected in person pipeline: {r.raw_name}'
+                    r.identity_confidence = 0.0
+                    r.processed_at = datetime.now(timezone.utc)
+                    self.db.add(r)
+                    rejected_count += 1
+                    logger.warning("[PERSON PATH] SAFETY NET caught company in person pipeline: %s", r.raw_name)
+                    continue
+
+                # Validate company name isn't system noise
+                if r.raw_company:
+                    comp_valid, comp_reason = validate_company_for_person(
+                        r.raw_company, person_name=r.raw_name
+                    )
+                    if not comp_valid:
+                        logger.info("Sanitizing noise company '%s' for candidate '%s': %s", r.raw_company, r.raw_name, comp_reason)
+                        r.raw_company = None
+                r.processing_status = 'batched'
+                grounded_records.append(r)
+
+        self.db.flush()
+
+        if not grounded_records:
+            return {'new': 0, 'enriched': 0, 'duplicate': 0, 'review': 0, 'ignored': 0, 'conflict': 0, 'rejected': rejected_count}
+
+        # Cluster → Resolve → Match → Decide
+        clusters = self._cluster_observations(grounded_records)
+        decisions = []
+
+        for cluster in clusters:
+            resolved = self._resolve_cluster(cluster)
+            match, conf = self._match_master_db(resolved)
+            decision = self._make_decision(resolved, match, conf)
+            decisions.append(decision)
+
+        stats = self._execute_decisions(decisions)
+        stats['rejected'] = stats.get('rejected', 0) + rejected_count
+
+        # Mark all staging records with processed timestamp
+        for record in grounded_records:
+            record.processed_at = datetime.now(timezone.utc)
+            self.db.add(record)
+
+        self.db.flush()
+        return stats
 
     def _normalize_name(self, name: Optional[str]) -> str:
         if not name:

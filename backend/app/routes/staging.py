@@ -299,7 +299,53 @@ def approve_review_item(
     if not stg:
         raise HTTPException(status_code=404, detail="Staging record not found")
 
+    from ..services.entity_classifier import (
+        entity_classifier,
+        ENTITY_PERSON, ENTITY_COMPANY, ENTITY_JOB_POSTING,
+        ENTITY_CONTACT_INFO, ENTITY_MARKET_SIGNAL, ENTITY_NOISE
+    )
+    classification = entity_classifier.classify(
+        raw_name=stg.raw_name,
+        raw_title=stg.raw_title,
+        raw_company=stg.raw_company,
+        raw_email=stg.raw_email,
+        raw_phone=stg.raw_phone,
+        source_url=stg.source_url,
+        source_page_title=stg.source_page_title,
+        extraction_source=stg.extraction_source,
+    )
+    stg.entity_type = classification['entity_type']
     processor = DiscoveryProcessor(db)
+
+    if stg.entity_type == ENTITY_NOISE:
+        stg.processing_status = 'rejected'
+        stg.decision = 'REJECT_NOISE'
+        stg.decision_reason = 'Cannot approve entity classified as NOISE'
+        stg.processed_at = datetime.now(timezone.utc)
+        db.commit()
+        return {"ok": False, "message": "Rejected as NOISE"}
+
+    if stg.entity_type == ENTITY_COMPANY:
+        c_count = processor._process_company_entities([stg])
+        db.commit()
+        return {"ok": True, "decision": "COMPANY_COMMITTED", "stats": {"companies_committed": c_count}}
+
+    if stg.entity_type == ENTITY_JOB_POSTING:
+        j_count = processor._process_job_entities([stg])
+        db.commit()
+        return {"ok": True, "decision": "JOB_CAPTURED", "stats": {"jobs_captured": j_count}}
+
+    if stg.entity_type == ENTITY_CONTACT_INFO:
+        ct_count = processor._process_contact_entities([stg])
+        db.commit()
+        return {"ok": True, "decision": "CONTACT_CAPTURED", "stats": {"contacts_captured": ct_count}}
+
+    if stg.entity_type == ENTITY_MARKET_SIGNAL:
+        s_count = processor._process_signal_entities([stg])
+        db.commit()
+        return {"ok": True, "decision": "SIGNAL_CAPTURED", "stats": {"signals_captured": s_count}}
+
+    # Default / ENTITY_PERSON:
     person = processor._resolve_cluster([stg])
     match, conf = processor._match_master_db(person)
 
@@ -402,8 +448,50 @@ def correct_review_item(
 
     db.flush()
 
-    # Re-run processor on corrected item
+    # Re-run entity classification on corrected item
+    from ..services.entity_classifier import (
+        entity_classifier,
+        ENTITY_PERSON, ENTITY_COMPANY, ENTITY_JOB_POSTING,
+        ENTITY_CONTACT_INFO, ENTITY_MARKET_SIGNAL, ENTITY_NOISE
+    )
+    classification = entity_classifier.classify(
+        raw_name=stg.raw_name,
+        raw_title=stg.raw_title,
+        raw_company=stg.raw_company,
+        raw_email=stg.raw_email,
+        raw_phone=stg.raw_phone,
+        source_url=stg.source_url,
+        source_page_title=stg.source_page_title,
+        extraction_source=stg.extraction_source,
+    )
+    stg.entity_type = classification['entity_type']
     processor = DiscoveryProcessor(db)
+
+    if stg.entity_type == ENTITY_COMPANY:
+        c_count = processor._process_company_entities([stg])
+        db.commit()
+        return {"ok": True, "decision": "COMPANY_COMMITTED", "stats": {"companies_committed": c_count}}
+    elif stg.entity_type == ENTITY_JOB_POSTING:
+        j_count = processor._process_job_entities([stg])
+        db.commit()
+        return {"ok": True, "decision": "JOB_CAPTURED", "stats": {"jobs_captured": j_count}}
+    elif stg.entity_type == ENTITY_CONTACT_INFO:
+        ct_count = processor._process_contact_entities([stg])
+        db.commit()
+        return {"ok": True, "decision": "CONTACT_CAPTURED", "stats": {"contacts_captured": ct_count}}
+    elif stg.entity_type == ENTITY_MARKET_SIGNAL:
+        s_count = processor._process_signal_entities([stg])
+        db.commit()
+        return {"ok": True, "decision": "SIGNAL_CAPTURED", "stats": {"signals_captured": s_count}}
+    elif stg.entity_type == ENTITY_NOISE:
+        stg.processing_status = 'rejected'
+        stg.decision = 'REJECT_NOISE'
+        stg.decision_reason = 'Corrected record classified as NOISE'
+        stg.processed_at = datetime.now(timezone.utc)
+        db.commit()
+        return {"ok": False, "message": "Rejected as NOISE"}
+
+    # ENTITY_PERSON:
     person = processor._resolve_cluster([stg])
     match, conf = processor._match_master_db(person)
 

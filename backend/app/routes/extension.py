@@ -373,12 +373,22 @@ def ingest_extension_batch(
             if s_canonical_url:
                 s_canonical_url = s_canonical_url[:500]
 
-            # Early Noise Gate: Drop pure email boilerplate / UI actions / search query noise before staging
-            if s_name:
-                is_valid_name, _, name_rej = validate_human_name(s_name)
-                if not is_valid_name and name_rej and any(marker in name_rej.lower() for marker in ['email', 'ui action', 'system', 'section header', 'unnatural']):
-                    logger.debug("Dropping non-candidate noise element '%s': %s", s_name, name_rej)
-                    continue
+            # Early Entity Classification & Noise Gate
+            from ..services.entity_classifier import entity_classifier, ENTITY_NOISE
+            classification = entity_classifier.classify(
+                raw_name=s_name,
+                raw_title=s_title,
+                raw_company=s_company,
+                raw_email=s_email,
+                raw_phone=s_phone,
+                source_url=s_source_url,
+                source_page_title=s_page_title,
+                extraction_source=contact.source or "visual_dom_fusion",
+            )
+            s_entity_type = classification['entity_type']
+            if s_entity_type == ENTITY_NOISE:
+                logger.debug("Dropping noise element '%s': %s", s_name, classification['reason'])
+                continue
 
             staging_record = DiscoveryStaging(
                 batch_id=batch_id,
@@ -386,6 +396,7 @@ def ingest_extension_batch(
                 session_id=str(req.session_stats.get("sessionId")) if req.session_stats else None,
                 device_id=device_id,
                 owner_user_id=current_user.id,
+                entity_type=s_entity_type,
                 raw_name=s_name,
                 raw_title=s_title,
                 raw_company=s_company,

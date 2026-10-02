@@ -1072,6 +1072,22 @@ class WebHarvestEngine:
 
                 # All gates passed — inject into DiscoveryStaging
                 try:
+                    from .entity_classifier import entity_classifier, ENTITY_NOISE
+                    classification = entity_classifier.classify(
+                        raw_name=raw_name,
+                        raw_title=profile.get("raw_title"),
+                        raw_company=raw_company,
+                        raw_email=raw_email,
+                        raw_phone=profile.get("raw_phone"),
+                        source_url=profile.get("source_url"),
+                        source_page_title=f"WebHarvest: {profile.get('domain', '')}",
+                        extraction_source="web_harvest",
+                    )
+                    entity_type = classification["entity_type"]
+                    if entity_type == ENTITY_NOISE:
+                        self.stats["quality_gate_rejections"] += 1
+                        continue
+
                     discovery_id = f"WH-{uuid.uuid4().hex[:16].upper()}"
                     batch_id = f"webharvest_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
 
@@ -1087,6 +1103,7 @@ class WebHarvestEngine:
                         session_id=f"webharvest_session_{self.stats['harvest_cycles']}",
                         device_id="WEBHARVEST_ENGINE",
                         owner_user_id=owner_id,
+                        entity_type=entity_type,
                         raw_name=raw_name[:200] if raw_name else None,
                         raw_title=profile.get("raw_title", "")[:200] if profile.get("raw_title") else None,
                         raw_company=raw_company[:255] if raw_company else None,

@@ -185,8 +185,8 @@ class SearchXRayHarvester:
         if not link or not card_text:
             return None
 
-        # Ignore non-profile pages (e.g. company pages, search directories, job listings)
-        if "/in/" not in link and "linkedin.com" in link:
+        # Hard LinkedIn Candidate Gate: ONLY accept individual LinkedIn profile URLs
+        if "linkedin.com/in/" not in link:
             return None
 
         clean = self._clean_text(card_text)
@@ -224,14 +224,24 @@ class SearchXRayHarvester:
         name_tokens = raw_name.split()
         if len(name_tokens) < 2 or len(name_tokens) > 4:
             return None
-        
+
+        # Gate with strict human name validation and anti-noise checks
+        from ..utils.normalizer import validate_human_name, is_company_name, is_platform_name, is_ui_action
+        if is_platform_name(raw_name) or is_ui_action(raw_name) or is_company_name(raw_name):
+            return None
+
+        is_valid_human, clean_h_name, _ = validate_human_name(raw_name)
+        if not is_valid_human:
+            return None
+        raw_name = clean_h_name
+
         # Check against blacklist
         blacklist = {"linkedin", "login", "signup", "jobs", "directory", "profile", "view"}
-        if any(t.lower() in blacklist for t in name_tokens):
+        if any(t.lower() in blacklist for t in raw_name.lower().split()):
             return None
 
         # Check against spam, adult, and blackhat SEO patterns
-        spam_phrases = {"gái gọi", "viet nam", "việt nam", "casino", "poker", "escort", "massage", "bắn cá", "kèo nhà cái", "soi cầu", "seo agency"}
+        spam_phrases = {"gái gọi", "viet nam", "việt nam", "casino", "poker", "escort", "massage", "bắn cá", "kèo nhà cái", "soi cầu", "seo agency", "porn", "sex"}
         lower_raw = raw_name.lower()
         if any(sp in lower_raw for sp in spam_phrases):
             return None
@@ -332,9 +342,7 @@ class SearchXRayHarvester:
                             if "linkedin.com/in/" in h:
                                 href = h
                                 break
-                            elif "http" in h and not href:
-                                href = h
-                        if text_val and href:
+                        if text_val and href and "linkedin.com/in/" in href:
                             results.append({"text": text_val, "link": href})
                             if len(results) >= max_results:
                                 break
@@ -402,9 +410,7 @@ class SearchXRayHarvester:
                             if "linkedin.com/in/" in h:
                                 href = h
                                 break
-                            elif "http" in h and not href:
-                                href = h
-                        if text_val and href:
+                        if text_val and href and "linkedin.com/in/" in href:
                             results.append({"text": text_val, "link": href})
                             if len(results) >= max_results:
                                 break

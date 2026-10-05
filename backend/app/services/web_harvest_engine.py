@@ -434,6 +434,12 @@ class WebHarvestEngine:
             audit_result["profiles"].extend(profiles)
             audit_result["domains_scraped"] = 1
             self._scraped_domains[domain] = datetime.now(timezone.utc)
+            sheet_src = target.get("sheet_source")
+            try:
+                from .sheet_target_seeder import sheet_target_seeder
+                sheet_target_seeder.mark_domain_harvested(domain, sheet=sheet_src)
+            except Exception:
+                pass
 
             # X-Ray Dorking for actual active recruiters
             try:
@@ -487,6 +493,19 @@ class WebHarvestEngine:
                 "priority": "user_demand",
                 "registry_tier": "USER_DEMAND_PRIORITY",
             })
+
+        # Priority 0.5: User Sheet Targets (Strict Sequence: Ritik -> Anek -> Suhani -> Global)
+        try:
+            from .sheet_target_seeder import sheet_target_seeder
+            sheet_targets = sheet_target_seeder.get_next_sheet_targets(limit=(self.batch_size * 2))
+            for st in sheet_targets:
+                s_domain = st["domain"]
+                if not self._is_domain_on_cooldown(s_domain):
+                    targets.append(st)
+                    if len(targets) >= (self.batch_size * 2):
+                        break
+        except Exception as sheet_err:
+            logger.debug("[WEBHARVEST] Sheet target seeder integration note: %s", sheet_err)
 
         # Priority 1: Official Accredited US Agency Registry Seeds (ASA, SIA Top 100, NAPS)
         try:

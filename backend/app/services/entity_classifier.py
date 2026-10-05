@@ -127,6 +127,36 @@ class EntityTypeClassifier:
                 'clean_name': clean_name,
             }
         
+        # ── Title Human Name Recovery ────────────────────────────────
+        # Profile extraction handles often put username in raw_name ("Navarettepcs", "Juliehunden", "Jenhuntley")
+        # and the genuine human name in raw_title ("Fernando Navarette", "Julie Hunden, PMP, CSM, ITIL v3")
+        if title:
+            is_valid_title_name, clean_title_name, _ = validate_human_name(title)
+            if is_valid_title_name:
+                signals.append('human_name_in_title_recovered')
+                return {
+                    'entity_type': ENTITY_PERSON,
+                    'confidence': 0.85,
+                    'reason': f'Human name recovered from title: {clean_title_name}',
+                    'signals': signals,
+                    'clean_name': clean_title_name,
+                }
+            
+            # If name is single handle and title has professional credentials / roles
+            if len(name.split()) == 1 and any(role in title_lower for role in [
+                'recruiter', 'sourcer', 'talent', 'acquisition', 'manager', 'director',
+                'engineer', 'developer', 'specialist', 'consultant', 'analyst', 'lead',
+                'pmp', 'csm', 'itil', 'phr', 'sphr', 'cpa', 'mba'
+            ]):
+                signals.append('handle_with_professional_title_recovered')
+                return {
+                    'entity_type': ENTITY_PERSON,
+                    'confidence': 0.75,
+                    'reason': f'Handle with professional title: {name} ({title})',
+                    'signals': signals,
+                    'clean_name': name.capitalize(),
+                }
+        
         # ── CamelCase & Mashed Username Recovery ─────────────────────
         # LinkedIn feed names often appear as "LucasSilverott", "Lucasleverett", "Jeffkobza"
         if len(name.split()) == 1 and len(name) >= 5:
@@ -283,11 +313,28 @@ class EntityTypeClassifier:
         """Detect company/organization entities."""
         from ..utils.normalizer import is_company_name, is_company_industry, validate_human_name
         
-        # GUARD: If the name is definitively a valid human name and does NOT have explicit corporate markers,
+        # GUARD 1: If the name is definitively a valid human name and does NOT have explicit corporate markers,
         # it cannot be a company even if viewed on a company page / feed!
         is_human, clean_hname, _ = validate_human_name(name)
         if is_human and not is_company_name(name):
             return None
+
+        # GUARD 2: If title is a human name, or title has professional/candidate designations, this is a PERSON!
+        if title:
+            is_title_human, _, _ = validate_human_name(title)
+            if is_title_human and not is_company_name(title):
+                return None
+            if any(role in title_lower for role in [
+                'recruiter', 'sourcer', 'talent', 'acquisition', 'manager', 'director',
+                'engineer', 'developer', 'specialist', 'consultant', 'analyst', 'lead',
+                'pmp', 'csm', 'itil', 'phr', 'sphr', 'cpa', 'mba', 'account executive'
+            ]) and not is_company_name(name):
+                return None
+
+        # GUARD 3: If on a /people/ or employee directory page, the observations are employees, NOT companies!
+        if (url and '/people' in url) or (page_title and ': people' in page_title):
+            if not is_company_name(name):
+                return None
 
         confidence = 0.0
         reasons = []
@@ -298,44 +345,32 @@ class EntityTypeClassifier:
             reasons.append('name matches company patterns')
             signals.append('company_name_detected')
         
-        # Signal 2: Source URL is a company page
-        if url and '/company/' in url:
-            confidence += 0.25
-            reasons.append('URL is /company/ path')
-            signals.append('company_url')
+        # Signal 2: Name contains TLD (e.g. 'Beacontechinc.Com')
+        if re.search(r'\.(com|net|org|io|co|biz|info|edu|gov)\b', name_lower, re.IGNORECASE):
+            confidence += 0.40
+            reasons.append('name contains TLD')
+            signals.append('tld_in_name')
         
-        # Signal 3: Page title indicates company page
-        if page_title and any(p in page_title for p in [': overview', ': people', ': jobs', 'company profile', 'about us', 'our team']):
-            confidence += 0.15
-            reasons.append('page title indicates company page')
-            signals.append('company_page_title')
-        
-        # Signal 4: Title is an industry descriptor (not a job title)
+        # Signal 3: Title is an industry descriptor (not a job title)
         if title and is_company_industry(title):
-            confidence += 0.15
+            confidence += 0.20
             reasons.append('title is industry descriptor')
             signals.append('industry_title')
         
-        # Signal 5: Email is a generic role address (info@, contact@, careers@)
+        # Signal 4: Email is a generic role address (info@, contact@, careers@)
         if email:
             GENERIC_PREFIXES = {'info', 'contact', 'careers', 'jobs', 'hr', 'recruiting', 'admin', 'support', 'sales', 'marketing', 'media', 'press', 'billing', 'office', 'team', 'general', 'reception', 'help'}
             local_part = email.split('@')[0] if '@' in email else ''
             if local_part.lower() in GENERIC_PREFIXES:
-                confidence += 0.20
+                confidence += 0.25
                 reasons.append(f'generic role email prefix: {local_part}')
                 signals.append('generic_email')
         
-        # Signal 6: Name contains TLD (e.g. 'Beacontechinc.Com')
-        if re.search(r'\.(com|net|org|io|co|biz|info|edu|gov)\b', name_lower, re.IGNORECASE):
-            confidence += 0.30
-            reasons.append('name contains TLD')
-            signals.append('tld_in_name')
-        
-        # Signal 7: No individual contact details + company URL structure
-        if not email and not company and url and ('/company/' in url or '/about' in url or '/team' in url or '/contact' in url):
+        # Signal 5: Source URL is a company about/overview page (supporting only, max +0.10)
+        if url and ('/company/' in url or '/about' in url) and is_company_name(name):
             confidence += 0.10
-            reasons.append('no individual contact + company URL')
-            signals.append('no_individual_signals')
+            reasons.append('URL is company page')
+            signals.append('company_url')
         
         if confidence >= 0.40:
             return {
@@ -349,8 +384,13 @@ class EntityTypeClassifier:
     
     def _check_job_posting(self, name, name_lower, title, title_lower, url, page_title, signals) -> Optional[Dict]:
         """Detect job posting / vacancy entities."""
-        from ..utils.normalizer import is_job_posting_title
+        from ..utils.normalizer import is_job_posting_title, validate_human_name
         
+        # GUARD: A valid human name without job posting patterns is a PERSON, not a job posting!
+        is_human, _, _ = validate_human_name(name)
+        if is_human and not is_job_posting_title(name_lower) and not any(kw in name_lower for kw in ['we are hiring', 'now hiring', 'actively hiring', 'job opening', 'vacancy', 'apply now']):
+            return None
+
         confidence = 0.0
         reasons = []
         

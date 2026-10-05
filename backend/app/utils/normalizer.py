@@ -51,7 +51,12 @@ PLATFORM_NAMES = frozenset({
     'nexxt', 'upwork', 'fiverr', 'usajobs', 'linkup', 'greenhouse',
     'lever', 'workday', 'icims', 'smartrecruiters', 'jobvite',
     'bamboohr', 'ashby', 'breezy', 'recruitee', 'talentscout',
-    'talentops', 'bing', 'yahoo', 'duckduckgo'
+    'talentops', 'bing', 'yahoo', 'duckduckgo',
+    'instagram', 'reddit', 'youtube', 'facebook', 'twitter', 'tiktok',
+    'pinterest', 'quora', 'wikipedia', 'apple', 'appstore', 'playstore',
+    'google', 'imdb', 'zee5', 'mayoclinic', 'github', 'stackoverflow',
+    'medium', 'substack', 'threads', 'snapchat', 'twitch', 'discord',
+    'boyfriendtv', 'onecompiler', 'ninite', 'quickmath'
 })
 
 # Job Title Role Nouns — Used to prevent job titles from being treated as human names!
@@ -139,6 +144,21 @@ NON_PERSON_NAME_KEYWORDS = frozenset({
     'louis', 'alamos', 'chester', 'preschool', 'stores', 'rock', 'state',
     # Tech & Software Products
     'cisco', 'catalyst', 'guidewire', 'sap', 'oracle', 'salesforce', 'investment',
+    # Media, Entertainment & Products
+    'movie', 'movies', 'film', 'films', 'video', 'videos', 'music', 'songs', 'song',
+    'audio', 'series', 'episode', 'episodes', 'tv', 'television', 'discography',
+    'album', 'albums', 'track', 'tracks', 'trailer', 'trailers',
+    # Software, Web & Applications
+    'app', 'apps', 'application', 'software', 'download', 'downloads', 'patch', 'patches',
+    'patching', 'update', 'updates', 'tool', 'tools', 'editor', 'online', 'pro',
+    'solver', 'calculator', 'formula', 'plugin', 'extension', 'bot', 'apk', 'mod',
+    'solve', 'math', 'form', 'forms',
+    # Web, Community & Commercial Noise
+    'reality', 'community', 'forum', 'discussion', 'wiki', 'wikipedia', 'baybeh',
+    'store', 'shop', 'dealer', 'dealership', 'cars', 'car', 'auto', 'vehicle',
+    'groceries', 'grocery', 'produce', 'disease', 'symptoms', 'causes',
+    # Adult & Explicit Noise
+    'porn', 'xxx', 'sex', 'sexy', 'gay', 'lesbian', 'erotic', 'adult', 'escort', 'massage',
     # OCR Glitches & Sourcing Platform Noise
     'cz', 'fo', 'mard', 'relewnce', 'termlogy', 'cotamt', 'fim', 'lre', 'cause',
     'percentage', 'estimate', 'estimated', 'posted', 'urgently', 'viewed',
@@ -311,28 +331,61 @@ def is_job_posting_title(text: Optional[str]) -> bool:
     if not words:
         return False
 
-    # Check if any word is a common job role noun
-    has_role_noun = any(w in JOB_ROLE_NOUNS for w in words)
-    # Check for level/discipline qualifiers
-    has_discipline = any(w in {
-        'senior', 'junior', 'lead', 'principal', 'staff', 'head', 'vp', 'director',
-        'specialist', 'mathematics', 'math', 'science', 'english', 'project',
-        'transmission', 'cloud', 'order', 'servicenow', 'developer', 'phlebotomist',
-        'collector', 'specimen', 'software', 'data', 'quality', 'full-time',
-        'part-time', 'contract', 'remote', 'hybrid', 'entry-level', 'computing',
-        'network', 'security', 'infrastructure', 'systems', 'operations'
-    } for w in words)
-
-    if has_role_noun and (has_discipline or len(words) >= 3):
-        return True
-
-    # Multi-word role phrases
+    # Multi-word role phrases (explicit vacancy indicators)
     low = text.strip().lower()
     if any(phrase in low for phrase in [
         "we are hiring", "now hiring", "job opening", "immediate opening",
         "position available", "career opportunity", "vacancy for", "urgent requirement",
         "hiring:"
     ]):
+        return True
+
+    # Check if any word is a common job role noun
+    role_words = {w for w in words if w in JOB_ROLE_NOUNS}
+    discipline_words = {w for w in words if w in {
+        'senior', 'junior', 'lead', 'principal', 'staff', 'vp', 'director',
+        'specialist', 'mathematics', 'math', 'science', 'project',
+        'transmission', 'cloud', 'order', 'servicenow', 'developer', 'phlebotomist',
+        'collector', 'specimen', 'software', 'data', 'quality', 'full-time',
+        'part-time', 'contract', 'remote', 'hybrid', 'entry-level', 'computing',
+        'network', 'security', 'infrastructure', 'systems', 'operations',
+        'technical', 'talent', 'recruiting', 'hr', 'sales', 'marketing'
+    }}
+
+    # Handle "head":
+    # In "Scott Head", "Head" is a very common human surname.
+    # Only treat "head" as a job role if:
+    # 1. "head of" / "head for" is present e.g. "Head of Talent"
+    # 2. Or preceded by a department e.g. "Talent Head", "Tech Head", "Sales Head"
+    if 'head' in words:
+        head_idx = words.index('head')
+        is_role_head = False
+        if head_idx + 1 < len(words) and words[head_idx + 1] in ('of', 'for'):
+            is_role_head = True
+        elif head_idx > 0 and words[head_idx - 1] in {
+            'sales', 'tech', 'engineering', 'product', 'marketing', 'talent', 'recruiting',
+            'people', 'hr', 'finance', 'operations', 'design', 'legal', 'security', 'data',
+            'division', 'department'
+        }:
+            is_role_head = True
+        
+        if is_role_head:
+            role_words.add('head')
+        elif 'head' in role_words:
+            role_words.remove('head')
+
+    # Generational suffix guard:
+    # In a 3+ word phrase ending in "junior" or "senior" (e.g. "Theodoro Michalak Junior"),
+    # it is a person's generational suffix, NOT a job posting!
+    if len(words) >= 3 and words[-1] in ('junior', 'senior', 'jr', 'sr'):
+        discipline_words.discard('junior')
+        discipline_words.discard('senior')
+
+    distinct_roles = role_words | discipline_words
+    if role_words and discipline_words and len(distinct_roles) >= 2:
+        return True
+
+    if len(words) >= 3 and role_words and (discipline_words or any(w in {'and', 'or', 'the', 'of', '&'} for w in words)):
         return True
 
     return False
@@ -553,8 +606,8 @@ def validate_human_name(raw_name: Optional[str]) -> Tuple[bool, Optional[str], O
     name = re.sub(r'\b\d+(?:st|nd|rd|th)\b', '', name, flags=re.IGNORECASE)
     # Clean mashed ordinal suffixes attached to words (e.g. "2ndManaging" -> "Managing", "1stEngineer" -> "Engineer")
     name = re.sub(r'\b\d+(?:st|nd|rd|th)\s*([A-Z])', r' \1', name, flags=re.IGNORECASE)
-    name = re.sub(r'(?:,\s*|\s+)(?:MBA|SHRM-CP|SHRM-SCP|PHR|SPHR|PRC|CIR|CMVR|PMP|CPA|MD|JD|PhD|BSc|MSc|BA|BS|MA|MS)\b', '', name)
-    name = re.sub(r'\b(?:SHRM-CP|SHRM-SCP|PHR|SPHR|PMP|CPA|PhD)\b', '', name, flags=re.IGNORECASE)
+    name = re.sub(r'(?:,\s*|\s+)(?:MBA|SHRM-CP|SHRM-SCP|PHR|SPHR|PRC|CIR|CMVR|PMP|CAPM|CSM|ITIL|CPA|CFA|CISSP|CISA|CISM|GPHR|SHRM|AWS|CKA|PE|RN|MD|JD|PhD|EdD|BSc|MSc|BA|BS|MA|MS|CPC|CTS|AIRS)\b', '', name, flags=re.IGNORECASE)
+    name = re.sub(r'\b(?:SHRM-CP|SHRM-SCP|PHR|SPHR|PMP|CAPM|CSM|ITIL|CPA|CFA|CISSP|CISA|CISM|GPHR|SHRM|PhD|EdD|CPC|CTS|AIRS)\b', '', name, flags=re.IGNORECASE)
     name = re.sub(r"\s+\b(?:Verified|Premium|Top Voice)\b.*$", "", name, flags=re.IGNORECASE).strip()
     # Split on title/descriptor separators with spaces (e.g. "John Smith - Recruiter", "Jane Doe | AI")
     parts = re.split(r'\s+[-–—]\s+|[|,]', name)[0]
@@ -562,7 +615,7 @@ def validate_human_name(raw_name: Optional[str]) -> Tuple[bool, Optional[str], O
     cleaned = cleaned.strip(" \t\n\r'\"`•·-–—|")
     cleaned = " ".join(cleaned.split())
 
-    # Truncate trailing role title words (e.g. "Klaus Raem Managing..." -> "Klaus Raem")
+    # Truncate trailing role title words (e.g. "Klaus Raem Managing..." -> "Klaus Raem", "Ricardo Valenciana VP" -> "Ricardo Valenciana")
     tokens = cleaned.split()
     if len(tokens) >= 3:
         cut_idx = -1
@@ -571,8 +624,8 @@ def validate_human_name(raw_name: Optional[str]) -> Tuple[bool, Optional[str], O
             if re.match(r'^(founder|ceo|cto|cpo|coo|vp|recruiter|sourcer|consultant|manager|director|managing|engineer|developer|analyst|specialist|partner|lead|head|architect|sap|oracle|staffing|talent|hiring|hr|human|resources|operations)$', tok_lower):
                 cut_idx = i
                 break
-            if cut_idx >= 2:
-                cleaned = " ".join(tokens[:cut_idx])
+        if cut_idx >= 2:
+            cleaned = " ".join(tokens[:cut_idx])
 
     if not cleaned or len(cleaned) < 2 or len(cleaned) > 50:
         return False, None, "Invalid length for person name"
@@ -640,6 +693,7 @@ def validate_human_name(raw_name: Optional[str]) -> Tuple[bool, Optional[str], O
         return False, None, f"Name is a department/industry descriptor ('{cleaned}')"
 
     # Reject quantitative / job posting adjectives / agencies
+    # Reject quantitative / job posting adjectives / agencies
     QUANTITATIVE_ADJECTIVES = {
         'minimum', 'maximum', 'salary', 'hourly', 'rate', 'rates', 'contract',
         'total', 'average', 'standard', 'background', 'check', 'clearance',
@@ -648,6 +702,15 @@ def validate_human_name(raw_name: Optional[str]) -> Tuple[bool, Optional[str], O
     }
     if any(w in QUANTITATIVE_ADJECTIVES for w in lower_words):
         return False, None, f"Name contains quantitative or job posting adjective ('{cleaned}')"
+
+    # Reject job seniority / role descriptor words (e.g. "Senior Fullstack", "Lead Developer")
+    JOB_ROLE_KEYWORDS = {
+        'senior', 'junior', 'fullstack', 'frontend', 'backend', 'software',
+        'principal', 'staff', 'intern', 'internship', 'entry-level', 'remote',
+        'executive', 'specialist', 'technician', 'officer', 'coordinator'
+    }
+    if any(w in JOB_ROLE_KEYWORDS for w in lower_words):
+        return False, None, f"Name contains job seniority/role keyword ('{cleaned}')"
 
     # Reject non-person keywords (benefits, degrees, cities, application keywords)
     if any(w in NON_PERSON_NAME_KEYWORDS for w in lower_words):

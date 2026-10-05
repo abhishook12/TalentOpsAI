@@ -208,6 +208,7 @@ class DiscoveryProcessor:
             r.decision = 'COMPANY_COMMITTED'
             r.decision_reason = f'Classified as COMPANY entity: {comp_name}'
             r.identity_confidence = 1.0
+            r.quality_score = 95
             r.processed_at = datetime.now(timezone.utc)
             self.db.add(r)
             committed += 1
@@ -263,6 +264,7 @@ class DiscoveryProcessor:
                 r.decision = 'JOB_CAPTURED'
                 r.decision_reason = f'Classified as JOB_POSTING: {job_title}'
                 r.identity_confidence = 0.80
+                r.quality_score = 80
                 r.processed_at = datetime.now(timezone.utc)
                 self.db.add(r)
                 captured += 1
@@ -271,6 +273,7 @@ class DiscoveryProcessor:
                 r.processing_status = 'rejected'
                 r.decision = 'ERROR'
                 r.decision_reason = str(e)[:500]
+                r.quality_score = 0
                 r.processed_at = datetime.now(timezone.utc)
                 self.db.add(r)
 
@@ -320,6 +323,7 @@ class DiscoveryProcessor:
                 r.decision = 'CONTACT_CAPTURED'
                 r.decision_reason = f'Classified as CONTACT_INFO: {contact_label}'
                 r.identity_confidence = 0.70
+                r.quality_score = 70
                 r.processed_at = datetime.now(timezone.utc)
                 self.db.add(r)
                 captured += 1
@@ -328,6 +332,7 @@ class DiscoveryProcessor:
                 r.processing_status = 'rejected'
                 r.decision = 'ERROR'
                 r.decision_reason = str(e)[:500]
+                r.quality_score = 0
                 r.processed_at = datetime.now(timezone.utc)
                 self.db.add(r)
 
@@ -367,6 +372,7 @@ class DiscoveryProcessor:
                 r.decision = 'SIGNAL_CAPTURED'
                 r.decision_reason = f'Classified as MARKET_SIGNAL: {signal_title}'
                 r.identity_confidence = 0.70
+                r.quality_score = 70
                 r.processed_at = datetime.now(timezone.utc)
                 self.db.add(r)
                 captured += 1

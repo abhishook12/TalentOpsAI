@@ -978,17 +978,20 @@ export default function WebHarvestAdmin() {
                                          row.entity_type === 'JOB_POSTING' ? 'rgba(251, 191, 36, 0.15)' :
                                          row.entity_type === 'CONTACT_INFO' ? 'rgba(52, 211, 153, 0.15)' :
                                          row.entity_type === 'MARKET_SIGNAL' ? 'rgba(244, 63, 94, 0.15)' :
+                                         row.entity_type === 'NOISE' ? 'rgba(161, 161, 170, 0.15)' :
                                          'rgba(56, 189, 248, 0.15)'),
                             color: (row.entity_type === 'COMPANY' ? '#c084fc' :
                                     row.entity_type === 'JOB_POSTING' ? '#fbbf24' :
                                     row.entity_type === 'CONTACT_INFO' ? '#34d399' :
                                     row.entity_type === 'MARKET_SIGNAL' ? '#f43f5e' :
+                                    row.entity_type === 'NOISE' ? '#a1a1aa' :
                                     '#38bdf8'),
                             border: `1px solid ${
                               row.entity_type === 'COMPANY' ? 'rgba(192, 132, 252, 0.3)' :
                               row.entity_type === 'JOB_POSTING' ? 'rgba(251, 191, 36, 0.3)' :
                               row.entity_type === 'CONTACT_INFO' ? 'rgba(52, 211, 153, 0.3)' :
                               row.entity_type === 'MARKET_SIGNAL' ? 'rgba(244, 63, 94, 0.3)' :
+                              row.entity_type === 'NOISE' ? 'rgba(161, 161, 170, 0.3)' :
                               'rgba(56, 189, 248, 0.3)'
                             }`,
                             textTransform: 'uppercase', letterSpacing: '0.04em'
@@ -1165,7 +1168,11 @@ export default function WebHarvestAdmin() {
                             fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 6,
                             background: badgeBg, color: badgeColor, border: `1px solid ${badgeColor}50`
                           }}>
-                            {isCommitted ? 'COMMITTED (MASTER DB)' : (row.processing_status || '').toUpperCase()}
+                            {row.entity_type === 'COMPANY' ? (isCommitted ? 'COMPANY SAVED' : (row.processing_status || '').toUpperCase()) :
+                             row.entity_type === 'JOB_POSTING' ? (isCommitted ? 'JOB CAPTURED' : (row.processing_status || '').toUpperCase()) :
+                             row.entity_type === 'CONTACT_INFO' ? (isCommitted ? 'CONTACT CAPTURED' : (row.processing_status || '').toUpperCase()) :
+                             row.entity_type === 'MARKET_SIGNAL' ? (isCommitted ? 'SIGNAL CAPTURED' : (row.processing_status || '').toUpperCase()) :
+                             isCommitted ? 'COMMITTED (MASTER DB)' : (row.processing_status || '').toUpperCase()}
                           </span>
                         </div>
                         <div style={{ marginTop: 8 }}>

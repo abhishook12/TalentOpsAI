@@ -101,26 +101,61 @@ def is_job_posting_title(text: Optional[str]) -> bool:
     if not words:
         return False
 
-    has_role_noun = any(w in JOB_ROLE_NOUNS for w in words)
-    has_discipline = any(w in {
-        "senior", "junior", "lead", "principal", "staff", "head", "vp", "director",
-        "specialist", "mathematics", "math", "science", "english", "project",
-        "transmission", "cloud", "order", "servicenow", "developer", "phlebotomist",
-        "collector", "specimen", "software", "data", "quality", "full-time",
-        "part-time", "contract", "remote", "hybrid", "entry-level", "computing", "network",
-        "security", "infrastructure", "systems", "operations"
-    } for w in words)
-
-    if has_role_noun and (has_discipline or len(words) >= 3):
-        return True
-
-    # Multi-word role phrases
+    # Multi-word role phrases (explicit vacancy indicators)
     low = text.strip().lower()
     if any(phrase in low for phrase in [
         "we are hiring", "now hiring", "job opening", "immediate opening",
         "position available", "career opportunity", "vacancy for", "urgent requirement",
         "hiring:"
     ]):
+        return True
+
+    # Check if any word is a common job role noun
+    role_words = {w for w in words if w in JOB_ROLE_NOUNS}
+    discipline_words = {w for w in words if w in {
+        "senior", "junior", "lead", "principal", "staff", "vp", "director",
+        "specialist", "mathematics", "math", "science", "project",
+        "transmission", "cloud", "order", "servicenow", "developer", "phlebotomist",
+        "collector", "specimen", "software", "data", "quality", "full-time",
+        "part-time", "contract", "remote", "hybrid", "entry-level", "computing", "network",
+        "security", "infrastructure", "systems", "operations",
+        "technical", "talent", "recruiting", "hr", "sales", "marketing"
+    }}
+
+    # Handle "head":
+    # In "Scott Head", "Head" is a very common human surname.
+    # Only treat "head" as a job role if:
+    # 1. "head of" / "head for" is present e.g. "Head of Talent"
+    # 2. Or preceded by a department e.g. "Talent Head", "Tech Head", "Sales Head"
+    if 'head' in words:
+        head_idx = words.index('head')
+        is_role_head = False
+        if head_idx + 1 < len(words) and words[head_idx + 1] in ('of', 'for'):
+            is_role_head = True
+        elif head_idx > 0 and words[head_idx - 1] in {
+            'sales', 'tech', 'engineering', 'product', 'marketing', 'talent', 'recruiting',
+            'people', 'hr', 'finance', 'operations', 'design', 'legal', 'security', 'data',
+            'division', 'department'
+        }:
+            is_role_head = True
+        
+        if is_role_head:
+            role_words.add('head')
+        elif 'head' in role_words:
+            role_words.remove('head')
+
+    # Generational suffix guard:
+    # In a 3+ word phrase ending in "junior" or "senior" (e.g. "Theodoro Michalak Junior"),
+    # it is a person's generational suffix, NOT a job posting!
+    if len(words) >= 3 and words[-1] in ('junior', 'senior', 'jr', 'sr'):
+        discipline_words.discard('junior')
+        discipline_words.discard('senior')
+
+    distinct_roles = role_words | discipline_words
+    if role_words and discipline_words and len(distinct_roles) >= 2:
+        return True
+
+    if len(words) >= 3 and role_words and (discipline_words or any(w in {'and', 'or', 'the', 'of', '&'} for w in words)):
         return True
 
     return False
@@ -219,6 +254,34 @@ class DesktopEntityTypeClassifier:
                 "signals": signals,
                 "clean_name": c_name,
             }
+
+        # ── Title Human Name Recovery ────────────────────────────────
+        # Profile extraction handles often put username in raw_name ("Navarettepcs", "Juliehunden", "Jenhuntley")
+        # and the genuine human name in raw_title ("Fernando Navarette", "Julie Hunden, PMP, CSM, ITIL v3")
+        if title:
+            c_title = clean_person_name(title)
+            if c_title and is_valid_person_name(c_title):
+                signals.append("human_name_in_title_recovered")
+                return {
+                    "entity_type": ENTITY_PERSON,
+                    "confidence": 0.85,
+                    "reason": f"Human name recovered from title: {c_title}",
+                    "signals": signals,
+                    "clean_name": c_title,
+                }
+            if len(name.split()) == 1 and any(role in title_lower for role in [
+                'recruiter', 'sourcer', 'talent', 'acquisition', 'manager', 'director',
+                'engineer', 'developer', 'specialist', 'consultant', 'analyst', 'lead',
+                'pmp', 'csm', 'itil', 'phr', 'sphr', 'cpa', 'mba', 'account executive'
+            ]):
+                signals.append("handle_with_professional_title_recovered")
+                return {
+                    "entity_type": ENTITY_PERSON,
+                    "confidence": 0.75,
+                    "reason": f"Handle with professional title: {name} ({title})",
+                    "signals": signals,
+                    "clean_name": name.capitalize(),
+                }
 
         # ── CamelCase & Mashed Username Recovery ─────────────────────
         if len(name.split()) == 1 and len(name) >= 5:
@@ -415,11 +478,28 @@ class DesktopEntityTypeClassifier:
             or bool(re.search(r"\b(?:inc|llc|ltd|corp|corporation|technologies|solutions|services|group|partners|associates|holdings|labs|ventures|consulting|agency|capital|systems|analytics)\b", name_lower))
         )
 
-        # GUARD: If the name is definitively a valid human name and does NOT have explicit corporate markers,
+        # GUARD 1: If the name is definitively a valid human name and does NOT have explicit corporate markers,
         # it cannot be a company even if viewed on a company page / feed!
         c_name = clean_person_name(name)
         if c_name and is_valid_person_name(c_name) and not has_biz_marker and name_lower not in KNOWN_STANDALONE_CORPS:
             return None
+
+        # GUARD 2: If title is a human name, or title has professional/candidate designations, this is a PERSON!
+        if title:
+            c_title = clean_person_name(title)
+            if c_title and is_valid_person_name(c_title) and not has_biz_marker:
+                return None
+            if any(role in title_lower for role in [
+                'recruiter', 'sourcer', 'talent', 'acquisition', 'manager', 'director',
+                'engineer', 'developer', 'specialist', 'consultant', 'analyst', 'lead',
+                'pmp', 'csm', 'itil', 'phr', 'sphr', 'cpa', 'mba', 'account executive'
+            ]) and not has_biz_marker:
+                return None
+
+        # GUARD 3: If on a /people/ or employee directory page, the observations are employees, NOT companies!
+        if (url and '/people' in url) or (page_title and ': people' in page_title):
+            if not has_biz_marker and name_lower not in KNOWN_STANDALONE_CORPS:
+                return None
 
         confidence = 0.0
         reasons = []
@@ -435,37 +515,31 @@ class DesktopEntityTypeClassifier:
             reasons.append(f"known corporate enterprise brand: {name}")
             signals.append("known_standalone_corp")
 
-        # Signal 2: Source URL is a company page
-        if url and ("/company/" in url or "/school/" in url):
-            confidence += 0.30
-            reasons.append("URL is /company/ or /school/ path")
-            signals.append("company_url")
+        # Signal 2: Name contains TLD
+        if re.search(r"\.(com|net|org|io|co|biz|info|edu|gov)\b", name_lower):
+            confidence += 0.40
+            reasons.append("name contains web TLD")
+            signals.append("tld_in_name")
 
-        # Signal 3: Page title indicates company page
-        if page_title and any(p in page_title for p in [": overview", ": people", ": jobs", ": life", ": about", "company profile", "about us", "our team", "leadership team"]):
-            confidence += 0.20
-            reasons.append("page title indicates company profile")
-            signals.append("company_page_title")
-
-        # Signal 4: Title is an industry descriptor
+        # Signal 3: Title is an industry descriptor
         if title and is_company_industry(title):
             confidence += 0.20
             reasons.append("title is industry descriptor")
             signals.append("industry_title")
 
-        # Signal 5: Generic role email address
+        # Signal 4: Generic role email address
         if email:
             local_part = email.split("@")[0] if "@" in email else ""
             if local_part.lower() in GENERIC_EMAIL_PREFIXES:
-                confidence += 0.20
+                confidence += 0.25
                 reasons.append(f"generic role email: {local_part}")
                 signals.append("generic_email")
 
-        # Signal 6: Name contains TLD
-        if re.search(r"\.(com|net|org|io|co|biz|info|edu|gov)\b", name_lower):
-            confidence += 0.35
-            reasons.append("name contains web TLD")
-            signals.append("tld_in_name")
+        # Signal 5: Source URL is a company about/overview page (supporting only)
+        if url and ("/company/" in url or "/school/" in url) and has_biz_marker:
+            confidence += 0.10
+            reasons.append("URL is company page")
+            signals.append("company_url")
 
         if confidence >= 0.40:
             return {
@@ -488,6 +562,11 @@ class DesktopEntityTypeClassifier:
         signals: List[str],
     ) -> Optional[Dict[str, Any]]:
         """Detect job posting / requisition entities."""
+        # GUARD: A valid human name without job posting patterns is a PERSON, not a job posting!
+        c_name = clean_person_name(name)
+        if c_name and is_valid_person_name(c_name) and not is_job_posting_title(name_lower) and not any(kw in name_lower for kw in ['we are hiring', 'now hiring', 'actively hiring', 'job opening', 'vacancy', 'apply now']):
+            return None
+
         confidence = 0.0
         reasons = []
 

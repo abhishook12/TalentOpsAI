@@ -466,12 +466,36 @@ def get_web_harvest_reports(
     
     # ── Retroactive Self-Healing Entity Audit & Classification ────────────
     # Records without entity_type, misclassified records (e.g. human names labeled
-    # as COMPANY, company names labeled as PERSON), and timestamp-polluted names
-    # are automatically audited, cleaned, and persisted back to the database.
+    # as COMPANY, company names labeled as PERSON), timestamp-polluted names,
+    # and platform-contaminated company fields are automatically audited, cleaned,
+    # and persisted back to the database.
     try:
         from ..services.entity_classifier import entity_classifier as _ec
-        from ..utils.normalizer import is_company_name, validate_human_name
+        from ..utils.normalizer import is_company_name, validate_human_name, is_platform_name
         
+        # ── Rule 5 Mandate: Company Disinfection ────────────────────────
+        # If raw_company is a platform name (Linkedin, Facebook, etc.),
+        # infer the true employer from /company/<slug>/ in source_url.
+        PLATFORM_COMPANIES = {
+            'linkedin', 'facebook', 'instagram', 'twitter', 'google',
+            'youtube', 'reddit', 'pinterest', 'tiktok', 'snapchat',
+            'github', 'stackoverflow', 'medium', 'quora', 'wikipedia',
+            'www.linkedin.com', 'www.facebook.com', 'www.instagram.com',
+        }
+        
+        def _infer_company_from_url(url: str) -> str:
+            """Extract company slug from LinkedIn /company/<slug>/ URL and humanize it."""
+            if not url:
+                return ''
+            m = re.search(r'/company/([^/?#]+)', url)
+            if m:
+                slug = m.group(1).strip().rstrip('/')
+                # Humanize slug: insourcenow -> Insource Now, actalent-services -> Actalent Services
+                humanized = re.sub(r'[-_]+', ' ', slug).strip()
+                # Title-case each word
+                return ' '.join(w.capitalize() for w in humanized.split())
+            return ''
+
         reclassified_any = False
         for r in records:
             current_type = getattr(r, 'entity_type', None)
@@ -483,6 +507,39 @@ def get_web_harvest_reports(
             if cleaned_n != raw_n and len(cleaned_n) >= 2:
                 r.raw_name = cleaned_n
                 reclassified_any = True
+
+            # Clean trailing certifications, degrees, and credential noise from raw_name e.g. "Dina Southwell Capm"
+            is_valid_h, clean_h, _ = validate_human_name(cleaned_n)
+            if is_valid_h and clean_h and clean_h != cleaned_n:
+                r.raw_name = clean_h
+                reclassified_any = True
+
+            # ── Rule 5: Company Disinfection ──────────────────────────
+            # If raw_company is a platform name, infer real company from URL
+            raw_co = (r.raw_company or '').strip()
+            if raw_co and raw_co.lower().replace('.', '').replace('www', '').strip() in PLATFORM_COMPANIES:
+                inferred = _infer_company_from_url(r.source_url)
+                if inferred and len(inferred) >= 2:
+                    r.raw_company = inferred
+                    reclassified_any = True
+                    logger.info("[WEBHARVEST] Rule 5 company disinfection: '%s' -> '%s' (from %s)", raw_co, inferred, r.source_url)
+            
+            # ── Handle Name Recovery ──────────────────────────────────
+            # If raw_name is a mashed handle (e.g. Navarettepcs, Juliehunden)
+            # and raw_title contains a valid human name, recover it
+            raw_t = (r.raw_title or '').strip()
+            if raw_t and r.raw_name:
+                is_name_valid, _, _ = validate_human_name(r.raw_name)
+                if not is_name_valid and not is_company_name(r.raw_name):
+                    # raw_name failed validation — check if raw_title has a name
+                    # Clean certifications from title: "Julie Hunden, PMP, CSM" -> "Julie Hunden"
+                    title_clean = re.sub(r',\s*(?:PMP|CSM|ITIL|CPA|PHR|SPHR|MBA|CFA|SHRM|SCP|CISSP|AWS|CKA|PE|RN|MD|JD|PhD|EdD|CCNA|MCSE)[\s,].*$', '', raw_t, flags=re.IGNORECASE).strip()
+                    title_clean = re.sub(r'\s*\(.*?\)', '', title_clean).strip()
+                    is_title_name, clean_title_name, _ = validate_human_name(title_clean)
+                    if is_title_name and clean_title_name:
+                        r.raw_name = clean_title_name
+                        reclassified_any = True
+                        logger.info("[WEBHARVEST] Handle name recovery: title '%s' -> name '%s'", raw_t, clean_title_name)
 
             # Check if record needs reclassification:
             # 1. Missing entity_type
@@ -505,6 +562,8 @@ def get_web_harvest_reports(
                 not current_type
                 or (current_type == 'COMPANY' and is_human_candidate and not is_comp_candidate)
                 or (current_type == 'PERSON' and is_comp_candidate)
+                or (current_type == 'PERSON' and r.processing_status == 'rejected' and not is_human_candidate)
+                or (r.processing_status == 'rejected' and any(k in (r.decision or '') for k in ['NON_LINKEDIN', 'NON_HUMAN', 'NOISE', 'SPAM', 'ADULT']))
                 or bool(re.search(r"^(?:unlock|discover|explore|learn more|try|feed post|more groups|people also viewed)\b", (r.raw_name or '').lower()))
                 or len((r.raw_name or '').split()) >= 6
             )
@@ -522,6 +581,8 @@ def get_web_harvest_reports(
                         extraction_source=getattr(r, 'extraction_source', None),
                     )
                     new_type = result['entity_type']
+                    if r.processing_status == 'rejected' and any(k in (r.decision or '') for k in ['NON_LINKEDIN', 'NON_HUMAN', 'NOISE', 'SPAM', 'ADULT']):
+                        new_type = 'NOISE'
                     r.entity_type = new_type
                     if new_type == 'NOISE':
                         r.processing_status = 'rejected'

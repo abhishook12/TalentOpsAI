@@ -438,6 +438,7 @@ from .routes import system
 app.include_router(system.router, prefix="/system", tags=["System Controls"])
 from .routes import mailintel
 app.include_router(mailintel.router, prefix="/mailintel", tags=["MailIntel"])
+app.include_router(mailintel.router, prefix="/api/mailintel", tags=["MailIntel"])
 from .routes import email_intel
 app.include_router(email_intel.router)
 from .routes import enrichment

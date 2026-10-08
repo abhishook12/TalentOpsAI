@@ -23,6 +23,7 @@ from ..models.extension_models import ExtensionDiscoveryEvent
 from ..utils.logo_domains import select_logo_domain
 from ..utils.state_sql import EFFECTIVE_RECRUITER_STATE_SQL_R, UNKNOWN_STATE_SENTINEL
 from ..utils.normalizer import extract_domain
+from ..core.limiter import limiter
 
 
 class SimpleCache:
@@ -175,6 +176,7 @@ def get_analytics_root():
     return {"status": "Analytics engine active"}
 
 @router.get("/data-quality")
+@limiter.exempt
 @cached_endpoint(ttl_seconds=60)
 def get_data_quality(current_user: User = Depends(get_current_user_from_request)):
     from ..olap_sidecar import olap_sidecar
@@ -182,6 +184,7 @@ def get_data_quality(current_user: User = Depends(get_current_user_from_request)
 
 
 @router.get("/dashboard")
+@limiter.exempt
 @cached_endpoint(ttl_seconds=180)
 def get_dashboard_kpis(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     # 1. Query live PostgreSQL database counts for extension discoveries in consolidated single round-trip
@@ -286,6 +289,7 @@ def get_dashboard_kpis(db: Session = Depends(get_db), current_user: User = Depen
 
 
 @router.get("/scraper-ingestion-summary")
+@limiter.exempt
 @cached_endpoint(ttl_seconds=15)
 def get_scraper_ingestion_summary(
     db: Session = Depends(get_db),

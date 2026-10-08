@@ -48,6 +48,7 @@ function useCachedQuery(key, fetcher, options) {
         return cached ? JSON.parse(cached) : undefined 
       } catch { return undefined }
     },
+    initialDataUpdatedAt: 0,
     ...options
   })
 }
@@ -111,13 +112,21 @@ export default function Dashboard() {
     isManualRefreshing.current = true
     setRefreshError(null)
     try {
+      try {
+        localStorage.removeItem('dashboard_dashboard-kpis')
+        localStorage.removeItem('dashboard_dashboard-data-quality')
+        localStorage.removeItem('dashboard_dashboard-ingestion-summary')
+        localStorage.removeItem('dashboard_dashboard-visits')
+        localStorage.removeItem('dashboard_dashboard-top-companies')
+      } catch { /* ignore */ }
+
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] }),
-        queryClient.invalidateQueries({ queryKey: ['dashboard-data-quality'] }),
-        queryClient.invalidateQueries({ queryKey: ['dashboard-ingestion-summary'] }),
-        queryClient.invalidateQueries({ queryKey: ['dashboard-visits'] }),
-        queryClient.invalidateQueries({ queryKey: ['dashboard-top-companies'] }),
-        queryClient.invalidateQueries({ queryKey: ['recruiters-by-state'] }),
+        queryClient.refetchQueries({ queryKey: ['dashboard-kpis'] }),
+        queryClient.refetchQueries({ queryKey: ['dashboard-data-quality'] }),
+        queryClient.refetchQueries({ queryKey: ['dashboard-ingestion-summary'] }),
+        queryClient.refetchQueries({ queryKey: ['dashboard-visits'] }),
+        queryClient.refetchQueries({ queryKey: ['dashboard-top-companies'] }),
+        queryClient.refetchQueries({ queryKey: ['recruiters-by-state'] }),
       ])
       setLastUpdated(new Date())
     } catch (err) {

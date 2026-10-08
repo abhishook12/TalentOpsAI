@@ -42,9 +42,9 @@ DEFAULT_DATA_QUALITY = {
 
 class MemoryOLAPSidecar:
     _instance = None
-    _cached_data_quality: Dict[int, Dict[str, Any]] = {0: DEFAULT_DATA_QUALITY.copy()}
-    _last_sync_time: Dict[int, float] = {0: time.time()}
-    _sync_ttl: float = 300  # Auto-refresh every 5 minutes
+    _cached_data_quality: Dict[int, Dict[str, Any]] = {}
+    _last_sync_time: Dict[int, float] = {}
+    _sync_ttl: float = 60  # Auto-refresh every 60 seconds
     _refresh_lock = threading.Lock()
     _is_refreshing: bool = False
 

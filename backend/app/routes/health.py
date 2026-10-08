@@ -221,7 +221,7 @@ def memory_health():
         return {"status": "error", "error": str(e)}
 
 
-@router.post("/memory/trim")
+@router.api_route("/memory/trim", methods=["GET", "POST"])
 def force_memory_trim():
     """Forces an immediate glibc malloc_trim and cache purge."""
     try:

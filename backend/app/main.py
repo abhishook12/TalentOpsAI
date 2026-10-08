@@ -333,7 +333,7 @@ from .resource_lockdown import is_locked_down, get_lockdown_reason, check_system
 async def lockdown_middleware(request: Request, call_next):
     path = request.url.path
     is_modifying_request = request.method != "GET" or path.startswith("/ai")
-    is_whitelisted = path in ["/admin/unlock", "/admin/cleanup", "/auth/login"]
+    is_whitelisted = path in ["/admin/unlock", "/admin/cleanup", "/auth/login"] or path.startswith("/health")
     
     if is_modifying_request and not is_whitelisted:
         if is_locked_down():

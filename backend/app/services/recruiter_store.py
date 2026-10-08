@@ -356,13 +356,17 @@ class RecruiterStore:
         self._conn = duckdb.connect(":memory:")
         
         is_render = bool(os.getenv("RENDER") or os.getenv("RENDER_SERVICE_ID") or os.getenv("IS_PRODUCTION", "false").lower() == "true")
-        max_mem = os.getenv("DUCKDB_MAX_MEMORY", "128MB" if is_render else "256MB")
+        max_mem = os.getenv("DUCKDB_MAX_MEMORY", "64MB" if is_render else "256MB")
         num_threads = int(os.getenv("DUCKDB_THREADS", "1" if is_render else "4"))
 
         try:
             self._conn.execute(f"PRAGMA max_memory='{max_mem}';")
             self._conn.execute(f"PRAGMA threads={num_threads};")
             self._conn.execute("PRAGMA preserve_insertion_order=false;")
+            import tempfile
+            spill_dir = os.path.join(tempfile.gettempdir(), "duckdb_spill_main").replace("\\", "/")
+            os.makedirs(spill_dir, exist_ok=True)
+            self._conn.execute(f"PRAGMA temp_directory='{spill_dir}';")
         except Exception:
             pass
 
@@ -395,26 +399,6 @@ class RecruiterStore:
             
             # Pre-aggregate company stats to prevent API timeouts on every search
             self._conn.execute(f"""
-                CREATE TABLE company_overall AS 
-                SELECT
-                    CAST(company_id AS VARCHAR) AS company_key,
-                    COUNT(*) AS recruiter_count,
-                    MODE(LOWER(SPLIT_PART(email, '@', 2))) FILTER (
-                        WHERE email IS NOT NULL
-                          AND email LIKE '%@%'
-                          AND LOWER(SPLIT_PART(email, '@', 2)) NOT IN ({free_domains_sql})
-                          AND LENGTH(SPLIT_PART(email, '@', 2)) > 2
-                    ) AS dominant_domain
-                FROM recruiters
-                WHERE company_id IS NOT NULL 
-                  AND TRIM(CAST(company_id AS VARCHAR)) != ''
-                  AND LOWER(TRIM(CAST(company_id AS VARCHAR))) NOT IN ('need to fill data', 'unknown', 'n/a', 'na', 'none', 'null', 'missing', 'missing.local', 'independent staffing')
-                  AND LOWER(TRIM(CAST(company_id AS VARCHAR))) NOT LIKE '%is becoming%'
-                  AND INSTR(CAST(company_id AS VARCHAR), '|') = 0
-                GROUP BY company_key
-            """)
-
-            self._conn.execute(f"""
                 CREATE TABLE company_summary AS 
                 SELECT
                     CAST(company_id AS VARCHAR) AS company_key,
@@ -435,12 +419,29 @@ class RecruiterStore:
                 GROUP BY company_key, state_upper
             """)
 
+            # Zero-copy view on top of company_summary to eliminate duplicate in-memory table
+            self._conn.execute("""
+                CREATE VIEW company_overall AS 
+                SELECT
+                    company_key,
+                    SUM(recruiter_count) AS recruiter_count,
+                    FIRST(dominant_domain) FILTER (WHERE dominant_domain IS NOT NULL) AS dominant_domain
+                FROM company_summary
+                GROUP BY company_key
+            """)
+
             # Build in-memory fast lookup for company key -> dominant domain
             try:
                 domain_rows = self._conn.execute("SELECT company_key, dominant_domain FROM company_overall WHERE dominant_domain IS NOT NULL").fetchall()
                 self._company_domains = {str(r[0]): r[1] for r in domain_rows}
             except Exception:
                 self._company_domains = {}
+
+            try:
+                from ..core.memory_sentinel import trim_os_memory
+                trim_os_memory()
+            except Exception:
+                pass
 
             elapsed = time.time() - start
             self._last_error = None

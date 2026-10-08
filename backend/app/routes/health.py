@@ -22,10 +22,25 @@ def get_disk_usage():
 
 def get_memory_usage():
     try:
-        mem = psutil.virtual_memory()
-        return {"total_gb": round(mem.total / (1024**3), 2), "available_gb": round(mem.available / (1024**3), 2), "percent": mem.percent}
-    except Exception as e:
-        return {"total_gb": 0.5, "available_gb": 0.3, "percent": 40.0, "error": str(e)}
+        from ..core.memory_sentinel import memory_sentinel
+        sentinel_stat = memory_sentinel.get_status()
+        current_mb = sentinel_stat.get("used_mb", 0)
+        limit_mb = sentinel_stat.get("limit_mb", 512)
+        pct = sentinel_stat.get("percent", 0)
+        return {
+            "total_gb": round(limit_mb / 1024.0, 2),
+            "used_mb": round(current_mb, 1),
+            "available_gb": round(max(0, limit_mb - current_mb) / 1024.0, 2),
+            "percent": pct,
+            "cgroup_detected": sentinel_stat.get("cgroup_detected", False),
+            "trims_performed": sentinel_stat.get("trims_performed", 0),
+        }
+    except Exception:
+        try:
+            mem = psutil.virtual_memory()
+            return {"total_gb": round(mem.total / (1024**3), 2), "available_gb": round(mem.available / (1024**3), 2), "percent": mem.percent}
+        except Exception as e:
+            return {"total_gb": 0.5, "available_gb": 0.3, "percent": 40.0, "error": str(e)}
 
 import time
 
@@ -191,4 +206,31 @@ def recruiter_store_health():
         }
     except Exception as e:
         return {"error": str(e)}
+
+
+@router.get("/memory")
+def memory_health():
+    """Returns detailed cgroup container memory stats, glibc status, and trim counters."""
+    try:
+        from ..core.memory_sentinel import memory_sentinel
+        return {
+            "status": "healthy",
+            "sentinel": memory_sentinel.get_status()
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
+@router.post("/memory/trim")
+def force_memory_trim():
+    """Forces an immediate glibc malloc_trim and cache purge."""
+    try:
+        from ..core.memory_sentinel import memory_sentinel
+        stats = memory_sentinel.run_trim_cycle(force=True)
+        return {
+            "status": "trimmed",
+            "details": stats
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
 

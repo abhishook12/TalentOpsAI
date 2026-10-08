@@ -628,6 +628,14 @@ async def discovery_batch_processor_loop():
 
 @app.on_event("startup")
 async def startup_event():
+    # ── MemorySentinel Watchdog (prevents Render 512MB Linux OOM crashes) ──
+    try:
+        from .core.memory_sentinel import memory_sentinel
+        memory_sentinel.start()
+        logger.info("[STARTUP] MemorySentinel watchdog active (monitoring cgroup RAM & glibc arenas)")
+    except Exception as mem_err:
+        logger.warning("[STARTUP] MemorySentinel initialization warning: %s", mem_err)
+
     # ── Zombie Headless Browser Cleanup (prevents RAM accumulation across restarts) ──
     try:
         import subprocess
@@ -795,6 +803,11 @@ async def startup_event():
 
 @app.on_event("shutdown")
 async def shutdown_event():
+    try:
+        from .core.memory_sentinel import memory_sentinel
+        memory_sentinel.stop()
+    except Exception:
+        pass
     try:
         from .services.autonomous_profile_sweeper import autonomous_sweeper
         autonomous_sweeper.stop()

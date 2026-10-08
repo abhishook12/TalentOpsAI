@@ -36,6 +36,7 @@ export default function ScoutContributors() {
         return undefined
       }
     },
+    initialDataUpdatedAt: 0,
     staleTime: 60000,
     retry: 2,
     keepPreviousData: true,

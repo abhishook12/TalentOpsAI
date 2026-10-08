@@ -13,7 +13,7 @@ from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func as sqlfunc
 
 from ..database import get_db
@@ -266,25 +266,32 @@ def get_staging_review_queue(
         total = q.count()
         records = q.order_by(DiscoveryStaging.created_at.desc()).offset(skip).limit(limit).all()
 
+        # Batch fetch existing recruiter matches for conflict comparison in 1 query
+        raw_names = {r.raw_name.strip() for r in records if r.raw_name and r.raw_name.strip()}
+        name_to_recruiter = {}
+        if raw_names:
+            try:
+                matched_list = db.query(Recruiter).options(joinedload(Recruiter.company)).filter(
+                    sqlfunc.lower(Recruiter.recruiter_name).in_([n.lower() for n in raw_names])
+                ).all()
+                for matched in matched_list:
+                    if matched.recruiter_name:
+                        name_to_recruiter[matched.recruiter_name.lower().strip()] = {
+                            "recruiter_id": matched.recruiter_id,
+                            "recruiter_name": matched.recruiter_name,
+                            "company_name": matched.company.company_name if matched.company else None,
+                            "title": matched.title,
+                            "email": matched.email,
+                            "phone": matched.phone,
+                            "linkedin": matched.linkedin,
+                            "location": matched.location,
+                        }
+            except Exception as match_err:
+                logger.warning(f"Batch recruiter matching fallback in review queue: {match_err}")
+
         items = []
         for r in records:
-            # Check if there is an existing recruiter match for conflict comparison
-            matched_recruiter = None
-            if r.raw_name:
-                matched = db.query(Recruiter).filter(
-                    Recruiter.recruiter_name.ilike(f"%{r.raw_name.strip()}%")
-                ).first()
-                if matched:
-                    matched_recruiter = {
-                        "recruiter_id": matched.recruiter_id,
-                        "recruiter_name": matched.recruiter_name,
-                        "company_name": matched.company.company_name if matched.company else None,
-                        "title": matched.title,
-                        "email": matched.email,
-                        "phone": matched.phone,
-                        "linkedin": matched.linkedin,
-                        "location": matched.location,
-                    }
+            matched_recruiter = name_to_recruiter.get(r.raw_name.lower().strip()) if r.raw_name else None
 
             items.append({
                 "staging_id": r.id,

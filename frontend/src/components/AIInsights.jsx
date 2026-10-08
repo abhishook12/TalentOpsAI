@@ -32,6 +32,7 @@ export default function AIInsights() {
         return cached ? JSON.parse(cached) : undefined;
       } catch { return undefined; }
     },
+    initialDataUpdatedAt: 0,
     staleTime: 60000,
   });
 

@@ -309,6 +309,7 @@ def get_scraper_ingestion_summary(
 
 
 @router.get("/recruiters-by-state")
+@limiter.exempt
 @cached_endpoint(ttl_seconds=300)
 def recruiters_by_state(db: Session = Depends(get_db)):
     try:
@@ -474,6 +475,7 @@ def company_states(
 
 
 @router.get("/companies-search")
+@limiter.exempt
 def companies_search(
     response: Response,
     q: Optional[str] = Query(None, description="Search company name"),
@@ -730,6 +732,7 @@ def log_visit(payload: VisitPayload, request: Request, db: Session = Depends(get
 
 
 @router.get("/visit-stats")
+@limiter.exempt
 def visit_stats(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     cached = analytics_cache.get(f"visit_stats_{current_user.id}")
     if cached is not None:
@@ -775,12 +778,24 @@ def visit_stats(db: Session = Depends(get_db), current_user: User = Depends(get_
 
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     yesterday_start = today_start - timedelta(days=1)
-    today_count = db.execute(text("SELECT COUNT(*) FROM page_visits WHERE user_email = :user_email AND visited_at >= :s"), {"s": today_start, "user_email": current_user.email}).scalar() or 0
-    yesterday_count = db.execute(
-        text("SELECT COUNT(*) FROM page_visits WHERE user_email = :user_email AND visited_at >= :s AND visited_at < :e"),
-        {"s": yesterday_start, "e": today_start, "user_email": current_user.email},
-    ).scalar() or 0
-    total_count = db.execute(text("SELECT COUNT(*) FROM page_visits WHERE user_email = :user_email"), {"user_email": current_user.email}).scalar() or 0
+    try:
+        counts_row = db.execute(
+            text("""
+                SELECT
+                    (SELECT COUNT(*) FROM page_visits WHERE user_email = :user_email AND visited_at >= :s),
+                    (SELECT COUNT(*) FROM page_visits WHERE user_email = :user_email AND visited_at >= :ys AND visited_at < :s),
+                    (SELECT COUNT(*) FROM page_visits WHERE user_email = :user_email)
+            """),
+            {"s": today_start, "ys": yesterday_start, "user_email": current_user.email}
+        ).fetchone()
+        today_count = counts_row[0] or 0
+        yesterday_count = counts_row[1] or 0
+        total_count = counts_row[2] or 0
+    except Exception as count_err:
+        logger.warning(f"Consolidated visit counts fallback: {count_err}")
+        today_count = 0
+        yesterday_count = 0
+        total_count = 0
 
     is_admin = False
     if current_user:
@@ -1208,8 +1223,10 @@ def debug_parquet(force_download: bool = False, admin: User = Depends(require_ad
     return res
 
 @router.get("/insights")
+@limiter.exempt
 def get_smart_insights(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
-    cached = analytics_cache.get("dashboard_insights")
+    user_cache_key = f"dashboard_insights_{current_user.id}"
+    cached = analytics_cache.get(user_cache_key)
     if cached is not None:
         return cached
 
@@ -1248,7 +1265,7 @@ def get_smart_insights(db: Session = Depends(get_db), current_user: User = Depen
         {"id": 3, "text": traffic_insight, "type": "traffic", "icon": "ti-activity"}
     ]
 
-    analytics_cache.set("dashboard_insights", {"insights": insights}, ttl=300)
+    analytics_cache.set(user_cache_key, {"insights": insights}, ttl=300)
     return {"insights": insights}
 
 @router.get("/quality-metrics")

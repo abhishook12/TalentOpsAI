@@ -156,6 +156,7 @@ export default function Dashboard() {
         sublabel: newPeopleToday > 0 ? `+${newPeopleToday} added today` : 'Verified candidate records',
         icon: 'ti-users',
         tone: 'neutral',
+        onClick: () => navigate({ to: '/recruiters' }),
       },
       {
         label: 'Added & Enriched Today',
@@ -163,6 +164,7 @@ export default function Dashboard() {
         sublabel: `${ingestionData?.metrics_today?.fields_added || 0} fields updated today`,
         icon: 'ti-sparkles',
         tone: 'success',
+        onClick: () => navigate({ to: isAdmin ? '/admin/web-harvest' : '/directory' }),
       },
       {
         label: 'Records Needing Review',
@@ -170,9 +172,10 @@ export default function Dashboard() {
         sublabel: needsReview === 0 ? 'Review queue clear' : `${needsReview} records flagged for verification`,
         icon: 'ti-alert-triangle',
         tone: needsReview > 0 ? 'warning' : 'neutral',
+        onClick: () => navigate({ to: '/review-queue' }),
       },
     ]
-  }, [dataQuality, ingestionData, dashboardData])
+  }, [dataQuality, ingestionData, dashboardData, navigate, isAdmin])
 
   const dataHealth = [
     { label: 'Overall Quality Score', value: dataQuality?.quality_score, tone: dataQuality?.quality_score > 70 ? 'success' : (dataQuality?.quality_score > 40 ? 'warning' : 'danger') },
@@ -324,12 +327,18 @@ export default function Dashboard() {
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
             {metrics.map((metric) => (
-              <MetricCard
+              <div
                 key={metric.label}
-                {...metric}
-                value={dqLoading && !dataQuality ? <Skeleton width="60%" height="28px" /> : metric.value}
-                sublabel={dqLoading && !dataQuality ? <Skeleton width="40%" height="14px" /> : metric.sublabel}
-              />
+                onClick={metric.onClick}
+                style={{ cursor: metric.onClick ? 'pointer' : 'default', transition: 'transform 0.15s ease' }}
+                title={metric.onClick ? `View ${metric.label}` : undefined}
+              >
+                <MetricCard
+                  {...metric}
+                  value={dqLoading && !dataQuality ? <Skeleton width="60%" height="28px" /> : metric.value}
+                  sublabel={dqLoading && !dataQuality ? <Skeleton width="40%" height="14px" /> : metric.sublabel}
+                />
+              </div>
             ))}
           </div>
 

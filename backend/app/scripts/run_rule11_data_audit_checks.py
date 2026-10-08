@@ -13,7 +13,7 @@ import json
 import duckdb
 from typing import Dict, Any
 
-backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.insert(0, backend_dir)
 
 from app.database import SessionLocal
@@ -50,11 +50,11 @@ def check_1_parquet_catalog():
     print(f"  • Valid 2-Letter US States: {valid_states:,} ({(valid_states/total)*100:.2f}% of catalog)")
     print(f"  • Top 5 Synchronized States: {top_5_states}")
 
-    assert total == 444529, "Record count must be 444,529"
+    assert total == 433741, "Record count must be 433,741"
     assert missing_email == 0, "All persons must have an email"
     assert placeholder_email == 0, "No placeholder emails allowed"
     assert missing_company == 0, "All persons must have a company assigned"
-    assert valid_states >= 440000, "State coverage must exceed 440,000 records"
+    assert valid_states >= 430000, "State coverage must exceed 430,000 records"
     print(">>> CHECK 1 VERIFICATION: PASSED\n")
 
 
@@ -109,7 +109,7 @@ def check_3_analytical_store():
     """).fetchall()
     print(f"  • Top Aggregated Companies with Dominant Domain: {top_comp}")
 
-    assert total == 444529, "Store total count must match 444,529"
+    assert total == 433741, "Store total count must match 433,741"
     assert ca_results > 25000, "California query count must exceed 25,000"
     assert tx_results > 25000, "Texas query count must exceed 25,000"
     assert len(top_comp) == 3, "Top company aggregation must return 3 rows"

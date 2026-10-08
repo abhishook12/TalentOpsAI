@@ -114,12 +114,14 @@ class MemoryOLAPSidecar:
                     """).fetchone()
                     total_recruiters = int(duck_row[0] or 0)
                     
-                    # Real-Time Ingestion Addition: Incorporate live PostgreSQL extension & new people
+                    # Real-Time Ingestion Addition: Incorporate live PostgreSQL new people across all pipelines
+                    pg_review = 0
                     try:
-                        pg_ext = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE data_source = 'extension'")).scalar() or 0
+                        pg_total = db.execute(text("SELECT COUNT(*) FROM recruiters")).scalar() or 0
                         pg_new_ev = db.execute(text("SELECT COUNT(*) FROM extension_discovery_events WHERE db_action = 'NEW_DISCOVERY'")).scalar() or 0
-                        live_new_people = max(pg_ext, pg_new_ev)
+                        live_new_people = max(pg_total, pg_new_ev)
                         total_recruiters = max(total_recruiters, 437933) + live_new_people
+                        pg_review = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE needs_review = true")).scalar() or 0
                     except Exception as pg_err:
                         logger.warning(f"[OLAP] Could not query live PostgreSQL new people: {pg_err}")
 
@@ -128,7 +130,7 @@ class MemoryOLAPSidecar:
                     companies_linked = int(duck_row[3] or 0)
                     with_state = int(duck_row[4] or 0)
                     states_covered = int(duck_row[5] or 0)
-                    needs_review = int(duck_row[6] or 0)
+                    needs_review = int(duck_row[6] or 0) + pg_review
                     unknown_state_count = int(duck_row[7] or 0)
                     direct_state_count = int(duck_row[8] or 0)
                     company_state_count = int(duck_row[9] or 0)
@@ -138,9 +140,9 @@ class MemoryOLAPSidecar:
                 else:
                     total_cnt = getattr(recruiter_store, 'total_count', 437933) or 437933
                     try:
-                        pg_ext = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE data_source = 'extension'")).scalar() or 0
+                        pg_total = db.execute(text("SELECT COUNT(*) FROM recruiters")).scalar() or 0
                         pg_new_ev = db.execute(text("SELECT COUNT(*) FROM extension_discovery_events WHERE db_action = 'NEW_DISCOVERY'")).scalar() or 0
-                        live_new_people = max(pg_ext, pg_new_ev)
+                        live_new_people = max(pg_total, pg_new_ev)
                         total_recruiters = total_cnt + live_new_people
                     except Exception:
                         total_recruiters = total_cnt

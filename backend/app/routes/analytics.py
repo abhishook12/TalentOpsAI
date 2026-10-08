@@ -222,9 +222,11 @@ def get_dashboard_kpis(db: Session = Depends(get_db), current_user: User = Depen
         total_vendors = db.query(Vendor).count()
         pg_new_events = db.query(ExtensionDiscoveryEvent).filter(ExtensionDiscoveryEvent.db_action == 'NEW_DISCOVERY').count()
 
-    # 2. Query OLAP Parquet store for baseline database counts (cached in RAM across requests)
+    # 2. Query OLAP Parquet store for baseline database counts (cached with 60s TTL)
     global _CACHED_DUCKDB_KPIS
-    if _CACHED_DUCKDB_KPIS is None:
+    now_ts = time.time()
+    duck_kpi_time = getattr(analytics_cache, "_duckdb_kpi_time", 0)
+    if _CACHED_DUCKDB_KPIS is None or (now_ts - duck_kpi_time > 60):
         try:
             duck_conn = recruiter_store._get_conn()
             if duck_conn:
@@ -239,6 +241,7 @@ def get_dashboard_kpis(db: Session = Depends(get_db), current_user: User = Depen
                     FROM recruiters
                 """
                 _CACHED_DUCKDB_KPIS = duck_conn.execute(sql).fetchone()
+                analytics_cache._duckdb_kpi_time = now_ts
         except Exception as ex:
             logger.warning(f"Could not load recruiter store in dashboard KPIs: {ex}")
             _CACHED_DUCKDB_KPIS = (getattr(recruiter_store, 'total_count', 437933) or 437933, 400000, 5000, 2000, 350000, 150000)
@@ -251,8 +254,8 @@ def get_dashboard_kpis(db: Session = Depends(get_db), current_user: User = Depen
     duck_with_email = res[4] or 0
     duck_with_phone = res[5] or 0
 
-    # Base total + live extension discoveries & newly created people
-    live_new_people = max(pg_extension, pg_new_events)
+    # Base total + live PostgreSQL recruiters across all discovery pipelines
+    live_new_people = max(pg_total, pg_new_events)
     base_total = max(duck_total, 437933)
     total_recruiters = base_total + live_new_people
     active_recruiters = duck_active + pg_active if duck_active > 0 else total_recruiters

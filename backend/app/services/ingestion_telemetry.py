@@ -69,14 +69,31 @@ def get_live_scraper_ingestion_summary(
     enriched_today = sum(1 for e in today_events if e.db_action == "ENRICHED")
     duplicates_today = sum(1 for e in today_events if e.db_action == "PREVIOUSLY_KNOWN")
 
-    # Cross-verify with recruiters table directly for newly created recruiters today
+    # Cross-verify with recruiters table directly for newly created recruiters today across all pipelines
     rec_today_q = db.query(sqlfunc.count(Recruiter.recruiter_id)).filter(
         Recruiter.created_at >= today_cutoff
     )
     if filter_by_user:
         rec_today_q = rec_today_q.filter(Recruiter.user_id == user_id)
     rec_created_today = rec_today_q.scalar() or 0
-    new_people_today = max(new_people_today, rec_created_today)
+
+    # Cross-verify with staging records promoted or enriched today
+    stg_promoted_q = db.query(sqlfunc.count(DiscoveryStaging.id)).filter(
+        DiscoveryStaging.processed_at >= today_cutoff,
+        DiscoveryStaging.processing_status.in_(["promoted", "committed"])
+    )
+    stg_enriched_q = db.query(sqlfunc.count(DiscoveryStaging.id)).filter(
+        DiscoveryStaging.processed_at >= today_cutoff,
+        DiscoveryStaging.processing_status == "enriched"
+    )
+    if filter_by_user:
+        stg_promoted_q = stg_promoted_q.filter(DiscoveryStaging.owner_user_id == user_id)
+        stg_enriched_q = stg_enriched_q.filter(DiscoveryStaging.owner_user_id == user_id)
+    stg_promoted_today = stg_promoted_q.scalar() or 0
+    stg_enriched_today = stg_enriched_q.scalar() or 0
+
+    new_people_today = max(new_people_today, rec_created_today, stg_promoted_today)
+    enriched_today = max(enriched_today, stg_enriched_today)
 
     # Calculate fields added / corrected
     fields_added_count = 0
@@ -252,8 +269,8 @@ def get_live_scraper_ingestion_summary(
             "total_staged_today": total_staged_today or len(today_events),
             "pending_queue_count": pending_staging,
             "validated_records": validated_staging or len(today_events),
-            "new_people_created": new_people_today if (new_people_today > 0 or len(today_events) > 0) else all_time_new,
-            "existing_people_enriched": enriched_today if (enriched_today > 0 or len(today_events) > 0) else all_time_enriched,
+            "new_people_created": new_people_today,
+            "existing_people_enriched": enriched_today,
             "fields_added": fields_added_count or ((new_people_today * 4) + (enriched_today * 2)),
             "fields_corrected": max(0, int(enriched_today * 0.3)),
             "duplicates_ignored": duplicates_today,
@@ -261,8 +278,8 @@ def get_live_scraper_ingestion_summary(
             "companies_discovered": companies_discovered,
             "jobs_discovered": jobs_discovered,
             "staffing_signals": signals_discovered,
-            "master_db_inserts": new_people_today if (new_people_today > 0 or len(today_events) > 0) else all_time_new,
-            "master_db_updates": enriched_today if (enriched_today > 0 or len(today_events) > 0) else all_time_enriched,
+            "master_db_inserts": new_people_today,
+            "master_db_updates": enriched_today,
             "master_db_failures": 0,
         },
         "all_time_totals": {

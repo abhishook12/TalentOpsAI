@@ -154,7 +154,7 @@ class WebHarvestEngine:
         self.harvest_interval = int(os.getenv("WEB_HARVEST_INTERVAL", default_interval))
         self.batch_size = int(os.getenv("WEB_HARVEST_BATCH_SIZE", "2"))
         self.min_batch_size = 1
-        self.max_batch_size = 3 if self.is_render else 4
+        self.max_batch_size = 2
         self.target_cycle_time = 35.0  # target duration buffer per cycle (seconds)
         self.max_profiles_per_cycle = 20 if self.is_render else 35  # safety cap
         self.cooldown_hours = 24  # don't re-scrape same domain within this window
@@ -318,9 +318,20 @@ class WebHarvestEngine:
 
     def _run_harvest_cycle(self) -> Dict[str, Any]:
         """Executes a single harvest cycle: seed → scrape → extract → validate → stage.
-        Phase 2 runs target audits in parallel via ThreadPoolExecutor for maximum speed."""
+        Phase 2 runs target audits in parallel via ThreadPoolExecutor with System Resource Governance."""
         quota_tracker = GeoQuotaTracker()
         result = {"profiles_extracted": 0, "profiles_staged": 0, "domains_scraped": 0}
+
+        # System Resource Governor: Protect user workstation RAM & CPU
+        try:
+            import psutil
+            vm = psutil.virtual_memory()
+            if vm.percent >= 75.0:
+                self.batch_size = 1
+                import gc
+                gc.collect()
+        except Exception:
+            pass
 
         # Phase 1: Generate seed targets from existing database
         targets = self._generate_seed_targets()
@@ -356,9 +367,9 @@ class WebHarvestEngine:
         first_co = valid_targets[0].get("company_name", valid_targets[0].get("domain", "agency"))
         self._log_action(f"Harvest cycle started: auditing {len(valid_targets)} priority targets in parallel (Starting with {first_co})")
 
-        # Phase 2: Parallel target auditing via ThreadPoolExecutor
+        # Phase 2: Parallel target auditing via ThreadPoolExecutor (Strictly capped at 2 workers to prevent CPU/RAM spikes)
         all_profiles = []
-        max_workers = min(len(valid_targets), 2 if self.is_render else 5)  # Constrained workers on Render 0.1 CPU
+        max_workers = min(len(valid_targets), 2)
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             future_to_target = {
@@ -384,7 +395,7 @@ class WebHarvestEngine:
         # Phase 3: Quality gate + dedup + staging injection for direct web crawl
         if all_profiles:
             staged_count = self._validate_and_stage_profiles(all_profiles)
-            result["profiles_staged"] = staged_count
+            result["profiles_staged"] += staged_count
             self.stats["profiles_staged"] += staged_count
             self._log_action(f"Quality gate complete: {staged_count} verified profiles staged to master catalog")
 
@@ -1400,7 +1411,7 @@ class WebHarvestEngine:
     def _get_owner_user_id(self, db: Session) -> Optional[int]:
         """Gets the admin/owner user ID for staging records."""
         try:
-            from ..models.models import User
+            from ..models.auth_models import User
             admin = db.query(User).filter(User.role == "admin").first()
             if admin:
                 return admin.id

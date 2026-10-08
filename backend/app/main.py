@@ -628,6 +628,28 @@ async def discovery_batch_processor_loop():
 
 @app.on_event("startup")
 async def startup_event():
+    # ── Zombie Headless Browser Cleanup (prevents RAM accumulation across restarts) ──
+    try:
+        import subprocess
+        result = subprocess.run(
+            ["taskkill", "/F", "/IM", "chrome-headless-shell.exe", "/T"],
+            capture_output=True, text=True, timeout=10
+        )
+        if "SUCCESS" in (result.stdout or ""):
+            logger.warning("[STARTUP] Killed orphaned chrome-headless-shell zombie processes from previous session")
+        # Also clean up stale Playwright temp profile directories
+        import shutil, glob
+        stale_profiles = glob.glob(os.path.join(os.environ.get("TEMP", ""), "playwright_chromiumdev_profile-*"))
+        for p in stale_profiles:
+            try:
+                shutil.rmtree(p, ignore_errors=True)
+            except Exception:
+                pass
+        if stale_profiles:
+            logger.info("[STARTUP] Cleaned %d stale Playwright temp profiles", len(stale_profiles))
+    except Exception as e:
+        logger.debug("[STARTUP] Headless zombie cleanup skipped: %s", e)
+
     if ENABLE_SYNC_MANAGER:
         from .services.sync_layer import sync_manager
         sync_manager.start()
@@ -837,6 +859,20 @@ async def shutdown_event():
             logger.info("Released leader lock connection.")
         except Exception:
             pass
+
+    # ── Headless Browser Cleanup (Prevents Zombie chrome-headless-shell processes) ──
+    try:
+        from .services.dynamic_scraper_worker import dynamic_scraper_worker
+        dynamic_scraper_worker.shutdown()
+        logger.info("DynamicScraperWorker browser shut down cleanly.")
+    except Exception:
+        pass
+    try:
+        from .services.search_xray_harvester import search_xray_harvester
+        search_xray_harvester._shutdown_browser()
+        logger.info("SearchXRayHarvester browser shut down cleanly.")
+    except Exception:
+        pass
 
 from .routes import health
 app.include_router(health.router, prefix="/health", tags=["System Health"])

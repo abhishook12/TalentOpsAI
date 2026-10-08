@@ -82,10 +82,20 @@ class DatabaseAutoEnricher:
             existing_ids = set()
             try:
                 promoted_emails = [r.email.lower() for r in promoted_recs if r.email]
+                promoted_ids = [r.recruiter_id for r in promoted_recs if r.recruiter_id]
+                
+                conditions = []
                 if promoted_emails:
                     escaped = [e.replace("'", "''") for e in promoted_emails]
                     in_clause = ", ".join(f"'{e}'" for e in escaped)
-                    rows = con.execute(f"SELECT recruiter_id, lower(email) FROM read_parquet('{p_path}') WHERE lower(email) IN ({in_clause})").fetchall()
+                    conditions.append(f"lower(email) IN ({in_clause})")
+                if promoted_ids:
+                    id_clause = ", ".join(str(i) for i in promoted_ids)
+                    conditions.append(f"recruiter_id IN ({id_clause})")
+                
+                if conditions:
+                    where_clause = " OR ".join(conditions)
+                    rows = con.execute(f"SELECT recruiter_id, lower(email) FROM read_parquet('{p_path}') WHERE {where_clause}").fetchall()
                     for r in rows:
                         if r[0] is not None:
                             existing_ids.add(r[0])

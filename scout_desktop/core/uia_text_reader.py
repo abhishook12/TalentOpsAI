@@ -108,9 +108,28 @@ class UIATextReader:
 
     def __init__(self):
         self._uia_available = False
+        self._uia_lock = threading.Lock()
+        self._woken_hwnds: Set[int] = set()
         self._text_cache: Dict[Tuple[int, str], Tuple[float, List[str]]] = {}
         self._cand_cache: Dict[Tuple[int, str], Tuple[float, Optional[Dict[str, Any]]]] = {}
         self._init_uia()
+
+    def _wake_once(self, hwnd: int):
+        """Sends WM_GETOBJECT at most once per window handle to avoid repeated Chromium accessibility churn."""
+        if hwnd and hwnd not in self._woken_hwnds:
+            if len(self._woken_hwnds) > 200:
+                self._woken_hwnds.clear()
+            self._woken_hwnds.add(hwnd)
+            _wake_chromium_accessibility(hwnd)
+
+    @staticmethod
+    def _is_high_memory_pressure() -> bool:
+        """Returns True if system RAM is >= 80%, avoiding deep recursive Chromium DOM walks."""
+        try:
+            import psutil
+            return psutil.virtual_memory().percent >= 80.0
+        except Exception:
+            return False
 
     def _init_uia(self):
         """Initializes UIAutomation client via comtypes if available."""
@@ -138,6 +157,7 @@ class UIATextReader:
         """
         Extracts visible text lines from the document area of a browser window.
         Filters out buttons, images, navigation bars, and noise phrases.
+        Single-flight guarded to prevent overlapping COM calls to Chrome.
         """
         if not self._uia_available or not hwnd:
             return []
@@ -148,8 +168,12 @@ class UIATextReader:
 
         if cache_key in self._text_cache:
             ts, res = self._text_cache[cache_key]
-            if now - ts < 3.0:
+            if now - ts < 10.0:
                 return res
+
+        if not self._uia_lock.acquire(blocking=False):
+            logger.debug("UIA busy — skipping overlapping text extraction for hwnd %s", hwnd)
+            return []
 
         result: List[str] = []
 
@@ -158,7 +182,7 @@ class UIATextReader:
                 import pythoncom
                 pythoncom.CoInitialize()
 
-                _wake_chromium_accessibility(hwnd)
+                self._wake_once(hwnd)
 
                 import comtypes.client
                 from comtypes.gen.UIAutomationClient import (
@@ -185,22 +209,27 @@ class UIATextReader:
                     if text_pat:
                         doc_range = getattr(text_pat, "DocumentRange", None)
                         if doc_range:
-                            raw_doc_text = doc_range.GetText(-1)
+                            raw_doc_text = doc_range.GetText(6000)
                             if raw_doc_text and len(raw_doc_text.strip()) > 30:
                                 for raw_line in raw_doc_text.splitlines():
                                     val = raw_line.strip()
                                     if val and not is_noise_text(val):
                                         if not result or result[-1] != val:
                                             result.append(val)
+                                            if len(result) >= 120:
+                                                break
                                 if len(result) >= 3:
                                     return
                 except Exception as tp_err:
                     logger.debug("UIA TextPattern fast-path fallback: %s", tp_err)
 
+                if self._is_high_memory_pressure():
+                    return
+
                 true_cond = uia.CreateTrueCondition()
 
                 def walk(node, depth: int = 0):
-                    if not node or depth > 25:
+                    if not node or depth > 12 or len(result) >= 100:
                         return
 
                     try:
@@ -224,7 +253,6 @@ class UIATextReader:
                         if name:
                             val = name.strip()
                             if val and not is_noise_text(val):
-                                # Deduplicate consecutive identical lines
                                 if not result or result[-1] != val:
                                     result.append(val)
                     except Exception:
@@ -233,7 +261,10 @@ class UIATextReader:
                     try:
                         children = node.FindAll(TreeScope_Children, true_cond)
                         if children:
-                            for i in range(children.Length):
+                            max_c = min(children.Length, 35)
+                            for i in range(max_c):
+                                if len(result) >= 100:
+                                    break
                                 walk(children.GetElement(i), depth + 1)
                     except Exception:
                         pass
@@ -248,10 +279,14 @@ class UIATextReader:
                     pythoncom.CoUninitialize()
                 except Exception:
                     pass
+                try:
+                    self._uia_lock.release()
+                except Exception:
+                    pass
 
         t = threading.Thread(target=worker, daemon=True)
         t.start()
-        t.join(timeout=2.0)
+        t.join(timeout=1.5)
 
         if t.is_alive():
             logger.debug("UIA text extraction timed out for hwnd %s", hwnd)
@@ -269,14 +304,7 @@ class UIATextReader:
         """
         Directly extracts a high-confidence Canonical Candidate dictionary from the
         browser DOM using Windows UI Automation.
-
-        Identifies:
-        - Candidate Name from H1 / Heading Level 1 element.
-        - Headline / Current Title & Company from adjacent DOM nodes.
-        - Location from verified geo indicator nodes.
-        - Source URL attribution.
-
-        Returns candidate dictionary if valid candidate found with confidence >= 0.85, else None.
+        Populates _text_cache simultaneously so extract_text_from_window never walks DOM twice.
         """
         if not self._uia_available or not hwnd:
             return None
@@ -287,8 +315,15 @@ class UIATextReader:
 
         if cache_key in self._cand_cache:
             ts, cand = self._cand_cache[cache_key]
-            if now - ts < 3.0:
+            if now - ts < 10.0:
                 return cand
+
+        if self._is_high_memory_pressure():
+            return None
+
+        if not self._uia_lock.acquire(blocking=False):
+            logger.debug("UIA busy — skipping overlapping semantic candidate read for hwnd %s", hwnd)
+            return None
 
         candidate_data: Dict[str, Any] = {}
         structured_nodes: List[Dict[str, Any]] = []
@@ -298,7 +333,7 @@ class UIATextReader:
                 import pythoncom
                 pythoncom.CoInitialize()
 
-                _wake_chromium_accessibility(hwnd)
+                self._wake_once(hwnd)
 
                 import comtypes.client
                 from comtypes.gen.UIAutomationClient import (
@@ -322,7 +357,7 @@ class UIATextReader:
                 true_cond = uia.CreateTrueCondition()
 
                 def collect_nodes(node, depth: int = 0):
-                    if not node or depth > 20 or len(structured_nodes) > 150:
+                    if not node or depth > 12 or len(structured_nodes) > 80:
                         return
 
                     try:
@@ -364,7 +399,10 @@ class UIATextReader:
                     try:
                         children = node.FindAll(TreeScope_Children, true_cond)
                         if children:
-                            for i in range(children.Length):
+                            max_c = min(children.Length, 30)
+                            for i in range(max_c):
+                                if len(structured_nodes) > 80:
+                                    break
                                 collect_nodes(children.GetElement(i), depth + 1)
                     except Exception:
                         pass
@@ -379,14 +417,25 @@ class UIATextReader:
                     pythoncom.CoUninitialize()
                 except Exception:
                     pass
+                try:
+                    self._uia_lock.release()
+                except Exception:
+                    pass
 
         t = threading.Thread(target=worker, daemon=True)
         t.start()
-        t.join(timeout=2.5)
+        t.join(timeout=1.5)
 
         if t.is_alive() or not structured_nodes:
             self._cand_cache[cache_key] = (now, None)
             return None
+
+        # Populate _text_cache from structured_nodes so extract_text_from_window hits cache in 0ms!
+        collected_lines = [n["text"] for n in structured_nodes if n.get("text")]
+        if len(collected_lines) >= 3:
+            if len(self._text_cache) > 100:
+                self._text_cache.clear()
+            self._text_cache[cache_key] = (now, collected_lines)
 
         # --- Semantic Resolution from Collected DOM Nodes ---
         lines = [n["text"] for n in structured_nodes]

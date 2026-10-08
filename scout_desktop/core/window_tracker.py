@@ -25,6 +25,8 @@ BROWSER_PROCESSES = {
     "firefox.exe": "Mozilla Firefox",
     "brave.exe": "Brave Browser",
     "opera.exe": "Opera",
+    "vivaldi.exe": "Vivaldi",
+    "arc.exe": "Arc",
 }
 
 PRODUCTIVITY_PROCESSES = {

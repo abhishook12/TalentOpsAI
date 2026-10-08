@@ -111,6 +111,7 @@ US_STATE_POSTAL_REGEX = re.compile(
 
 UI_ACTIONS = re.compile(
     r"^(?:message|connect|follow|more|save|share|view|endorse|view profile|"
+    r"access email|view mobile|save to list|add to sequence|log call|enrich|"
     r"open to work|hiring|verified|contact info|"
     r"all bookmarks|bookmarks|bookmarks bar|reading list|search tabs|tab groups|new tab|close tab|"
     r"extensions|manage extensions|chrome web store|add shortcut|ask gemini|side panel|"
@@ -138,6 +139,7 @@ UI_ACTIONS = re.compile(
 
 PLATFORM_NAMES = frozenset({
     'simplyhired', 'linkedin', 'indeed', 'glassdoor', 'ziprecruiter',
+    'apollo', 'zoominfo', 'github',
     'monster', 'careerbuilder', 'dice', 'handshake', 'wellfound',
     'angel', 'angellist', 'snagajob', 'lensa', 'jooble', 'adzuna',
     'nexxt', 'upwork', 'fiverr', 'usajobs', 'linkup', 'greenhouse',

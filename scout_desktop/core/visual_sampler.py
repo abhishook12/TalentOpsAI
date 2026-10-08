@@ -136,6 +136,7 @@ class VisualSampler:
         self._pause_event = threading.Event()
         self._worker_thread = None
         self._lock = threading.Lock()
+        self._processing_lock = threading.Lock()
 
         # Telemetry metrics
         self.stats = {
@@ -241,7 +242,10 @@ class VisualSampler:
                     ).start()
 
     def _dispatch_frame_async(self, img: Image.Image, delta: float, window_info: WindowInfo, bbox: Optional[Tuple[int, int, int, int]] = None):
-        """Executes heavy frame analysis, OCR, and extraction on a worker thread to keep Qt GUI responsive."""
+        """Executes heavy frame analysis, OCR, and extraction with strict single-flight protection."""
+        if not self._processing_lock.acquire(blocking=False):
+            logger.debug("VisualSampler: Previous frame still analyzing, coalescing overlapping frame.")
+            return
         try:
             if self.on_meaningful_frame:
                 import inspect
@@ -252,6 +256,11 @@ class VisualSampler:
                     self.on_meaningful_frame(img, delta, window_info)
         except Exception as e:
             logger.error("Error in on_meaningful_frame worker handler: %s", e)
+        finally:
+            try:
+                self._processing_lock.release()
+            except Exception:
+                pass
 
     def start(self, initial_window: Optional[WindowInfo] = None):
         """Starts the autonomous sampling worker thread."""
@@ -288,7 +297,7 @@ class VisualSampler:
         """
         Core autonomous sampling loop.
         During active mode: samples every 1.0s.
-        During idle mode: polls every 1.5s with low-overhead diff only.
+        During idle mode: polls every 2.0s with low-overhead diff only.
         """
         while not self._stop_event.is_set():
             try:
@@ -306,7 +315,7 @@ class VisualSampler:
                 now = time.time()
                 time_since_active = now - self._last_active_time
 
-                # Check 10-Second Idle Rule: transition to IDLE WATCH MODE
+                # Check Idle Rule: transition to IDLE WATCH MODE
                 if self._state == "ACTIVE_SAMPLING" and time_since_active >= self.idle_timeout_sec:
                     self._set_state("IDLE_WATCH")
 
@@ -332,10 +341,7 @@ class VisualSampler:
                         self.stats["meaningful_frames"] += 1
                         self.stats["last_delta"] = 1.0
                         if self.on_meaningful_frame and win_info:
-                            try:
-                                self.on_meaningful_frame(img, 1.0, win_info)
-                            except Exception as e:
-                                logger.error("Baseline frame dispatch error: %s", e)
+                            self._dispatch_frame_async(img, 1.0, win_info)
                     else:
                         delta, bbox = compute_weighted_regional_delta_and_box(
                             self._prev_pixels, current_pixels, img.width, img.height
@@ -356,15 +362,7 @@ class VisualSampler:
 
                             effective_delta = delta if is_meaningful else 0.05
                             if self.on_meaningful_frame and win_info:
-                                try:
-                                    import inspect
-                                    sig = inspect.signature(self.on_meaningful_frame)
-                                    if len(sig.parameters) >= 4:
-                                        self.on_meaningful_frame(img, effective_delta, win_info, bbox)
-                                    else:
-                                        self.on_meaningful_frame(img, effective_delta, win_info)
-                                except Exception as e:
-                                    logger.error("Frame dispatch error: %s", e)
+                                self._dispatch_frame_async(img, effective_delta, win_info, bbox)
                         else:
                             self.stats["idle_skips"] += 1
 

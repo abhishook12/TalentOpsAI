@@ -17,6 +17,7 @@ from datetime import datetime
 import uuid
 
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 
 from ..database import SessionLocal
 from ..models.staging_models import DiscoveryStaging
@@ -91,78 +92,17 @@ class SearchXRayHarvester:
             "emails_smtp_verified": 0,
             "errors": 0,
         }
-        # ── Thread-Local Warm Browser Pool (Greenlet Safe & Concurrency Optimized) ──
+        # ── Zero-Browser TLS-Impersonated HTTP Engine (0 MB Chrome RAM, 0 Subprocesses) ──
         import threading
         self._thread_local = threading.local()
         self._cache_lock = threading.Lock()
-        self._max_browser_uses = 25  # Recycle browser after 25 dorks to prevent memory leaks
         # ── Dork Result Cache (Speed Optimization) ──
         self._dork_cache: Dict[str, tuple] = {}  # query_hash → (results_list, timestamp)
         self._dork_cache_ttl = 7200  # 2 hours in seconds
 
-    def _ensure_browser(self):
-        """Lazily initializes or recycles the warm browser on the CURRENT thread."""
-        browser = getattr(self._thread_local, "browser", None)
-        use_count = getattr(self._thread_local, "use_count", 0)
-        if browser and use_count < self._max_browser_uses:
-            return getattr(self._thread_local, "browser_context", None)
-
-        # Close stale browser on this thread if recycling
-        self._shutdown_browser()
-
-        from playwright.sync_api import sync_playwright
-        p = sync_playwright().start()
-        browser = p.chromium.launch(
-            headless=True,
-            args=[
-                "--disable-blink-features=AutomationControlled",
-                "--no-sandbox",
-                "--disable-dev-shm-usage",
-                "--disable-gpu",
-            ]
-        )
-        ctx = browser.new_context(
-            user_agent=self.user_agent,
-            java_script_enabled=True,
-        )
-        # Block images, fonts, CSS, and ads — text extraction doesn't need them
-        ctx.route("**/*.{png,jpg,jpeg,gif,svg,webp,ico,woff,woff2,ttf,eot,css}", lambda route: route.abort())
-        ctx.route("**/*doubleclick*", lambda route: route.abort())
-        ctx.route("**/*googlesyndication*", lambda route: route.abort())
-        ctx.route("**/*google-analytics*", lambda route: route.abort())
-        ctx.route("**/*facebook.net*", lambda route: route.abort())
-
-        self._thread_local.playwright = p
-        self._thread_local.browser = browser
-        self._thread_local.browser_context = ctx
-        self._thread_local.use_count = 0
-        logger.info("[SEARCH_XRAY] Thread-local warm browser pool initialized (resource blocking ON)")
-        return ctx
-
     def _shutdown_browser(self):
-        """Safely shuts down the warm browser on the current thread."""
-        try:
-            ctx = getattr(self._thread_local, "browser_context", None)
-            if ctx:
-                ctx.close()
-        except Exception:
-            pass
-        try:
-            b = getattr(self._thread_local, "browser", None)
-            if b:
-                b.close()
-        except Exception:
-            pass
-        try:
-            p = getattr(self._thread_local, "playwright", None)
-            if p:
-                p.stop()
-        except Exception:
-            pass
-        self._thread_local.browser = None
-        self._thread_local.browser_context = None
-        self._thread_local.playwright = None
-        self._thread_local.use_count = 0
+        """No-op compatibility hook (SearchXRayHarvester now uses 100% zero-browser HTTP)."""
+        pass
 
     def _flush_stale_cache(self):
         """Removes expired entries from dork cache."""
@@ -300,9 +240,8 @@ class SearchXRayHarvester:
 
     def execute_dork(self, query: str, max_results: int = 10) -> List[Dict[str, Any]]:
         """
-        Executes search dork using thread-local warm browser pool and result cache.
-        Zero cross-thread greenlet contention; each worker thread owns its browser.
-        Resource blocking (images/CSS/fonts/ads) is active for maximum speed.
+        Executes search dork using 100% Zero-Browser TLS-Impersonated HTTP (curl_cffi)
+        and in-memory result cache. Consumes 0 MB of Chrome RAM and spawns 0 subprocesses.
         """
         query_key = hashlib.sha256(query.strip().lower().encode("utf-8")).hexdigest()
         now = time.time()
@@ -322,25 +261,35 @@ class SearchXRayHarvester:
         url = f"https://search.yahoo.com/search?p={urllib.parse.quote(query)}"
 
         try:
-            ctx = self._ensure_browser()
-            page = ctx.new_page()
+            from bs4 import BeautifulSoup
             try:
-                page.goto(url, timeout=12000, wait_until="domcontentloaded")
-                try:
-                    page.wait_for_selector("#main", timeout=4000)
-                except Exception:
-                    pass
+                from curl_cffi import requests as cffi_requests
+                r = cffi_requests.get(url, impersonate="chrome124", timeout=8)
+                html_text = r.text if r.status_code == 200 else ""
+            except Exception:
+                import requests
+                r = requests.get(url, headers={"User-Agent": self.user_agent}, timeout=8)
+                html_text = r.text if r.status_code == 200 else ""
 
-                cards = page.query_selector_all(".algo")
+            if html_text:
+                soup = BeautifulSoup(html_text, "html.parser")
+                cards = soup.select(".algo")
                 for c in cards:
                     try:
-                        text_val = c.inner_text().strip()
-                        a_tags = c.query_selector_all("a")
+                        text_val = c.get_text(separator="\n").strip()
+                        a_tags = c.find_all("a", href=True)
                         href = ""
                         for a in a_tags:
-                            h = a.get_attribute("href") or ""
-                            if "linkedin.com/in/" in h:
-                                href = h
+                            raw_h = a.get("href") or ""
+                            unquoted_h = urllib.parse.unquote(raw_h)
+                            # Extract clean destination from Yahoo /RU=https://.../RK= wrapper
+                            ru_match = re.search(r"/RU=(https?://[^/]+/in/[^/&?\"']+)", unquoted_h)
+                            if ru_match:
+                                candidate_h = ru_match.group(1)
+                            else:
+                                candidate_h = unquoted_h
+                            if "linkedin.com/in/" in candidate_h:
+                                href = candidate_h
                                 break
                         if text_val and href and "linkedin.com/in/" in href:
                             results.append({"text": text_val, "link": href})
@@ -348,48 +297,46 @@ class SearchXRayHarvester:
                                 break
                     except Exception as err:
                         logger.debug("Card parse error: %s", err)
-            finally:
-                page.close()
 
-            self._thread_local.use_count = getattr(self._thread_local, "use_count", 0) + 1
-            # Cache successful results
-            with self._cache_lock:
-                self._dork_cache[query_key] = (results, time.time())
-        except Exception as e:
-            logger.warning("[SEARCH_XRAY] Browser query failed for '%s': %s — switching to lightweight HTTP fallback", query, e)
-            self._shutdown_browser()
-            results = self._execute_dork_http(query, max_results)
             if results:
-                logger.info("[SEARCH_XRAY] HTTP fallback recovered %d search results for '%s'", len(results), query)
-            else:
-                self.stats["errors"] += 1
+                with self._cache_lock:
+                    self._dork_cache[query_key] = (results, time.time())
+        except Exception as e:
+            logger.debug("[SEARCH_XRAY] Primary HTTP dork note for '%s': %s — trying Bing fallback", query, e)
 
         if not results:
             results = self._execute_dork_http(query, max_results)
+            if results:
+                with self._cache_lock:
+                    self._dork_cache[query_key] = (results, time.time())
 
         self.stats["total_dorks_executed"] += 1
         return results
 
     def _execute_dork_http(self, query: str, max_results: int = 10) -> List[Dict[str, Any]]:
-        """Lightweight HTTP search fallback using public search indexes when headless browser is unavailable."""
-        import requests
+        """Secondary HTTP search fallback using Bing public search index."""
         import base64
         from bs4 import BeautifulSoup
         results = []
         try:
-            headers = {
-                "User-Agent": self.user_agent,
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                "Accept-Language": "en-US,en;q=0.9",
-            }
             url = f"https://www.bing.com/search?q={urllib.parse.quote(query)}"
-            r = requests.get(url, headers=headers, timeout=8)
+            try:
+                from curl_cffi import requests as cffi_requests
+                r = cffi_requests.get(url, impersonate="chrome124", timeout=8)
+            except Exception:
+                import requests
+                headers = {
+                    "User-Agent": self.user_agent,
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                    "Accept-Language": "en-US,en;q=0.9",
+                }
+                r = requests.get(url, headers=headers, timeout=8)
             if r.status_code == 200:
                 soup = BeautifulSoup(r.text, "html.parser")
                 cards = soup.find_all("li", class_="b_algo")
                 for c in cards:
                     try:
-                        text_val = c.get_text(separator=" ").strip()
+                        text_val = c.get_text(separator="\n").strip()
                         a_tags = c.find_all("a", href=True)
                         href = ""
                         for a in a_tags:
@@ -637,11 +584,14 @@ class SearchXRayHarvester:
                 self.stats["geo_quota_rejected"] = self.stats.get("geo_quota_rejected", 0) + 1
                 continue
 
-            # Check for existing duplicate in staging
-            existing = db.query(DiscoveryStaging).filter(
-                (DiscoveryStaging.raw_email == cand.get("email")) |
-                ((DiscoveryStaging.raw_name == cand["name"]) & (DiscoveryStaging.raw_company == cand["company"]))
-            ).first()
+            # Build dedup filter
+            dedup_conditions = []
+            if cand.get("email"):
+                dedup_conditions.append(DiscoveryStaging.raw_email == cand["email"])
+            dedup_conditions.append(
+                (DiscoveryStaging.raw_name == cand["name"]) & (DiscoveryStaging.raw_company == cand["company"])
+            )
+            existing = db.query(DiscoveryStaging).filter(or_(*dedup_conditions)).first()
 
             if existing:
                 continue

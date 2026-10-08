@@ -380,14 +380,14 @@ class BrowserTracker:
     def resolve_browser_context(self, hwnd: int, window_title: str, browser_hint: Optional[str] = None) -> Dict[str, Any]:
         """
         Resolves the comprehensive browser context using UIA + Title heuristics and page type classification.
-        Cached by (hwnd, window_title) with 15.0s TTL to prevent freezing the UI thread.
-        Gates UIA calls: only attempts address bar reading for target talent/recruiting platforms.
+        Cached by (hwnd, window_title) with 30.0s TTL to prevent freezing the UI thread.
+        Gates UIA calls: only attempts address bar reading for profile-bearing talent platforms.
         """
         cache_key = (hwnd, window_title)
         now = time.time()
         if cache_key in self._cache:
             ts, res = self._cache[cache_key]
-            if now - ts < 15.0:
+            if now - ts < 30.0:
                 return res
 
         inferred = self.infer_context_from_title(window_title)
@@ -395,17 +395,19 @@ class BrowserTracker:
         active_url = None
         domain = inferred["probable_domain"]
 
-        # Performance Gate: ONLY inspect address bar via UIA if the tab title indicates a supported platform.
-        # This completely stops Chromium from triggering accessibility DOM serialization on non-target tabs.
+        # Performance Gate: ONLY inspect address bar via UIA on profile/job platforms where URL slug matters.
+        # For Chat/Email platforms (Google Chat, Gmail, Teams, Slack, Outlook), domain is already known from title,
+        # avoiding unnecessary Chromium UIA tree traversals.
         TARGET_UIA_PLATFORMS = {
             "LINKEDIN", "ZOOMINFO", "APOLLO", "GITHUB", "STACKOVERFLOW",
             "KAGGLE", "DICE", "WELLFOUND", "ATS_GREENHOUSE", "ATS_LEVER",
             "ATS_ASHBY", "ATS_WORKDAY", "ATS_ICIMS", "ATS_SMARTRECRUITERS",
-            "GOOGLE_CHAT", "CHAT", "TEAMS", "SLACK", "WHATSAPP", "TELEGRAM",
-            "GMAIL", "OUTLOOK", "PDF_RESUME"
+            "PDF_RESUME"
         }
 
-        if platform in TARGET_UIA_PLATFORMS or inferred.get("candidate_name"):
+        if domain and platform in ("GOOGLE_CHAT", "CHAT", "TEAMS", "SLACK", "WHATSAPP", "TELEGRAM", "GMAIL", "OUTLOOK"):
+            active_url = f"https://{domain}"
+        elif platform in TARGET_UIA_PLATFORMS or inferred.get("candidate_name"):
             active_url = self.get_url_from_window_uia(hwnd, browser_hint=browser_hint)
 
         # Protect against stale UIA address bar: If title is Google Search or non-LinkedIn,

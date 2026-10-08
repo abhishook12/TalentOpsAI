@@ -18,6 +18,7 @@ Strict Immunity Rules:
 import time
 import logging
 import threading
+import asyncio
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any
 
@@ -31,12 +32,14 @@ class EngineImmunitySentinel:
         self._thread: threading.Thread = None
         self.total_revivals = 0
         self.last_check_at: str = None
+        self._main_loop = None
 
     def start(self):
         """Starts the Engine Immunity Sentinel daemon thread."""
         if self.running:
             return
         self.running = True
+        self._main_loop = asyncio.get_event_loop()
         self._thread = threading.Thread(target=self._sentinel_loop, name="TalentOps-EngineImmunitySentinel", daemon=True)
         self._thread.start()
         logger.info("[IMMUNITY_SENTINEL] Perpetual Engine Immunity Sentinel active (24/7 self-healing enabled).")
@@ -53,6 +56,7 @@ class EngineImmunitySentinel:
         while self.running:
             try:
                 self.last_check_at = datetime.now(timezone.utc).isoformat()
+                self._enforce_system_resource_hygiene()
                 self._verify_web_harvest_engine()
                 self._verify_sweeper()
                 self._verify_offline_buffer()
@@ -60,6 +64,60 @@ class EngineImmunitySentinel:
                 logger.error("[IMMUNITY_SENTINEL] Sentinel check cycle exception: %s", e, exc_info=True)
 
             time.sleep(self.check_interval_sec)
+
+    def _enforce_system_resource_hygiene(self):
+        """
+        Proactively sweeps any orphaned chrome-headless-shell processes (>45s old,
+        or >6 instances, or when system RAM >= 75%) and purges stale Playwright temp folders.
+        Guarantees background engines NEVER degrade workstation RAM or Chrome stability.
+        """
+        try:
+            import os
+            import glob
+            import shutil
+            import psutil
+
+            now_ts = time.time()
+            vm = psutil.virtual_memory()
+            high_ram = vm.percent >= 75.0
+
+            headless_procs = []
+            for proc in psutil.process_iter(["pid", "name", "create_time"]):
+                try:
+                    pname = (proc.info.get("name") or "").lower()
+                    if "chrome-headless-shell" in pname:
+                        headless_procs.append(proc)
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    continue
+
+            killed_count = 0
+            force_kill_all = high_ram or len(headless_procs) > 6
+            for proc in headless_procs:
+                try:
+                    age_sec = now_ts - (proc.info.get("create_time") or now_ts)
+                    if force_kill_all or age_sec > 45.0:
+                        proc.kill()
+                        killed_count += 1
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    continue
+
+            if killed_count > 0:
+                logger.info(
+                    "[IMMUNITY_SENTINEL] Resource Governor swept %d orphaned chrome-headless-shell processes (RAM=%.1f%%)",
+                    killed_count, vm.percent
+                )
+
+            # Purge stale Playwright temp profile directories older than 60s
+            temp_dir = os.environ.get("TEMP", "")
+            if temp_dir:
+                for p_dir in glob.glob(os.path.join(temp_dir, "playwright_chromiumdev_profile-*")):
+                    try:
+                        if now_ts - os.path.getmtime(p_dir) > 60.0:
+                            shutil.rmtree(p_dir, ignore_errors=True)
+                    except Exception:
+                        pass
+        except Exception as e:
+            logger.debug("[IMMUNITY_SENTINEL] Resource hygiene check note: %s", e)
 
     def _verify_web_harvest_engine(self):
         """Ensures WebHarvest is alive, unblocked, and actively producing cycles."""
@@ -69,8 +127,11 @@ class EngineImmunitySentinel:
             # Rule 1: Engine Must Be Running
             if not web_harvest_engine.running or not web_harvest_engine._loop_task or web_harvest_engine._loop_task.done():
                 logger.warning("[IMMUNITY_SENTINEL] ALERT: WebHarvest engine loop was inactive! Reviving engine immediately...")
-                web_harvest_engine.running = True
-                web_harvest_engine.start()
+                if self._main_loop and self._main_loop.is_running():
+                    asyncio.run_coroutine_threadsafe(self._restart_engine(), self._main_loop)
+                else:
+                    web_harvest_engine.running = False
+                    logger.critical('[SENTINEL] No running event loop — cannot restart WebHarvest engine')
                 self.total_revivals += 1
                 return
 
@@ -113,13 +174,18 @@ class EngineImmunitySentinel:
         except Exception as e:
             logger.error("[IMMUNITY_SENTINEL] Error verifying WebHarvest engine: %s", e)
 
+    async def _restart_engine(self):
+        from .web_harvest_engine import web_harvest_engine
+        web_harvest_engine.running = False
+        web_harvest_engine.start()
+
     def _verify_sweeper(self):
         """Ensures autonomous profile sweeper is running."""
         try:
-            from .autonomous_profile_sweeper import autonomous_profile_sweeper
-            if not getattr(autonomous_profile_sweeper, "running", True):
+            from .autonomous_profile_sweeper import autonomous_sweeper
+            if not getattr(autonomous_sweeper, "running", True):
                 logger.warning("[IMMUNITY_SENTINEL] ALERT: Autonomous Profile Sweeper was stopped. Re-arming sweeper...")
-                autonomous_profile_sweeper.start()
+                autonomous_sweeper.start()
                 self.total_revivals += 1
         except Exception as e:
             logger.debug("[IMMUNITY_SENTINEL] Sweeper check note: %s", e)

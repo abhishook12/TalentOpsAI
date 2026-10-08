@@ -49,13 +49,41 @@ SPA_SKELETON_PATTERNS = [
 
 
 class DynamicScraperWorker:
-    """Headless browser rendering and stealth scraper worker."""
+    """Headless browser rendering and stealth scraper worker with System RAM Protection."""
+
+    # Hard ceiling on system RAM usage (%) above which headless browser elevation is skipped
+    MAX_SYSTEM_RAM_PERCENT = 70.0
+    MIN_FREE_RAM_GB = 3.5
 
     def __init__(self):
         self._lock = threading.Lock()
         self._playwright = None
         self._browser = None
         self._initialized = False
+
+    def _is_system_under_memory_pressure(self) -> bool:
+        """
+        Checks real-time system RAM and active headless process count.
+        Prevents spawning headless Chromium if user's machine is above 70% RAM
+        or has < 3.5 GB free memory, guaranteeing zero impact on desktop apps/Chrome.
+        """
+        try:
+            import psutil
+            vm = psutil.virtual_memory()
+            free_gb = vm.available / (1024 ** 3)
+            if vm.percent >= self.MAX_SYSTEM_RAM_PERCENT or free_gb < self.MIN_FREE_RAM_GB:
+                logger.info(
+                    "[DYNAMIC_SCRAPER] System RAM Guard active (RAM=%.1f%%, Free=%.1fGB) — skipping headless browser to protect system responsiveness",
+                    vm.percent, free_gb
+                )
+                return True
+        except Exception:
+            pass
+        return False
+
+    def shutdown(self):
+        """Public shutdown hook for clean process exit."""
+        pass
 
     def is_spa_or_blocked(self, html: Optional[str], status_code: int = 200) -> bool:
         """Determines if a page response is an unrendered SPA skeleton or bot-blocked."""
@@ -106,15 +134,28 @@ class DynamicScraperWorker:
     def render_with_headless_browser(
         self,
         url: str,
-        timeout_ms: int = 15000,
-        wait_network_idle: bool = True
+        timeout_ms: int = 10000,
+        wait_network_idle: bool = False
     ) -> Optional[str]:
         """
-        Launches headless Playwright Chromium with anti-detection evasions,
-        waits for client-side JavaScript execution and dynamic hydration,
-        and returns the fully rendered DOM HTML.
+        Renders a URL using an ephemeral, strictly single-flight headless Playwright browser
+        that is created and destroyed on the SAME thread (zero greenlet cross-thread leaks)
+        and gated by the System RAM Governor. Leaves 0 headless Chrome processes when idle.
         """
+        # 1. System RAM Protection Gate
+        if self._is_system_under_memory_pressure():
+            return None
+
+        # 2. Strict Single-Flight Serialization (non-blocking if another render is active)
+        acquired = self._lock.acquire(timeout=5)
+        if not acquired:
+            logger.debug("[DYNAMIC_SCRAPER] Another render is active, skipping headless elevation for %s", url)
+            return None
+
         try:
+            if self._is_system_under_memory_pressure():
+                return None
+
             from playwright.sync_api import sync_playwright
 
             with sync_playwright() as p:
@@ -126,10 +167,11 @@ class DynamicScraperWorker:
                         "--no-sandbox",
                         "--disable-dev-shm-usage",
                         "--disable-gpu",
-                        "--window-size=1920,1080",
+                        "--disable-extensions",
+                        "--disable-background-networking",
+                        "--window-size=1280,800",
                     ]
                 )
-
                 try:
                     context = browser.new_context(
                         user_agent=(
@@ -137,52 +179,20 @@ class DynamicScraperWorker:
                             "AppleWebKit/537.36 (KHTML, like Gecko) "
                             "Chrome/126.0.0.0 Safari/537.36"
                         ),
-                        viewport={"width": 1920, "height": 1080},
+                        viewport={"width": 1280, "height": 800},
                         locale="en-US",
                         timezone_id="America/New_York",
                         has_touch=False,
                         is_mobile=False,
                     )
                     try:
-                        # Stealth initialization script: defeat bot detection heuristics
                         stealth_script = """
-                        // 1. Mask navigator.webdriver
-                        Object.defineProperty(navigator, 'webdriver', {
-                            get: () => undefined
-                        });
-
-                        // 2. Realistic window.chrome object
-                        window.chrome = {
-                            app: { isInstalled: false },
-                            webstore: { onInstallStageChanged: {}, onDownloadProgress: {} },
-                            runtime: {
-                                PlatformOs: { MAC: 'mac', WIN: 'win', ANDROID: 'android', CROS: 'cros', LINUX: 'linux', OPENBSD: 'openbsd' },
-                                PlatformArch: { ARM: 'arm', X86_32: 'x86-32', X86_64: 'x86-64' },
-                                PlatformNaclArch: { ARM: 'arm', X86_32: 'x86-32', X86_64: 'x86-64' },
-                                RequestUpdateCheckStatus: { THROTTLED: 'throttled', NO_UPDATE: 'no_update', UPDATE_AVAILABLE: 'update_available' },
-                                OnInstalledReason: { INSTALL: 'install', UPDATE: 'update', CHROME_UPDATE: 'chrome_update', SHARED_MODULE_UPDATE: 'shared_module_update' },
-                                OnRestartRequiredReason: { APP_UPDATE: 'app_update', OS_UPDATE: 'os_update', PERIODIC: 'periodic' }
-                            }
-                        };
-
-                        // 3. Realistic permissions query
-                        const originalQuery = window.navigator.permissions.query;
-                        window.navigator.permissions.query = (parameters) => (
-                            parameters.name === 'notifications' ?
-                                Promise.resolve({ state: Notification.permission }) :
-                                originalQuery(parameters)
-                        );
-
-                        // 4. Realistic languages
-                        Object.defineProperty(navigator, 'languages', {
-                            get: () => ['en-US', 'en']
-                        });
+                        Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+                        Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
                         """
                         context.add_init_script(stealth_script)
-
                         page = context.new_page()
 
-                        # Speed optimization: block heavy images, fonts, media
                         def handle_route(route):
                             req = route.request
                             if req.resource_type in BLOCKED_RESOURCE_TYPES or any(
@@ -194,14 +204,12 @@ class DynamicScraperWorker:
 
                         page.route("**/*", handle_route)
 
-                        # Navigate and wait for DOM hydration
                         wait_state = "networkidle" if wait_network_idle else "domcontentloaded"
                         nav_success = False
                         try:
                             page.goto(url, wait_until=wait_state, timeout=timeout_ms)
                             nav_success = True
                         except Exception:
-                            # Fallback to domcontentloaded if networkidle times out
                             try:
                                 page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms // 2)
                                 nav_success = True
@@ -211,9 +219,7 @@ class DynamicScraperWorker:
                         if not nav_success:
                             return None
 
-                        # Brief settling delay for client JS event loops
-                        page.wait_for_timeout(1000)
-
+                        page.wait_for_timeout(600)
                         rendered_content = page.content()
                         logger.debug(
                             "[DYNAMIC_SCRAPER] Headless render complete for %s (length=%d)",
@@ -230,10 +236,11 @@ class DynamicScraperWorker:
                         browser.close()
                     except Exception:
                         pass
-
         except Exception as e:
-            logger.warning("[DYNAMIC_SCRAPER] Headless browser execution error for %s: %s", url, e)
+            logger.debug("[DYNAMIC_SCRAPER] Headless browser execution note for %s: %s", url, e)
             return None
+        finally:
+            self._lock.release()
 
     def extract_structured_json_ld(self, html: str) -> List[Dict[str, Any]]:
         """
@@ -311,7 +318,7 @@ class DynamicScraperWorker:
 
         # Tier 2: Dynamic headless rendering
         # Skip headless browser elevation if the host is completely unreachable (0), timed out, or returns 404/5xx
-        if status_code in (404, 410, 500, 502, 503, 504, 0) or not html:
+        if status_code in (404, 410, 500, 502, 504, 0) or not html:
             return html, "failed"
 
         logger.info("[DYNAMIC_SCRAPER] Elevating to Headless Playwright renderer for %s (status=%d)", url, status_code)

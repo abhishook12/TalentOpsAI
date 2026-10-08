@@ -549,10 +549,10 @@ class ScoutDesktopApp:
         self.heartbeat_timer.timeout.connect(self._send_heartbeat)
         self.heartbeat_timer.start(20000)
 
-        # 5. UI Status & Local Queue Refresh Timer (updates Left Rail & Bottom Status Bar every 1000ms)
+        # 5. UI Status & Local Queue Refresh Timer (updates Left Rail & Bottom Status Bar every 2500ms)
         self.ui_status_timer = QTimer()
         self.ui_status_timer.timeout.connect(self._refresh_ui_status)
-        self.ui_status_timer.start(1000)
+        self.ui_status_timer.start(2500)
         # Immediate first tick
         QTimer.singleShot(100, self._refresh_ui_status)
 
@@ -1351,7 +1351,7 @@ class ScoutDesktopApp:
                 "outlook.com", "office.com", "office365.com",
                 "zoominfo.com", "zi-lite", "apollo.io",
                 "stackoverflow.com", "kaggle.com", "dice.com", "wellfound.com", "angel.co", "hired.com",
-                "greenhouse.io", "lever.co", "ashbyhq.com", "myworkday.com", "workday.com",
+                "greenhouse.io", "lever.co", "ashbyhq.com", "myworkday.com", "workday.com", "myworkdayjobs.com",
                 "icims.com", "smartrecruiters.com",
                 "indeed.com", "simplyhired.com", "glassdoor.com", "ziprecruiter.com", "jobright.ai",
                 "vacaregroup.com", "talent-acquisition", "staffing", "recruitment",
@@ -1361,10 +1361,13 @@ class ScoutDesktopApp:
                 logger.info("Frame rejected by URL hard-block: %s", page_url[:60])
                 return
 
-            is_chat_or_doc = target_type in ("GOOGLE_CHAT", "TEAMS", "SLACK", "WHATSAPP", "TELEGRAM", "GMAIL", "OUTLOOK", "PDF_RESUME", "JOB_POSTING")
-            if not is_chat_or_doc and target_type != "RECRUITMENT_AGENCY":
+            is_exempt_type = target_type in ("GOOGLE_CHAT", "TEAMS", "SLACK", "WHATSAPP", "TELEGRAM", "GMAIL", "OUTLOOK", "PDF_RESUME", "JOB_POSTING", "GITHUB", "STACKOVERFLOW", "KAGGLE", "ATS_GREENHOUSE", "ATS_LEVER", "ATS_ASHBY", "ATS_WORKDAY", "ATS_ICIMS", "ATS_SMARTRECRUITERS", "INDEED", "SIMPLYHIRED", "GLASSDOOR", "ZIPRECRUITER", "JOBRIGHT", "HIRED", "RECRUITMENT_AGENCY")
+            if not is_exempt_type:
                 skip_nav = any(p in url_lower for p in ["/search", "/results", "/feed", "/messaging", "/notifications"])
-                is_profile = any(p in url_lower for p in ["/in/", "/profile/", "/people/", "/contact/", "/u/", "/member/"])
+                is_profile = any(p in url_lower for p in [
+                    "/in/", "/profile/", "/people/", "/contact/", "/u/", "/member/",
+                    "/candidates/", "/jobs/", "/job/", "/viewjob", "/r/",
+                ])
                 if skip_nav or not is_profile:
                     logger.info(f"Smart scheduling: skipping non-profile URL: {page_url}")
                     return
@@ -1445,18 +1448,19 @@ class ScoutDesktopApp:
                                 uia_candidate.get("company"),
                                 uia_candidate.get("confidence", 0.0))
 
-                uia_lines = self.uia_text_reader.extract_text_from_window(
-                    hwnd=win_info.hwnd,
-                    browser_hint=win_info.process_name,
-                )
-                # Accept UIA result if it returned meaningful content (>= 3 lines) or structured candidate
-                if len(uia_lines) >= 3:
-                    ocr_lines = uia_lines
-                    uia_used = True
-                    logger.info("✅ UIA direct text: %d lines from %s (zero-error mode)", len(uia_lines), win_info.process_name)
-                elif uia_candidate and uia_candidate.get("raw_lines"):
+                if uia_candidate and uia_candidate.get("raw_lines") and len(uia_candidate["raw_lines"]) >= 3:
                     ocr_lines = uia_candidate["raw_lines"]
                     uia_used = True
+                    logger.info("✅ UIA direct DOM lines reused: %d lines from %s (single-pass mode)", len(ocr_lines), win_info.process_name)
+                else:
+                    uia_lines = self.uia_text_reader.extract_text_from_window(
+                        hwnd=win_info.hwnd,
+                        browser_hint=win_info.process_name,
+                    )
+                    if len(uia_lines) >= 3:
+                        ocr_lines = uia_lines
+                        uia_used = True
+                        logger.info("✅ UIA direct text: %d lines from %s (zero-error mode)", len(uia_lines), win_info.process_name)
             except Exception as uia_err:
                 logger.debug("UIA text extraction failed: %s (falling back to OCR)", uia_err)
 

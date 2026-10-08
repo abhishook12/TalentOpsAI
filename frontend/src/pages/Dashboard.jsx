@@ -139,9 +139,6 @@ export default function Dashboard() {
     const needsReview = dataQuality?.needs_review_count || 0
 
     let totalPeople = dashboardData?.recruiters?.total || dataQuality?.total_recruiters || 0
-    if (newPeopleToday > 0 && totalPeople > 0) {
-      totalPeople = Math.max(totalPeople, totalPeople + newPeopleToday)
-    }
 
     return [
       {

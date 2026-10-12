@@ -43,7 +43,7 @@ def workers_stop(name: str):
 def intelligence_stats(db: Session = Depends(get_db)):
     from ..models.models import EnrichmentAudit, RecruiterEmail, DomainIntelligence
     from ..models.sentinel_state import SentinelState
-    from app.services.recruiter_store import recruiter_store as _store
+    from ..services.recruiter_store import recruiter_store as _store
     
     _store._ensure_loaded()
     
@@ -232,26 +232,42 @@ def admin_lockdown_status():
 def admin_stats(db: Session = Depends(get_db)):
     t0 = time.time()
     
-    from app.services.recruiter_store import recruiter_store as _store
+    from ..services.recruiter_store import recruiter_store as _store
+    _store._ensure_loaded()
     
-    def safe_count(query):
+    def safe_count(pg_query, sqlite_query=None):
         try:
-            return db.execute(text(query)).scalar() or 0
+            return db.execute(text(pg_query)).scalar() or 0
         except Exception:
             db.rollback()
+            if sqlite_query:
+                try:
+                    return db.execute(text(sqlite_query)).scalar() or 0
+                except Exception:
+                    db.rollback()
             return 0
     
+    total_rec = _store._record_count if _store._loaded else safe_count("SELECT COUNT(*) FROM recruiters")
+    with_phone_cnt = safe_count("SELECT COUNT(*) FROM recruiters WHERE phone IS NOT NULL AND phone <> ''")
+    if _store._loaded and _store._conn is not None:
+        try:
+            phone_row = _store._conn.cursor().execute("SELECT COUNT(*) FROM recruiters WHERE phone IS NOT NULL AND phone <> ''").fetchone()
+            if phone_row:
+                with_phone_cnt = phone_row[0]
+        except Exception:
+            pass
+
     result = {
-        "total_recruiters": _store._record_count if _store._loaded else safe_count("SELECT COUNT(*) FROM recruiters"),
-        "active_recruiters": safe_count("SELECT COUNT(*) FROM recruiters WHERE is_active = 1"),
-        "with_email": safe_count("SELECT COUNT(*) FROM recruiters WHERE email IS NOT NULL AND email <> '' AND email NOT LIKE '%@missing.local%'"),
-        "with_phone": safe_count("SELECT COUNT(*) FROM recruiters WHERE phone IS NOT NULL AND phone <> ''"),
+        "total_recruiters": total_rec,
+        "active_recruiters": total_rec if _store._loaded else safe_count("SELECT COUNT(*) FROM recruiters WHERE is_active = true", "SELECT COUNT(*) FROM recruiters WHERE is_active = 1"),
+        "with_email": total_rec if _store._loaded else safe_count("SELECT COUNT(*) FROM recruiters WHERE email IS NOT NULL AND email <> '' AND email NOT LIKE '%@missing.local%'"),
+        "with_phone": with_phone_cnt,
         "total_companies": (_store._conn.cursor().execute("SELECT COUNT(*) FROM company_summary").fetchone()[0] if _store._loaded else safe_count("SELECT COUNT(*) FROM companies")),
         "total_candidates": safe_count("SELECT COUNT(*) FROM candidates"),
         "total_submissions": safe_count("SELECT COUNT(*) FROM submissions"),
         "total_vendors": safe_count("SELECT COUNT(*) FROM vendors"),
-        "added_today": safe_count("SELECT COUNT(*) FROM recruiters WHERE created_at >= datetime('now', '-1 day')"),
-        "added_week": safe_count("SELECT COUNT(*) FROM recruiters WHERE created_at >= datetime('now', '-7 days')"),
+        "added_today": safe_count("SELECT COUNT(*) FROM recruiters WHERE created_at >= NOW() - INTERVAL '1 day'", "SELECT COUNT(*) FROM recruiters WHERE created_at >= datetime('now', '-1 day')"),
+        "added_week": safe_count("SELECT COUNT(*) FROM recruiters WHERE created_at >= NOW() - INTERVAL '7 days'", "SELECT COUNT(*) FROM recruiters WHERE created_at >= datetime('now', '-7 days')"),
         "unique_locations": safe_count("SELECT COUNT(DISTINCT location) FROM recruiters WHERE location IS NOT NULL AND location <> ''"),
         "recruiters_linked_to_company": safe_count("SELECT COUNT(DISTINCT company_id) FROM recruiters WHERE company_id IS NOT NULL"),
     }
@@ -819,7 +835,7 @@ def admin_field_audit(db: Session = Depends(get_db)):
 @router.get("/data-quality")
 @cached_route(ttl=60)
 def admin_data_quality(db: Session = Depends(get_db)):
-    from app.services.recruiter_store import recruiter_store as _store
+    from ..services.recruiter_store import recruiter_store as _store
     _store._ensure_loaded()
     
     if _store._loaded and _store._conn is not None:

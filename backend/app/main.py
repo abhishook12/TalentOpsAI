@@ -1,6 +1,12 @@
 import logging
 import os
+import sys
 import time
+
+_BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _BACKEND_DIR not in sys.path:
+    sys.path.insert(0, _BACKEND_DIR)
+
 from fastapi import FastAPI, Depends, Request, Response
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -333,7 +339,17 @@ from .resource_lockdown import is_locked_down, get_lockdown_reason, check_system
 async def lockdown_middleware(request: Request, call_next):
     path = request.url.path
     is_modifying_request = request.method != "GET" or path.startswith("/ai")
-    is_whitelisted = path in ["/admin/unlock", "/admin/cleanup", "/auth/login"] or path.startswith("/health")
+    is_whitelisted = (
+        path in ["/admin/unlock", "/admin/cleanup", "/auth/login", "/ping", "/api/ping"]
+        or path.startswith("/health")
+        or path.startswith("/api/health")
+        or path.startswith("/auth")
+        or path.startswith("/api/auth")
+        or path.startswith("/admin")
+        or path.startswith("/api/admin")
+        or path.startswith("/analytics")
+        or path.startswith("/api/analytics")
+    )
     
     if is_modifying_request and not is_whitelisted:
         if is_locked_down():

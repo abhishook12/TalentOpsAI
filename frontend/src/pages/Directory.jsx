@@ -131,20 +131,37 @@ const RecruiterRow = memo(function RecruiterRow({ recruiter, isSelected, toggleS
   );
 })
 
+const _dirCompaniesCache = new Map()
+const _dirStatesCache = new Map()
+const _dirRecruitersCache = new Map()
+
 export default function Directory() {
   const [companyQuery, setCompanyQuery] = useSessionState('dir_companyQuery', '')
-  const [debouncedCompanyQuery, setDebouncedCompanyQuery] = useState('')
-  const [companies, setCompanies] = useState([])
+  const [debouncedCompanyQuery, setDebouncedCompanyQuery] = useState(companyQuery)
+  const [companies, setCompanies] = useState(() => {
+    const cached = _dirCompaniesCache.get((companyQuery || '').trim().toLowerCase())
+    if (cached) return cached
+    try {
+      const raw = sessionStorage.getItem('dir_cached_default_companies')
+      if (raw && !companyQuery) return JSON.parse(raw)
+    } catch {}
+    return []
+  })
   const [companiesLoading, setCompaniesLoading] = useState(false)
   const [selectedCompany, setSelectedCompany] = useSessionState('dir_selectedCompany', null)
 
-  const [companyStates, setCompanyStates] = useState([])
+  const [companyStates, setCompanyStates] = useState(() => {
+    if (selectedCompany?.company_key && _dirStatesCache.has(selectedCompany.company_key)) {
+      return _dirStatesCache.get(selectedCompany.company_key)
+    }
+    return []
+  })
   const [statesLoading, setStatesLoading] = useState(false)
   const [selectedState, setSelectedState] = useSessionState('dir_selectedState', null)
   const [stateQuery, setStateQuery] = useSessionState('dir_stateQuery', '')
 
   const [recruiterQuery, setRecruiterQuery] = useSessionState('dir_recruiterQuery', '')
-  const [debouncedRecruiterQuery, setDebouncedRecruiterQuery] = useState('')
+  const [debouncedRecruiterQuery, setDebouncedRecruiterQuery] = useState(recruiterQuery)
   const [recruiters, setRecruiters] = useState([])
   const [recruitersLoading, setRecruitersLoading] = useState(false)
   const [recruitersTotal, setRecruitersTotal] = useState(0)
@@ -185,20 +202,28 @@ export default function Directory() {
   }, [])
 
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedCompanyQuery(companyQuery), 250)
+    const timer = setTimeout(() => setDebouncedCompanyQuery(companyQuery), 120)
     return () => clearTimeout(timer)
   }, [companyQuery])
 
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedRecruiterQuery(recruiterQuery), 250)
+    const timer = setTimeout(() => setDebouncedRecruiterQuery(recruiterQuery), 120)
     return () => clearTimeout(timer)
   }, [recruiterQuery])
 
   useEffect(() => {
     let alive = true
+    const qKey = (debouncedCompanyQuery || '').trim().toLowerCase()
+    const cachedList = _dirCompaniesCache.get(qKey)
+    if (cachedList) {
+      setCompanies(cachedList)
+      setCompaniesLoading(false)
+      return
+    }
 
+    const controller = new AbortController()
     ;(async () => {
-      setCompaniesLoading(true)
+      if (companies.length === 0 || qKey) setCompaniesLoading(true)
       try {
         const { data } = await api.get('/analytics/companies-search', {
           params: {
@@ -207,59 +232,90 @@ export default function Directory() {
             skip: 0,
             min_recruiters: 1,
           },
+          signal: controller.signal,
         })
         if (!alive) return
-        setCompanies(Array.isArray(data) ? data : [])
+        const rows = Array.isArray(data) ? data : []
+        _dirCompaniesCache.set(qKey, rows)
+        if (!qKey && rows.length > 0) {
+          try { sessionStorage.setItem('dir_cached_default_companies', JSON.stringify(rows)) } catch {}
+        }
+        setCompanies(rows)
       } catch (err) {
-        if (alive) setToast({ type: 'error', message: getErrorMessage(err, 'Failed to load companies') })
+        if (err?.name !== 'CanceledError' && alive) {
+          setToast({ type: 'error', message: getErrorMessage(err, 'Failed to load companies') })
+        }
       } finally {
         if (alive) setCompaniesLoading(false)
       }
     })()
 
-    return () => { alive = false }
+    return () => {
+      alive = false
+      controller.abort()
+    }
   }, [debouncedCompanyQuery, setToast])
 
   const prevCompanyRef = useRef(selectedCompany?.company_key)
 
   useEffect(() => {
+    const currentKey = selectedCompany?.company_key
     // Only reset state if the company ACTUALLY changed from a previous selection
-    if (prevCompanyRef.current !== undefined && prevCompanyRef.current !== selectedCompany?.company_key) {
+    if (prevCompanyRef.current !== undefined && prevCompanyRef.current !== currentKey) {
       setSelectedState(null)
       setStateQuery('')
       setRecruiterQuery('')
       setDebouncedRecruiterQuery('')
-      setCompanyStates([])
-      setRecruiters([])
-      setRecruitersTotal(0)
       setPage(1)
       setSelectedRecruiters(new Map())
+      const cachedSt = currentKey ? _dirStatesCache.get(currentKey) : null
+      setCompanyStates(cachedSt || [])
+      if (!cachedSt) {
+        setRecruiters([])
+        setRecruitersTotal(selectedCompany?.recruiter_count || 0)
+      }
     }
-    prevCompanyRef.current = selectedCompany?.company_key
+    prevCompanyRef.current = currentKey
 
-    if (!selectedCompany?.company_key) return
+    if (!currentKey) return
+
+    const cachedSt = _dirStatesCache.get(currentKey)
+    if (cachedSt) {
+      setCompanyStates(cachedSt)
+      setStatesLoading(false)
+      return
+    }
 
     let alive = true
+    const controller = new AbortController()
 
     ;(async () => {
       setStatesLoading(true)
-        try {
-          const { data } = await api.get('/analytics/company-states', {
-            params: { 
-              company_id: selectedCompany.company_id,
-              company_key: selectedCompany.company_key 
-            },
-          })
-          if (!alive) return
-          setCompanyStates(Array.isArray(data) ? data : [])
-        } catch (err) {
-        if (alive) setToast({ type: 'error', message: getErrorMessage(err, 'Failed to load states') })
+      try {
+        const { data } = await api.get('/analytics/company-states', {
+          params: { 
+            company_id: selectedCompany.company_id,
+            company_key: currentKey 
+          },
+          signal: controller.signal,
+        })
+        if (!alive) return
+        const rows = Array.isArray(data) ? data : []
+        _dirStatesCache.set(currentKey, rows)
+        setCompanyStates(rows)
+      } catch (err) {
+        if (err?.name !== 'CanceledError' && alive) {
+          setToast({ type: 'error', message: getErrorMessage(err, 'Failed to load states') })
+        }
       } finally {
         if (alive) setStatesLoading(false)
       }
     })()
 
-    return () => { alive = false }
+    return () => {
+      alive = false
+      controller.abort()
+    }
   }, [selectedCompany, setCompanyStates, setDebouncedRecruiterQuery, setPage, setRecruiterQuery, setRecruiters, setRecruitersTotal, setSelectedRecruiters, setSelectedState, setStateQuery, setStatesLoading, setToast])
 
   const prevStateRef = useRef(selectedState)
@@ -282,8 +338,24 @@ export default function Directory() {
     }
   }, [companyStates, selectedState, setSelectedState, statesLoading])
 
+  const [recruitersLoadedKey, setRecruitersLoadedKey] = useState(null)
+
   useEffect(() => {
-    if (!selectedCompany?.company_key) return
+    const currentKey = selectedCompany?.company_key
+    if (!currentKey) {
+      setRecruitersLoadedKey(null)
+      return
+    }
+
+    const recCacheKey = `${currentKey}|${selectedState || ''}|${page}|${(debouncedRecruiterQuery || '').trim().toLowerCase()}`
+    const cachedRecs = _dirRecruitersCache.get(recCacheKey)
+    if (cachedRecs) {
+      setRecruiters(cachedRecs.results)
+      setRecruitersTotal(cachedRecs.total)
+      setRecruitersLoading(false)
+      setRecruitersLoadedKey(currentKey)
+      return
+    }
 
     let alive = true
     const controller = new AbortController()
@@ -296,7 +368,7 @@ export default function Directory() {
             page,
             limit: PAGE_SIZE,
             company_id: selectedCompany.company_id,
-            company_key: selectedCompany.company_key,
+            company_key: currentKey,
             state: selectedState || undefined,
             search: debouncedRecruiterQuery || undefined,
             sort_by: 'created_at',
@@ -307,10 +379,15 @@ export default function Directory() {
         if (!alive) return
 
         const results = Array.isArray(data) ? data : (data?.results || [])
-        setRecruiters(results)
-
         const count = data?.total_count ?? parseInt(headers?.['x-total-count'] || results.length, 10)
-        setRecruitersTotal(Number.isFinite(count) ? count : results.length)
+        const total = Number.isFinite(count) ? count : results.length
+
+        if (_dirRecruitersCache.size > 150) _dirRecruitersCache.clear()
+        _dirRecruitersCache.set(recCacheKey, { results, total })
+
+        setRecruiters(results)
+        setRecruitersTotal(total)
+        setRecruitersLoadedKey(currentKey)
       } catch (err) {
         if (err?.name !== 'CanceledError' && alive) {
           setToast({ type: 'error', message: getErrorMessage(err, 'Failed to load recruiters') })
@@ -326,15 +403,15 @@ export default function Directory() {
     }
   }, [selectedCompany, selectedState, page, debouncedRecruiterQuery, setRecruiters, setRecruitersLoading, setRecruitersTotal, setToast])
 
-  // Clear ghost companies that were removed from the backend
+  // Clear ghost companies that were removed from the backend ONLY after their recruiters fetch has completed
   useEffect(() => {
     if (recruitersLoading) return
-    if (selectedCompany && !selectedState && !debouncedRecruiterQuery) {
-      if (recruitersTotal === 0) {
+    if (selectedCompany && recruitersLoadedKey === selectedCompany.company_key && !selectedState && !debouncedRecruiterQuery) {
+      if (recruitersTotal === 0 && recruiters.length === 0) {
         setSelectedCompany(null)
       }
     }
-  }, [recruitersTotal, selectedCompany, selectedState, debouncedRecruiterQuery, recruitersLoading, setSelectedCompany])
+  }, [recruitersTotal, recruiters.length, recruitersLoadedKey, selectedCompany, selectedState, debouncedRecruiterQuery, recruitersLoading, setSelectedCompany])
 
   const totalPages = Math.max(1, Math.ceil((recruitersTotal || 0) / PAGE_SIZE))
   const selectedCount = selectedRecruiters.size
@@ -433,8 +510,9 @@ export default function Directory() {
       let allRecruiters = []
       let currentPage = 1
       let hasMore = true
+      const maxPages = 50 // Safety cap
 
-      while (hasMore) {
+      while (hasMore && currentPage <= maxPages) {
         const { data } = await api.get('/recruiters/', {
           params: {
             company_id: selectedCompany.company_id,
@@ -444,9 +522,10 @@ export default function Directory() {
           }
         })
         
-        if (data && data.results && data.results.length > 0) {
-          allRecruiters = allRecruiters.concat(data.results)
-          if (data.results.length < 100) {
+        const batch = Array.isArray(data) ? data : (data?.results || [])
+        if (batch.length > 0) {
+          allRecruiters = allRecruiters.concat(batch)
+          if (batch.length < 100) {
             hasMore = false
           } else {
             currentPage++

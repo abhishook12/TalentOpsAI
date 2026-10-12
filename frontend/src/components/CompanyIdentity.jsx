@@ -46,16 +46,10 @@ export const CompanyIdentity = memo(function CompanyIdentity({
   if (cleanDomain && !failedDomains.has(cleanDomain)) {
     const urls = []
     if (logo_url) urls.push(logo_url)
-    // Tier 1: Hunter.io — free, no auth, high-res PNG logos
+    // Tier 1: Hunter.io — high-res PNG logos
     urls.push(`https://logos.hunter.io/${cleanDomain}`)
-    // Tier 2: Tomba.io — free, no auth, high-res with sizing
-    urls.push(`https://logo.tomba.io/${cleanDomain}?size=${Math.max(logoSize * 4, 128)}`)
-    // Tier 3: CompanyEnrich — free, no auth, transparent PNG
-    urls.push(`https://api.companyenrich.com/logo/${cleanDomain}`)
-    // Tier 4: Google Favicon (reliable but lower quality)
-    urls.push(`https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://${cleanDomain}&size=${Math.max(logoSize * 4, 128)}`)
-    // Tier 5: DuckDuckGo (last resort)
-    urls.push(`https://icons.duckduckgo.com/ip3/${cleanDomain}.ico`)
+    // Tier 2: Google Favicon CDN (ultra-fast global edge cache, single fallback)
+    urls.push(`https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://${cleanDomain}&size=${Math.max(logoSize * 2, 64)}`)
     
     const uniqueUrls = [...new Set(urls)]
     if (errorLevel < uniqueUrls.length) {
@@ -107,6 +101,7 @@ export const CompanyIdentity = memo(function CompanyIdentity({
           src={currentLogo} 
           alt={`${displayName} logo`}
           loading="lazy"
+          decoding="async"
           style={{ 
             width: size, 
             height: size, 
@@ -120,7 +115,7 @@ export const CompanyIdentity = memo(function CompanyIdentity({
             imageRendering: 'auto'
           }}
           onError={() => {
-            if (cleanDomain && errorLevel >= 4) failedDomains.add(cleanDomain)
+            if (cleanDomain && errorLevel >= 1) failedDomains.add(cleanDomain)
             setErrorLevel(prev => prev + 1)
           }}
         />

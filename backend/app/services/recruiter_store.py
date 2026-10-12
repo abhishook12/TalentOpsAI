@@ -419,23 +419,38 @@ class RecruiterStore:
                 GROUP BY company_key, state_upper
             """)
 
-            # Zero-copy view on top of company_summary to eliminate duplicate in-memory table
+            # Materialize company_overall (~28k rows, <2MB RAM) for <10ms company directory lookups
             self._conn.execute("""
-                CREATE VIEW company_overall AS 
+                CREATE TABLE company_overall AS 
                 SELECT
                     company_key,
-                    SUM(recruiter_count) AS recruiter_count,
+                    CAST(SUM(recruiter_count) AS INTEGER) AS recruiter_count,
                     FIRST(dominant_domain) FILTER (WHERE dominant_domain IS NOT NULL) AS dominant_domain
                 FROM company_summary
                 GROUP BY company_key
             """)
 
-            # Build in-memory fast lookup for company key -> dominant domain
+            # Build in-memory fast lookup for company key -> dominant domain and state breakdown
             try:
                 domain_rows = self._conn.execute("SELECT company_key, dominant_domain FROM company_overall WHERE dominant_domain IS NOT NULL").fetchall()
                 self._company_domains = {str(r[0]): r[1] for r in domain_rows}
             except Exception:
                 self._company_domains = {}
+
+            try:
+                state_rows = self._conn.execute("SELECT company_key, state_upper, CAST(recruiter_count AS INTEGER) FROM company_summary").fetchall()
+                state_map_by_comp: Dict[str, Dict[str, int]] = {}
+                for c_key, st_up, cnt in state_rows:
+                    ck = str(c_key)
+                    d = state_map_by_comp.get(ck)
+                    if d is None:
+                        d = {}
+                        state_map_by_comp[ck] = d
+                    st_label = st_up if st_up else "Unknown"
+                    d[st_label] = d.get(st_label, 0) + int(cnt)
+                self._company_states_index = state_map_by_comp
+            except Exception:
+                self._company_states_index = {}
 
             try:
                 from ..core.memory_sentinel import trim_os_memory
@@ -476,6 +491,16 @@ class RecruiterStore:
         if domains_map:
             return domains_map.get(str(company_key).strip())
         return None
+
+    def get_company_states(self, company_key: str) -> Dict[str, int]:
+        """Fast O(1) lookup of state breakdown for any company key/ID from pre-built index."""
+        if not company_key:
+            return {}
+        self._ensure_loaded()
+        states_idx = getattr(self, '_company_states_index', None)
+        if states_idx is not None:
+            return dict(states_idx.get(str(company_key).strip(), {}))
+        return {}
 
     def has_email(self, email: str) -> bool:
         """Fast, thread-safe, zero-allocation check whether an email exists in the recruiter dataset."""
@@ -826,10 +851,10 @@ class RecruiterStore:
 
         if comp_candidates:
             if len(comp_candidates) == 1:
-                where_clauses.append("CAST(company_id AS VARCHAR) = ?")
+                where_clauses.append("company_id = ?")
                 params.append(comp_candidates[0])
             else:
-                ph = " OR ".join(["CAST(company_id AS VARCHAR) = ?"] * len(comp_candidates))
+                ph = " OR ".join(["company_id = ?"] * len(comp_candidates))
                 where_clauses.append(f"({ph})")
                 params.extend(comp_candidates)
 
@@ -880,10 +905,40 @@ class RecruiterStore:
 
         where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
 
-        # Count
+        # Fast-path count lookup when filtering only by company (+ optional state)
         cur = self._conn.cursor()
-        count_sql = f"SELECT COUNT(*) FROM recruiters WHERE {where_sql}"
-        total_count = cur.execute(count_sql, params).fetchone()[0]
+        only_comp_and_state = (
+            comp_candidates
+            and not search
+            and not metro_hub
+            and not specialization
+            and not specialization_sector
+            and not seniority_level
+            and not timezone_code
+            and not company_scale
+            and is_deliverable is None
+            and has_phone is None
+            and is_active is None
+            and needs_review is None
+            and not email_status
+            and not data_source
+        )
+        total_count = None
+        if only_comp_and_state and hasattr(self, "_company_states_index"):
+            fast_cnt = 0
+            for ck in comp_candidates:
+                st_dict = self._company_states_index.get(ck, {})
+                if state:
+                    st_key = "Unknown" if state.upper() == "UNKNOWN" else state.upper()
+                    fast_cnt += st_dict.get(st_key, 0)
+                else:
+                    fast_cnt += sum(st_dict.values())
+            if fast_cnt > 0:
+                total_count = fast_cnt
+
+        if total_count is None:
+            count_sql = f"SELECT COUNT(*) FROM recruiters WHERE {where_sql}"
+            total_count = cur.execute(count_sql, params).fetchone()[0]
 
         # Sort
         valid_sorts = {

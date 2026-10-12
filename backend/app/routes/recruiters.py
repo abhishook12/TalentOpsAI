@@ -887,25 +887,36 @@ def get_recruiters(
         pg_query = None
         
         # Build strict scope filters so extension recruiters NEVER leak into unrelated companies or states
+        from .analytics import _get_pg_company_directory_index
+        pg_idx = _get_pg_company_directory_index(db)
         pg_filters = []
+        skip_pg_merge = False
         eff_company = company_key or company
         if company_id is not None:
-            pg_filters.append(Recruiter.company_id == company_id)
+            if company_id in pg_idx["counts_all"]:
+                pg_filters.append(Recruiter.company_id == company_id)
+            else:
+                skip_pg_merge = True
         elif eff_company:
             if str(eff_company).isdigit():
-                pg_filters.append(Recruiter.company_id == int(eff_company))
+                cid_int = int(eff_company)
+                if cid_int in pg_idx["counts_all"]:
+                    pg_filters.append(Recruiter.company_id == cid_int)
+                else:
+                    skip_pg_merge = True
             else:
-                c_key_cache = f"cids_by_name_{eff_company.lower().strip()}"
-                matched_cids = analytics_cache.get(c_key_cache)
-                if matched_cids is None:
-                    matched_cids = [c[0] for c in db.query(Company.company_id).filter(Company.company_name.ilike(f"%{eff_company}%")).limit(50).all()]
-                    analytics_cache.set(c_key_cache, matched_cids, ttl=600)
+                eff_low = eff_company.lower().strip()
+                exact_cid = pg_idx["by_name_lower"].get(eff_low)
+                if exact_cid is not None:
+                    matched_cids = [exact_cid]
+                else:
+                    matched_cids = [cid for cname, cid in pg_idx["by_name_lower"].items() if eff_low in cname][:50]
                 if matched_cids:
                     pg_filters.append(Recruiter.company_id.in_(matched_cids))
                 else:
-                    pg_filters.append(Recruiter.recruiter_id == -1)
+                    skip_pg_merge = True
 
-        if state and state.upper() != "ALL":
+        if not skip_pg_merge and state and state.upper() != "ALL":
             st_up = state.strip().upper()
             pg_filters.append(or_(
                 Recruiter.state == st_up,
@@ -914,7 +925,7 @@ def get_recruiters(
             ))
 
         # Check if this company exists in PostgreSQL and DuckDB has 0 records for it
-        if (company_id is not None or eff_company) and total_count == 0:
+        if not skip_pg_merge and (company_id is not None or eff_company) and total_count == 0:
             pg_count = db.query(sqlfunc.count(Recruiter.recruiter_id)).filter(and_(Recruiter.is_active == True, *pg_filters)).scalar() or 0
             if pg_count > 0:
                 total_count = pg_count
@@ -955,7 +966,7 @@ def get_recruiters(
                         "data_source": r.data_source or "postgresql_roster",
                     }
                     results.append(rec_dict)
-        elif search:
+        elif not skip_pg_merge and search:
             q_like = f"%{str(search).strip().lower()}%"
             search_filter = or_(
                 Recruiter.recruiter_name.ilike(q_like),
@@ -1001,7 +1012,7 @@ def get_recruiters(
                     if not any(str(x.get("recruiter_id")) == str(r.recruiter_id) for x in results):
                         results.insert(0, rec_dict)
                         total_count += 1
-        elif page == 1:
+        elif not skip_pg_merge and page == 1:
             source_filter = or_(
                 Recruiter.data_source.in_(['extension', 'extension_staged', 'visual_capture', 'parquet_canonical', 'manual', 'scout', 'staging_batch_intelligence', 'postgresql_roster']),
                 Recruiter.data_source == None
@@ -1056,36 +1067,18 @@ def get_recruiters(
     # Active Parquet imports can store company names in company_id. Only pass
     # actual integer IDs to PostgreSQL; string keys remain valid and are used
     # directly as the recruiter company name below.
-    comp_ids = []
+    companies_dict = {}
     for value in {r.get('company_id') for r in results if r.get('company_id') is not None}:
         try:
             numeric_value = float(value)
             if numeric_value.is_integer():
                 val_int = int(numeric_value)
                 if -2147483648 <= val_int <= 2147483647:
-                    comp_ids.append(val_int)
+                    c_cached = pg_idx["by_id"].get(val_int) or analytics_cache.get(f"comp_obj_{val_int}")
+                    if c_cached:
+                        companies_dict[val_int] = c_cached
         except (TypeError, ValueError):
             continue
-    companies_dict = {}
-    if comp_ids:
-        try:
-            # Only query IDs not already cached
-            uncached_ids = [cid for cid in comp_ids if not analytics_cache.get(f"comp_obj_{cid}")]
-            if uncached_ids:
-                companies = db.query(Company).filter(Company.company_id.in_(uncached_ids)).all()
-                for c in companies:
-                    analytics_cache.set(f"comp_obj_{c.company_id}", c, ttl=600)
-            
-            for cid in comp_ids:
-                cached_comp = analytics_cache.get(f"comp_obj_{cid}")
-                if cached_comp:
-                    companies_dict[cid] = cached_comp
-        except Exception as e:
-            logger.warning(f"Failed to fetch company details for recruiters: {e}")
-            try:
-                db.rollback()
-            except Exception:
-                pass
     
     def _basic_company(company_row):
         return {

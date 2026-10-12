@@ -751,14 +751,24 @@ async def startup_event():
 
         asyncio.create_task(asyncio.to_thread(_seed_scout_release))
 
-        # Warm up recruiter store and OLAP sidecar in background thread (non-blocking)
+        # Warm up recruiter store, Directory company index, and OLAP sidecar in background thread (non-blocking)
         def _warm_olap():
             try:
                 from .services.recruiter_store import recruiter_store
                 recruiter_store._ensure_loaded()
+                try:
+                    from .database import SessionLocal
+                    from .routes.analytics import _get_pg_company_directory_index, companies_search
+                    from fastapi import Response
+                    with SessionLocal() as warm_db:
+                        _get_pg_company_directory_index(warm_db)
+                        companies_search(Response(), q=None, state=None, min_recruiters=1, limit=199, skip=0, db=warm_db, current_user=None)
+                        companies_search(Response(), q=None, state=None, min_recruiters=0, limit=100, skip=0, db=warm_db, current_user=None)
+                except Exception as dir_warm_err:
+                    logger.debug("Directory warm-up note: %s", dir_warm_err)
                 from .olap_sidecar import olap_sidecar
                 olap_sidecar.refresh(0, force=True)
-                logger.info("Background OLAP cache pre-warmed successfully.")
+                logger.info("Background OLAP & Directory cache pre-warmed successfully.")
             except Exception as ex:
                 logger.warning("Background OLAP warm-up note: %s", ex)
 

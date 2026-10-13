@@ -433,11 +433,11 @@ def _get_pg_company_directory_index(db: Session):
         st_rows = (
             db.query(
                 Recruiter.company_id,
-                sqlfunc.coalesce(Recruiter.state, ""),
+                Recruiter.state,
                 sqlfunc.count(Recruiter.recruiter_id),
             )
             .filter(Recruiter.company_id != None, Recruiter.is_active == True)
-            .group_by(Recruiter.company_id, sqlfunc.coalesce(Recruiter.state, ""))
+            .group_by(Recruiter.company_id, Recruiter.state)
             .all()
         )
         for cid, st_raw, cnt in st_rows:

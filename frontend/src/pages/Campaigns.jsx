@@ -245,6 +245,14 @@ export default function Campaigns() {
     return () => clearTimeout(t);
   }, [searchQuery]);
 
+  const getInitialCampaigns = useCallback(() => {
+    try {
+      const raw = sessionStorage.getItem('camp_cached_list');
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return undefined;
+  }, []);
+
   const { data: queryData, isLoading: loading, error: campaignsError, refetch } = useQuery({
     queryKey: ['campaigns', debouncedSearchQuery, statusFilter, showTest, page, limit],
     queryFn: async () => {
@@ -253,11 +261,15 @@ export default function Campaigns() {
       if (statusFilter && statusFilter !== 'all') params.append('status', statusFilter);
       if (!showTest) params.append('is_test', 'false');
       const res = await api.get(`/campaigns?${params.toString()}`);
+      if (res?.data && !debouncedSearchQuery && statusFilter === 'all' && page === 1) {
+        try { sessionStorage.setItem('camp_cached_list', JSON.stringify(res.data)); } catch {}
+      }
       return res.data;
     },
+    initialData: (!debouncedSearchQuery && statusFilter === 'all' && page === 1) ? getInitialCampaigns : undefined,
     enabled: view === 'list',
-    refetchInterval: view === 'list' ? 10000 : false,
-    staleTime: 5000,
+    refetchInterval: view === 'list' ? 30000 : false,
+    staleTime: 30000,
     refetchOnWindowFocus: true,
     retry: 1,
   });

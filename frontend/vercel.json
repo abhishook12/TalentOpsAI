@@ -19,6 +19,12 @@
       ]
     },
     {
+      "source": "/api/analytics/company-states",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=60, s-maxage=300, stale-while-revalidate=600" }
+      ]
+    },
+    {
       "source": "/((?!api/|assets/).*)",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }

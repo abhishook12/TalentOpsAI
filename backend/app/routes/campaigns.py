@@ -547,6 +547,7 @@ async def api_start_campaign(
         
     locked_campaign.status = "active"
     db.commit()
+    invalidate_campaigns_cache()
         
     background_tasks.add_task(start_campaign, campaign_id)
     return {"status": "started", "campaign_id": campaign_id}
@@ -558,6 +559,7 @@ def api_pause_campaign(campaign_id: int, db: Session = Depends(get_db), current_
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
     pause_campaign(campaign_id)
+    invalidate_campaigns_cache()
     return {"status": "paused", "campaign_id": campaign_id}
 
 @router.post("/{campaign_id}/resume")
@@ -567,6 +569,7 @@ async def api_resume_campaign(campaign_id: int, db: Session = Depends(get_db), c
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
     await resume_campaign(campaign_id)
+    invalidate_campaigns_cache()
     return {"status": "resumed", "campaign_id": campaign_id}
 
 @router.post("/{campaign_id}/cancel")
@@ -576,6 +579,7 @@ def api_cancel_campaign(campaign_id: int, db: Session = Depends(get_db), current
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
     cancel_campaign(campaign_id)
+    invalidate_campaigns_cache()
     return {"status": "cancelled", "campaign_id": campaign_id}
 
 @router.post("/{campaign_id}/toggle-auto-enroll")
@@ -1446,7 +1450,7 @@ class CampaignRecruiterStatusUpdate(BaseModel):
 
 
 _CAMPAIGNS_CACHE = {}
-_CAMPAIGNS_CACHE_TTL = 10.0
+_CAMPAIGNS_CACHE_TTL = 30.0
 
 def invalidate_campaigns_cache():
     global _CAMPAIGNS_CACHE
@@ -1582,6 +1586,7 @@ def delete_campaign(campaign_id: int, db: Session = Depends(get_db), current_use
     campaign = get_campaign_or_404(db, campaign_id, current_user)
     db.delete(campaign)
     db.commit()
+    invalidate_campaigns_cache()
     return {"status": "success", "message": "Campaign deleted"}
 
 
@@ -1635,6 +1640,7 @@ def duplicate_campaign(campaign_id: int, db: Session = Depends(get_db), current_
         db.add(new_s)
         
     db.commit()  # Fix #5: Single atomic commit for the entire duplication
+    invalidate_campaigns_cache()
     return {"status": "success", "campaign_id": new_campaign.campaign_id}
 
 @router.put("/{campaign_id}/archive")
@@ -1642,6 +1648,7 @@ def archive_campaign(campaign_id: int, db: Session = Depends(get_db), current_us
     campaign = get_campaign_or_404(db, campaign_id, current_user)
     campaign.is_archived = True
     db.commit()
+    invalidate_campaigns_cache()
     return {"status": "success", "message": "Campaign archived"}
 
 
@@ -1650,6 +1657,7 @@ def toggle_test_campaign(campaign_id: int, db: Session = Depends(get_db), curren
     campaign = get_campaign_or_404(db, campaign_id, current_user)
     campaign.is_test = not campaign.is_test
     db.commit()
+    invalidate_campaigns_cache()
     return {"status": "success", "is_test": campaign.is_test}
 
 @router.put("/{campaign_id}")
@@ -1662,6 +1670,7 @@ def update_campaign(campaign_id: int, payload: CampaignUpdate, db: Session = Dep
         else:
             setattr(campaign, field, value)
     db.commit()
+    invalidate_campaigns_cache()
     return serialize_campaign(campaign)
 
 

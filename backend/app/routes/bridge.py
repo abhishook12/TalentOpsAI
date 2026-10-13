@@ -375,21 +375,50 @@ def bridge_oauth_callback(request: Request, code: str = None, state: str = None,
             """, status_code=400)
     else:
         user = db.query(User).filter(User.id == user_id).first()
-    # 3. Upsert ConnectedEmailAccount
+    # 3. Upsert ConnectedEmailAccount — migrate any existing outlook_ proxy record too
     user = db.query(User).filter(User.id == user_id).first()
     display_name = me_data.get("displayName") if 'me_data' in locals() else None
     if not display_name and user:
         display_name = f"{user.first_name or ''} {user.last_name or ''}".strip() or None
 
+    # Find existing record — check by real email first, then by any microsoft proxy for this user
     outlook_account = db.query(ConnectedEmailAccount).filter(
         ConnectedEmailAccount.user_id == user_id,
         ConnectedEmailAccount.provider == "microsoft",
         ConnectedEmailAccount.email_address == connected_email
     ).first()
+
     if not outlook_account:
-        outlook_account = ConnectedEmailAccount(user_id=user_id, provider="microsoft", email_address=connected_email)
-        db.add(outlook_account)
-    
+        # Check if there's a proxy/shadow alias record to MIGRATE instead of creating a new one
+        proxy_account = db.query(ConnectedEmailAccount).filter(
+            ConnectedEmailAccount.user_id == user_id,
+            ConnectedEmailAccount.provider == "microsoft",
+            ConnectedEmailAccount.email_address.like("outlook_%")
+        ).first()
+        if proxy_account:
+            # Migrate the proxy record in-place: update email to the real address
+            logger.info(f"[OAUTH] Migrating shadow alias {proxy_account.email_address} -> {connected_email}")
+            proxy_account.email_address = connected_email
+            outlook_account = proxy_account
+        else:
+            # Brand new account
+            outlook_account = ConnectedEmailAccount(user_id=user_id, provider="microsoft", email_address=connected_email)
+            db.add(outlook_account)
+
+    # Purge any REMAINING orphaned outlook_ proxy records (e.g. duplicates from earlier bugs)
+    orphans = db.query(ConnectedEmailAccount).filter(
+        ConnectedEmailAccount.user_id == user_id,
+        ConnectedEmailAccount.provider == "microsoft",
+        ConnectedEmailAccount.email_address.like("outlook_%"),
+        ConnectedEmailAccount.email_address != connected_email
+    ).all()
+    for orphan in orphans:
+        logger.info(f"[OAUTH] Deleting orphaned proxy account {orphan.email_address}")
+        # If user's default was pointing to this orphan, clear it so we can reassign below
+        if user and user.default_sender_id == orphan.account_id:
+            user.default_sender_id = None
+        db.delete(orphan)
+
     outlook_account.email_address = connected_email
     outlook_account.display_name = display_name or outlook_account.display_name
     outlook_account.access_token = access_token
@@ -398,7 +427,8 @@ def bridge_oauth_callback(request: Request, code: str = None, state: str = None,
     outlook_account.last_synced_at = datetime.now(timezone.utc)
     db.flush()
 
-    if user and not user.default_sender_id:
+    # Always promote the real-email account as the user's default sender
+    if user:
         user.default_sender_id = outlook_account.account_id
     
     # 4. Upsert UserBridgeStatus (mark online immediately since server IS the bridge now)
@@ -422,6 +452,85 @@ def bridge_oauth_callback(request: Request, code: str = None, state: str = None,
         
     # Redirect back to frontend profile
     return RedirectResponse(url=redirect_uri)
+
+
+@router.post("/heal-proxy-accounts")
+def heal_proxy_accounts(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    """
+    Auto-heal outlook_ proxy email addresses stored in ConnectedEmailAccount.
+    Re-fetches the real email from Microsoft Graph /me using the stored access token.
+    Call this once after reconnecting — also runs automatically on each OAuth callback.
+    """
+    import requests as req_lib
+    proxy_accounts = db.query(ConnectedEmailAccount).filter(
+        ConnectedEmailAccount.user_id == current_user.id,
+        ConnectedEmailAccount.provider == "microsoft",
+        ConnectedEmailAccount.email_address.like("outlook_%")
+    ).all()
+
+    if not proxy_accounts:
+        return {"status": "ok", "message": "No proxy accounts found — already clean", "healed": 0}
+
+    healed = []
+    for acct in proxy_accounts:
+        if not acct.access_token:
+            continue
+        try:
+            headers = {"Authorization": f"Bearer {acct.access_token}"}
+            me_resp = req_lib.get("https://graph.microsoft.com/v1.0/me", headers=headers, timeout=8)
+            if me_resp.status_code == 401:
+                # Token expired — skip, user will re-auth
+                continue
+            me_resp.raise_for_status()
+            me_data = me_resp.json()
+
+            candidate = me_data.get("mail") or ""
+            upn = me_data.get("userPrincipalName") or ""
+            other_mails = me_data.get("otherMails") or []
+
+            real_email = None
+            if candidate and not candidate.lower().startswith("outlook_"):
+                real_email = candidate
+            elif other_mails and not other_mails[0].lower().startswith("outlook_"):
+                real_email = other_mails[0]
+            elif upn and not upn.lower().startswith("outlook_"):
+                real_email = upn
+            else:
+                # Fall back to TalentOps account email
+                real_email = current_user.email
+
+            if real_email and real_email != acct.email_address:
+                old_addr = acct.email_address
+                acct.email_address = real_email
+                display_name = me_data.get("displayName")
+                if display_name:
+                    acct.display_name = display_name
+                # Update default_sender_id if pointing to this record
+                if current_user.default_sender_id == acct.account_id:
+                    pass  # already pointing to right account_id, just email updated
+                healed.append({"old": old_addr, "new": real_email})
+
+        except Exception as e:
+            logger.warning(f"[HEAL] Failed to heal account {acct.account_id}: {e}")
+            continue
+
+    # Promote real-email account as default if user's default is still a proxy
+    user_default = db.query(ConnectedEmailAccount).filter(
+        ConnectedEmailAccount.account_id == current_user.default_sender_id
+    ).first() if current_user.default_sender_id else None
+    if not user_default or user_default.email_address.lower().startswith("outlook_"):
+        clean_acc = db.query(ConnectedEmailAccount).filter(
+            ConnectedEmailAccount.user_id == current_user.id,
+            ConnectedEmailAccount.status == "connected",
+            ~ConnectedEmailAccount.email_address.like("outlook_%")
+        ).first()
+        if clean_acc:
+            current_user.default_sender_id = clean_acc.account_id
+
+    db.commit()
+    return {"status": "ok", "healed": len(healed), "details": healed}
+
+
 
 
 # ---------------------------------------------------------

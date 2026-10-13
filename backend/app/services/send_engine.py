@@ -260,9 +260,20 @@ async def _send_email_via_provider(sender_account_id: int, user_id: int, payload
                 # Resolve human display name (never use the raw email fragment)
                 sender_name = account.display_name or (user_name if user_name else None) or sender_email.split('@')[0].replace('.', ' ').title()
                 final_sender_email = payload.get("from_email") or sender_email
+
+                # HARD GUARD: Never let an outlook_ proxy address reach the Graph API From field.
+                # Fallback chain: payload from_email -> account email -> user's TalentOps email
                 if final_sender_email.lower().startswith("outlook_"):
                     final_sender_email = sender_email
-                
+                if final_sender_email.lower().startswith("outlook_"):
+                    # Last resort: use the user's registered TalentOps account email
+                    if user and user.email and not user.email.lower().startswith("outlook_"):
+                        logger.warning(f"[SEND] Overriding outlook_ proxy {final_sender_email} with user email {user.email}")
+                        final_sender_email = user.email
+                        if not sender_name or sender_name.startswith("outlook"):
+                            sender_name = f"{user.first_name or ''} {user.last_name or ''}".strip() or user.email.split('@')[0].title()
+
+
                 if account.provider == "microsoft":
                     if not account.access_token:
                         return False, "Missing Microsoft access token", "auth_error"

@@ -87,7 +87,7 @@ export default function ConnectionWizard({ onClose, onSuccess }) {
     }
   };
 
-  const ProviderCard = ({ name, icon, onClick, bgColor, textColor }) => (
+  const ProviderCard = ({ name, description, icon, onClick, bgColor, textColor }) => (
     <button 
       type="button"
       onClick={onClick}
@@ -121,7 +121,7 @@ export default function ConnectionWizard({ onClose, onSuccess }) {
       </div>
       <div style={{ flex: 1 }}>
         <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)' }}>{name}</div>
-        <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Connect {name}</div>
+        <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{description || `Connect ${name}`}</div>
       </div>
       <ArrowRight size={18} style={{ color: 'var(--text-secondary)' }} />
     </button>
@@ -140,32 +140,52 @@ export default function ConnectionWizard({ onClose, onSuccess }) {
         {step === 'provider' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <ProviderCard 
-              name="Microsoft Outlook" 
-              icon={<Mail size={20} />} 
-              bgColor="rgba(0, 120, 212, 0.1)" 
-              textColor="#ffffff" 
-              onClick={() => handleOAuthConnect('microsoft')} 
-            />
-            <ProviderCard 
-              name="Gmail" 
+              name="Gmail (App Password - Recommended)" 
+              description="Genuine Gmail delivery, permanent connection, zero proxy"
               icon={<Mail size={20} />} 
               bgColor="rgba(234, 67, 53, 0.1)" 
               textColor="#ea4335" 
-              onClick={() => handleOAuthConnect('google')} 
-            />
-            <ProviderCard 
-              name="Yahoo Mail" 
-              icon={<Mail size={20} />} 
-              bgColor="rgba(96, 1, 210, 0.1)" 
-              textColor="#e4e4e7" 
               onClick={() => {
-                setProvider('yahoo');
-                setSmtpData(prev => ({ ...prev, smtp_host: 'smtp.mail.yahoo.com' }));
+                setProvider('google');
+                setSmtpData(prev => ({ 
+                  ...prev, 
+                  smtp_host: 'smtp.gmail.com', 
+                  smtp_port: '587' 
+                }));
                 setStep('smtp_form');
               }} 
             />
             <ProviderCard 
-              name="Other SMTP" 
+              name="Gmail (1-Click OAuth)" 
+              description="Connect via Google login popup"
+              icon={<Mail size={20} />} 
+              bgColor="rgba(234, 67, 53, 0.06)" 
+              textColor="#ea4335" 
+              onClick={() => handleOAuthConnect('google')} 
+            />
+            <ProviderCard 
+              name="Microsoft Outlook / Office 365" 
+              description="For @outlook.com or Microsoft 365 work accounts"
+              icon={<Mail size={20} />} 
+              bgColor="rgba(0, 120, 212, 0.1)" 
+              textColor="#0078d4" 
+              onClick={() => handleOAuthConnect('microsoft')} 
+            />
+            <ProviderCard 
+              name="Yahoo Mail" 
+              description="Connect via Yahoo App Password"
+              icon={<Mail size={20} />} 
+              bgColor="rgba(96, 1, 210, 0.1)" 
+              textColor="#6001d2" 
+              onClick={() => {
+                setProvider('yahoo');
+                setSmtpData(prev => ({ ...prev, smtp_host: 'smtp.mail.yahoo.com', smtp_port: '587' }));
+                setStep('smtp_form');
+              }} 
+            />
+            <ProviderCard 
+              name="Custom SMTP" 
+              description="Connect any corporate SMTP mail server"
               icon={<Mail size={20} />} 
               bgColor="var(--bg-hover)" 
               textColor="var(--text-primary)" 

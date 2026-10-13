@@ -74,6 +74,14 @@ def connect_smtp(req: SMTPConnectionRequest, db: Session = Depends(get_db), curr
         last_verified_at=datetime.now(timezone.utc)
     )
     db.add(account)
+    db.flush()
+    # Promote to default if no default sender or if current default is missing/shadow alias
+    if not current_user.default_sender_id:
+        current_user.default_sender_id = account.account_id
+    else:
+        curr_def = db.query(ConnectedEmailAccount).filter(ConnectedEmailAccount.account_id == current_user.default_sender_id).first()
+        if not curr_def or curr_def.email_address.lower().startswith("outlook_"):
+            current_user.default_sender_id = account.account_id
     db.commit()
     db.refresh(account)
     return {"status": "success", "account_id": account.account_id}
@@ -165,13 +173,38 @@ def verify_account(account_id: int, db: Session = Depends(get_db), current_user:
                 account.health_status = "healthy"
                 account.status = "connected"
             else:
-                account.health_status = "error"
-                account.status = "expired"
+                from ..services.send_engine import _refresh_msal_token
+                new_token = _refresh_msal_token(account)
+                if new_token:
+                    account.health_status = "healthy"
+                    account.status = "connected"
+                else:
+                    account.health_status = "error"
+                    account.status = "expired"
+        except Exception:
+            account.health_status = "error"
+            account.status = "disconnected"
+    elif account.provider == "google":
+        import requests
+        headers = {"Authorization": f"Bearer {account.access_token}"}
+        try:
+            r = requests.get("https://www.googleapis.com/oauth2/v3/userinfo", headers=headers, timeout=5)
+            if r.ok:
+                account.health_status = "healthy"
+                account.status = "connected"
+            else:
+                from ..services.send_engine import _refresh_google_token
+                new_token = _refresh_google_token(account)
+                if new_token:
+                    account.health_status = "healthy"
+                    account.status = "connected"
+                else:
+                    account.health_status = "error"
+                    account.status = "expired"
         except Exception:
             account.health_status = "error"
             account.status = "disconnected"
     else:
-        # Dummy verification for other oauth providers
         account.health_status = "healthy"
         account.status = "connected"
         
@@ -179,3 +212,28 @@ def verify_account(account_id: int, db: Session = Depends(get_db), current_user:
     db.commit()
     
     return {"status": "success", "health_status": account.health_status}
+
+class TestSendRequest(BaseModel):
+    to_email: str
+    subject: Optional[str] = "TalentOps Test Verification Email"
+    body: Optional[str] = "<p>This is a live test email sent from TalentOps AI to verify genuine sender delivery.</p>"
+
+@router.post("/{account_id}/test-send")
+async def send_test_email(account_id: int, req: TestSendRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    """Send an immediate real test email through the specified connected account to verify clean sender headers."""
+    from ..services.send_engine import _send_email_via_provider
+    account = db.query(ConnectedEmailAccount).filter(ConnectedEmailAccount.account_id == account_id, ConnectedEmailAccount.user_id == current_user.id).first()
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+        
+    payload = {
+        "campaign_id": 0,
+        "from_email": account.email_address,
+        "to_email": req.to_email,
+        "subject": req.subject or "TalentOps Test Verification Email",
+        "html_body": req.body or "<p>This is a live test email sent from TalentOps AI to verify genuine sender delivery.</p>"
+    }
+    success, error, err_type = await _send_email_via_provider(account_id, current_user.id, payload)
+    if not success:
+        raise HTTPException(status_code=400, detail=f"Send failed: {error}")
+    return {"status": "success", "message": f"Test email sent successfully from {account.email_address} to {req.to_email}"}

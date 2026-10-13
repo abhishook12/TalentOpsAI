@@ -274,6 +274,19 @@ async def _send_email_via_provider(sender_account_id: int, user_id: int, payload
                             sender_name = f"{user.first_name or ''} {user.last_name or ''}".strip() or user.email.split('@')[0].title()
 
 
+                # If sender is Gmail and the currently selected account is Microsoft,
+                # attempt to reroute to a connected Google or SMTP account so Gmail DKIM is clean
+                if "@gmail.com" in final_sender_email.lower() and account.provider == "microsoft":
+                    gmail_acc = db.query(ConnectedEmailAccount).filter(
+                        ConnectedEmailAccount.user_id == user_id,
+                        ConnectedEmailAccount.status == "connected",
+                        ConnectedEmailAccount.provider.in_(["google", "smtp"])
+                    ).first()
+                    if gmail_acc:
+                        logger.info(f"Routing Gmail sender {final_sender_email} to {gmail_acc.provider} ({gmail_acc.email_address}) to avoid Microsoft on-behalf-of proxy")
+                        account = gmail_acc
+                        sender_email = account.email_address
+
                 if account.provider == "microsoft":
                     if not account.access_token:
                         return False, "Missing Microsoft access token", "auth_error"
@@ -282,35 +295,44 @@ async def _send_email_via_provider(sender_account_id: int, user_id: int, payload
                         "Authorization": f"Bearer {access_token}",
                         "Content-Type": "application/json"
                     }
-                    graph_payload = {
-                        "message": {
-                            "subject": payload.get("subject", ""),
-                            "body": {
-                                "contentType": "HTML",
-                                "content": payload.get("html_body", "")
-                            },
-                            "toRecipients": [
-                                {
-                                    "emailAddress": {
-                                        "address": payload.get("to_email")
-                                    }
+                    msg_obj = {
+                        "subject": payload.get("subject", ""),
+                        "body": {
+                            "contentType": "HTML",
+                            "content": payload.get("html_body", "")
+                        },
+                        "toRecipients": [
+                            {
+                                "emailAddress": {
+                                    "address": payload.get("to_email")
                                 }
-                            ],
-                            "from": {
+                            }
+                        ],
+                        "replyTo": [
+                            {
                                 "emailAddress": {
                                     "name": sender_name,
                                     "address": final_sender_email
                                 }
-                            },
-                            "replyTo": [
-                                {
-                                    "emailAddress": {
-                                        "name": sender_name,
-                                        "address": final_sender_email
-                                    }
-                                }
-                            ]
-                        },
+                            }
+                        ]
+                    }
+                    
+                    # HARD GUARD: NEVER put an external Gmail/Yahoo address in Microsoft Graph's "from"
+                    # because Exchange stamps 'outlook_[HEX]@outlook.com on behalf of ...'.
+                    # Only specify "from" if it matches the authenticated account's domain.
+                    account_domain = account.email_address.split('@')[-1].lower() if '@' in (account.email_address or '') else ''
+                    from_domain = final_sender_email.split('@')[-1].lower() if '@' in final_sender_email else ''
+                    if account_domain and account_domain == from_domain and not final_sender_email.lower().startswith('outlook_'):
+                        msg_obj["from"] = {
+                            "emailAddress": {
+                                "name": sender_name,
+                                "address": final_sender_email
+                            }
+                        }
+                        
+                    graph_payload = {
+                        "message": msg_obj,
                         "saveToSentItems": True
                     }
                     resp = requests.post("https://graph.microsoft.com/v1.0/me/sendMail", headers=headers, json=graph_payload, timeout=10)

@@ -64,18 +64,43 @@ def send_email_via_outlook(task, outlook, target_account=None):
     """Sends a single email using the provided Outlook application instance."""
     try:
         mail = outlook.CreateItem(0) # 0 = olMailItem
-        if target_account:
-            mail.SendUsingAccount = target_account
         from_email = task.get("from_email")
-        if from_email and not str(from_email).lower().startswith("outlook_"):
+        
+        # 1. Match configured Outlook accounts to from_email if not already passed
+        matching_account = target_account
+        if not matching_account and from_email:
             try:
-                mail.SentOnBehalfOfName = str(from_email)
+                for acc in outlook.Session.Accounts:
+                    if acc.SmtpAddress and acc.SmtpAddress.lower() == str(from_email).lower():
+                        matching_account = acc
+                        break
             except Exception:
                 pass
+
+        if matching_account:
+            mail.SendUsingAccount = matching_account
+            
+        # 2. NEVER set SentOnBehalfOfName for external Gmail/Yahoo/personal domains.
+        # Setting SentOnBehalfOfName on an account without delegated Exchange permissions
+        # causes Outlook/Exchange to stamp 'outlook_[HEX]@outlook.com on behalf of ...'.
+        # Only set SentOnBehalfOfName if the account domain matches from_email domain (delegated mailbox).
+        if from_email and matching_account:
+            try:
+                account_addr = str(getattr(matching_account, 'SmtpAddress', ''))
+                account_domain = account_addr.split('@')[-1].lower() if '@' in account_addr else ""
+                from_domain = str(from_email).split('@')[-1].lower() if '@' in str(from_email) else ""
+                if account_domain and account_domain == from_domain and str(from_email).lower() != account_addr.lower():
+                    mail.SentOnBehalfOfName = str(from_email)
+            except Exception:
+                pass
+
+        # 3. Always add ReplyRecipients so replies cleanly route to the desired address
+        if from_email and not str(from_email).lower().startswith("outlook_"):
             try:
                 mail.ReplyRecipients.Add(str(from_email))
             except Exception:
                 pass
+
         mail.To = task.get("to_email", "")
         mail.Subject = task.get("subject", "")
         mail.HTMLBody = task.get("html_body", "")

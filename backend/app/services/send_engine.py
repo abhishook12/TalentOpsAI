@@ -555,13 +555,28 @@ async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, s
                         return existing_active_log.recipient_email, existing_active_log.subject, existing_active_log.body_html, existing_active_log.log_id
 
                     # Mark sending
-                    recipient.status = CampaignRecruiterStatus.sending.value
                     recruiter = recipient.recruiter
                     company = recruiter.company if recruiter else None
                     rec_email = recruiter.email if recruiter and recruiter.email else "unknown"
                     rec_name = recruiter.recruiter_name if recruiter else None
                     retry_count = recipient.retry_count
+
+                    # Safety gate: never send to synthetic placeholder emails
+                    _BLOCKED_DOMAINS = {"noemail.talentops", "unknown.com", "noemail.com"}
+                    _email_domain = rec_email.split('@')[-1].lower() if '@' in rec_email else ""
+                    if rec_email == "unknown" or _email_domain in _BLOCKED_DOMAINS:
+                        logger.warning(
+                            f"[SEND ENGINE] Cancelling recipient {recipient_id}: "
+                            f"email '{rec_email}' is a synthetic placeholder. Skipping."
+                        )
+                        recipient.status = CampaignRecruiterStatus.cancelled.value
+                        recipient.last_error = "Skipped: no verified email address for this contact"
+                        db.commit()
+                        return False
                     
+                    # All clear — mark as sending
+                    recipient.status = CampaignRecruiterStatus.sending.value
+
                     log = EmailLog(
                         campaign_id=campaign_id,
                         campaign_recruiter_id=recipient_id,

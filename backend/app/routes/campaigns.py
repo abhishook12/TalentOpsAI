@@ -104,11 +104,19 @@ async def _launch_campaign_background(
             t.body = request.body or ""
             
         # 2. Batch resolve / create Recruiters & CampaignRecruiters
+        # Gate 0: Hard-block synthetic / placeholder emails from being enrolled
         email_map = {}
+        BLOCKED_EMAIL_DOMAINS = {"noemail.talentops", "unknown.com", "noemail.com"}
         for rec in request.recipients:
-            raw_email = str(rec.email).strip()
+            raw_email = str(rec.email or "").strip()
+            # Reject null, empty, "None", or placeholder-domain emails
+            if not raw_email or raw_email.lower() == "none":
+                continue
             parts = [e.strip().lower() for e in re.split(r'[,;\s]+', raw_email) if e.strip() and '@' in e]
             for clean_email in parts:
+                domain = clean_email.split('@')[-1] if '@' in clean_email else ""
+                if domain in BLOCKED_EMAIL_DOMAINS or not domain:
+                    continue
                 if clean_email and clean_email not in email_map:
                     email_map[clean_email] = rec
 

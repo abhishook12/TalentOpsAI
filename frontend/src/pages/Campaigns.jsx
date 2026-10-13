@@ -529,9 +529,15 @@ export default function Campaigns() {
     setIsSending(true);
     setSendError(null);
     try {
-      const validRecipients = validatedRecipients.recipients.filter(r => r.status === 'valid');
+      const validRecipients = validatedRecipients.recipients.filter(r =>
+        r.status === 'valid' &&
+        r.email &&
+        r.email.trim() &&
+        !r.email.includes('@noemail') &&
+        !r.email.includes('@unknown')
+      );
       if (validRecipients.length === 0) {
-        toast.error('Please add at least one valid recipient');
+        toast.error('No recipients have a deliverable email address. Add recipients with a verified email.');
         setIsSending(false);
         return;
       }
@@ -580,7 +586,13 @@ export default function Campaigns() {
     if (isSending) return;
     setIsSending(true);
     try {
-      const validRecipients = validatedRecipients.recipients.filter(r => r.status === 'valid');
+      const validRecipients = validatedRecipients.recipients.filter(r =>
+        r.status === 'valid' &&
+        r.email &&
+        r.email.trim() &&
+        !r.email.includes('@noemail') &&
+        !r.email.includes('@unknown')
+      );
       const res = await api.post('/campaigns/launch', {
         campaign_id: activeCampaignId || null,
         name: campaignName || 'New Campaign',

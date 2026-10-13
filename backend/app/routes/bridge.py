@@ -8,7 +8,7 @@ import os
 import json
 from ..database import get_db
 from ..models.auth_models import User, UserBridgeStatus, ConnectedEmailAccount
-from ..services.auth_service import get_current_user_from_request
+from ..services.auth_service import get_current_user_from_request, get_optional_current_user
 from ..models.campaigns import EmailLog, EmailLogStatus, Campaign, CampaignRecruiter, CampaignStatus, CampaignRecruiterStatus
 
 router = APIRouter()
@@ -129,7 +129,6 @@ def get_bridge_status(db: Session = Depends(get_db), current_user: User = Depend
 
 
 from ..models.auth_models import User, UserBridgeStatus
-from ..services.auth_service import get_current_user_from_request
 from ..models.campaigns import EmailLog, EmailLogStatus, CampaignRecruiter, CampaignRecruiterStatus, Campaign, CampaignStatus
 from datetime import datetime
 
@@ -238,11 +237,39 @@ def _get_msal_redirect_uri(request=None):
     return "http://localhost:8000/bridge/oauth/callback"
 
 @router.get('/oauth/login')
-def bridge_oauth_login(request: Request, redirect_uri: str = '/profile?bridge=connected', popup: str = 'false', current_user: User = Depends(get_current_user_from_request)):
+def bridge_oauth_login(request: Request, redirect_uri: str = '/profile?bridge=connected', popup: str = 'false',
+                       current_user: User = Depends(get_optional_current_user)):
+    """Initiate Microsoft OAuth. Accepts token via ?token= query param (popup flow) or Authorization header."""
+    # If session auth failed, try to extract user_id directly from the raw JWT token param
+    user_id = None
+    if current_user:
+        user_id = current_user.id
+    else:
+        raw_token = request.query_params.get("token", "")
+        if raw_token and raw_token not in ("null", "undefined", ""):
+            try:
+                # Decode without DB lookup — we only need user_id to build state
+                payload = jwt.decode(raw_token, SECRET_KEY, algorithms=[ALGORITHM])
+                user_id = payload.get("sub") or payload.get("user_id")
+                if user_id:
+                    user_id = int(user_id)
+            except Exception:
+                pass
+
+    if not user_id:
+        return HTMLResponse(content="""
+        <html><head><style>body{font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#1a1a2e;color:#fff}
+        div{max-width:440px;text-align:center;padding:40px}.icon{font-size:48px;margin-bottom:16px}h2{color:#ff6b6b;margin-bottom:8px}
+        p{color:#a0a0b0;line-height:1.6;font-size:14px}button{margin-top:20px;padding:10px 24px;background:#0078D4;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px}</style></head>
+        <body><div><div class="icon">🔒</div><h2>Session Required</h2>
+        <p>Please log into TalentOps first, then try connecting your Outlook account again.</p>
+        <button onclick="window.close()">Close Window</button></div></body></html>
+        """, status_code=401)
+
     msal_redirect = _get_msal_redirect_uri(request)
     # Generate secure state token
     state_payload = {
-        "user_id": current_user.id,
+        "user_id": user_id,
         "redirect_uri": redirect_uri,
         "popup": popup,
         "exp": datetime.now(timezone.utc) + timedelta(minutes=15)
@@ -403,9 +430,36 @@ def bridge_oauth_callback(request: Request, code: str = None, state: str = None,
 from ..config import GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI
 
 @router.get("/google/login")
-def bridge_google_login(redirect_uri: str = "/settings?tab=api", popup: str = "false", current_user: User = Depends(get_current_user_from_request)):
+def bridge_google_login(request: Request, redirect_uri: str = "/settings?tab=api", popup: str = "false",
+                        current_user: User = Depends(get_optional_current_user)):
+    """Initiate Google OAuth. Accepts token via ?token= query param (popup flow) or Authorization header."""
+    # If session auth failed, try to extract user_id directly from the raw JWT token param
+    user_id = None
+    if current_user:
+        user_id = current_user.id
+    else:
+        raw_token = request.query_params.get("token", "")
+        if raw_token and raw_token not in ("null", "undefined", ""):
+            try:
+                payload_raw = jwt.decode(raw_token, SECRET_KEY, algorithms=[ALGORITHM])
+                user_id = payload_raw.get("sub") or payload_raw.get("user_id")
+                if user_id:
+                    user_id = int(user_id)
+            except Exception:
+                pass
+
+    if not user_id:
+        return HTMLResponse(content="""
+        <html><head><style>body{font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#1a1a2e;color:#fff}
+        div{max-width:440px;text-align:center;padding:40px}.icon{font-size:48px;margin-bottom:16px}h2{color:#ff6b6b;margin-bottom:8px}
+        p{color:#a0a0b0;line-height:1.6;font-size:14px}button{margin-top:20px;padding:10px 24px;background:#ea4335;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px}</style></head>
+        <body><div><div class="icon">🔒</div><h2>Session Required</h2>
+        <p>Please log into TalentOps first, then try connecting your Gmail account again.</p>
+        <button onclick="window.close()">Close Window</button></div></body></html>
+        """, status_code=401)
+
     state_payload = {
-        "user_id": current_user.id,
+        "user_id": user_id,
         "redirect_uri": redirect_uri,
         "popup": popup,
         "exp": datetime.now(timezone.utc) + timedelta(minutes=15)

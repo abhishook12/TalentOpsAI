@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Mail, ArrowRight } from 'lucide-react';
-import api, { API } from '../services/api';
+import api, { API, getStoredToken } from '../services/api';
 import toast from 'react-hot-toast';
 
 export default function ConnectionWizard({ onClose, onSuccess }) {
@@ -19,18 +19,51 @@ export default function ConnectionWizard({ onClose, onSuccess }) {
 
   const handleOAuthConnect = (selectedProvider) => {
     setProvider(selectedProvider);
-    const token = localStorage.getItem('session_token') || sessionStorage.getItem('session_token');
+    // Use the canonical getStoredToken() — same function used by Axios interceptors,
+    // handles legacy_admin_bypass_token, auth_session fallback, etc.
+    const token = getStoredToken() || '';
     const endpoint = selectedProvider === 'google' ? 'google/login' : 'oauth/login';
-    const w = window.open(`${API}/bridge/${endpoint}?popup=true&token=${token}`, 'Connect Account', 'width=500,height=600');
+    const w = window.open(`${API}/bridge/${endpoint}?popup=true&token=${encodeURIComponent(token)}`, 'Connect Account', 'width=500,height=650,scrollbars=yes,resizable=yes');
     
-    const messageListener = async (event) => {
-      if (event.data === 'oauth_success') {
-        window.removeEventListener('message', messageListener);
-        toast.success(`Successfully connected ${selectedProvider === 'google' ? 'Google' : 'Microsoft'} account!`);
-        onSuccess();
-      }
+    let resolved = false;
+
+    const handleSuccess = () => {
+      if (resolved) return;
+      resolved = true;
+      window.removeEventListener('message', messageListener);
+      if (pollTimer) clearInterval(pollTimer);
+      toast.success(`Successfully connected ${selectedProvider === 'google' ? 'Gmail' : 'Microsoft Outlook'} account!`);
+      onSuccess();
+    };
+
+    // Primary: listen for postMessage from the popup success page
+    const messageListener = (event) => {
+      if (event.data === 'oauth_success') handleSuccess();
     };
     window.addEventListener('message', messageListener);
+
+    // Fallback: poll every 500ms in case postMessage is blocked (cross-origin quirks)
+    let pollTimer = null;
+    if (w) {
+      pollTimer = setInterval(() => {
+        try {
+          if (w.closed) {
+            clearInterval(pollTimer);
+            window.removeEventListener('message', messageListener);
+          }
+        } catch (_) {
+          // cross-origin access denied — popup is still open, keep polling
+        }
+      }, 500);
+    }
+
+    // Cleanup after 5 minutes regardless
+    setTimeout(() => {
+      if (!resolved) {
+        window.removeEventListener('message', messageListener);
+        if (pollTimer) clearInterval(pollTimer);
+      }
+    }, 5 * 60 * 1000);
   };
 
   const handleSmtpSubmit = async (e) => {

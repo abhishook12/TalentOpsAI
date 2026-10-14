@@ -959,17 +959,22 @@ export default function Directory() {
           onClose={() => setIsComposeOpen(false)}
           onSend={async (data) => {
             try {
-              const res = await fetch('http://localhost:1337/send-bulk', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-              });
-              if (!res.ok) throw new Error('Bridge returned an error');
-              showToast(`Sent ${data.recipients.length} emails via local Outlook`, 'success');
+              let sentCount = 0;
+              for (const rec of data.recipients) {
+                await api.post('/accounts/quick-send', {
+                  to_email: rec.email,
+                  cc: data.cc || undefined,
+                  bcc: data.bcc || undefined,
+                  subject: data.subject,
+                  body: data.body
+                });
+                sentCount++;
+              }
+              showToast(`Dispatched ${sentCount} email${sentCount > 1 ? 's' : ''} with CC via local Outlook!`, 'success');
               setIsComposeOpen(false);
             } catch (err) {
               console.error(err);
-              showToast('Error: Is your Local Outlook Bridge running?', 'error');
+              showToast(err.response?.data?.detail || 'Failed to dispatch email via Outlook', 'error');
             }
           }}
         />,

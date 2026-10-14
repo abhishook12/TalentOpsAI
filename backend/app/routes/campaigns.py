@@ -53,6 +53,8 @@ class LaunchCampaignRequest(BaseModel):
     from_email: str
     sender_account_id: Optional[int] = None
     signature_id: Optional[int] = None
+    cc: Optional[str] = None
+    bcc: Optional[str] = None
     subject: str
     body: str
     recipients: list[RecipientItem]
@@ -166,9 +168,13 @@ async def _launch_campaign_background(
             if new_crs:
                 db.add_all(new_crs)
 
-        # 3. Configure A/B test if provided
+        # 3. Configure CC, BCC & A/B test if provided
+        meta = json.loads(campaign.metadata_json) if campaign.metadata_json else {}
+        if request.cc:
+            meta["cc"] = request.cc.strip()
+        if request.bcc:
+            meta["bcc"] = request.bcc.strip()
         if request.ab_test and request.ab_test.enabled and request.ab_test.variant_b_subject:
-            meta = json.loads(campaign.metadata_json) if campaign.metadata_json else {}
             meta["ab_test"] = {
                 "enabled": True,
                 "variant_a": {
@@ -181,7 +187,7 @@ async def _launch_campaign_background(
                 },
                 "test_sample_percent": request.ab_test.test_sample_percent
             }
-            campaign.metadata_json = json.dumps(meta)
+        campaign.metadata_json = json.dumps(meta)
 
         # 4. Filter risky if exclude_risky requested
         if request.exclude_risky:
@@ -1371,6 +1377,8 @@ class CampaignBase(BaseModel):
     metadata: Optional[dict[str, Any]] = None
     signature_id: Optional[int] = None
     sender_account_id: Optional[int] = None
+    cc: Optional[str] = None
+    bcc: Optional[str] = None
 
 
 class CampaignCreate(CampaignBase):
@@ -1393,6 +1401,8 @@ class CampaignUpdate(BaseModel):
     metadata: Optional[dict[str, Any]] = None
     signature_id: Optional[int] = None
     sender_account_id: Optional[int] = None
+    cc: Optional[str] = None
+    bcc: Optional[str] = None
 
 
 class TemplateCreate(BaseModel):
@@ -1545,6 +1555,12 @@ def list_campaigns(
 def create_campaign(payload: CampaignCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     from datetime import datetime
     now = datetime.now(timezone.utc)
+    meta = payload.metadata.copy() if payload.metadata else {}
+    if payload.cc:
+        meta["cc"] = payload.cc.strip()
+    if payload.bcc:
+        meta["bcc"] = payload.bcc.strip()
+
     campaign = Campaign(
         user_id=current_user.id,
         name=payload.name.strip(),
@@ -1556,7 +1572,7 @@ def create_campaign(payload: CampaignCreate, db: Session = Depends(get_db), curr
         start_at=payload.start_at,
         timezone=payload.timezone or "UTC",
         is_active=payload.is_active,
-        metadata_json=to_json_text(payload.metadata),
+        metadata_json=to_json_text(meta),
         signature_id=payload.signature_id,
         sender_account_id=payload.sender_account_id,
         created_at=now,
@@ -1664,11 +1680,28 @@ def toggle_test_campaign(campaign_id: int, db: Session = Depends(get_db), curren
 def update_campaign(campaign_id: int, payload: CampaignUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     campaign = get_campaign_or_404(db, campaign_id, current_user)
     updates = payload.model_dump(exclude_unset=True)
+    meta = json.loads(campaign.metadata_json) if campaign.metadata_json else {}
+    if "cc" in updates:
+        val = updates.pop("cc")
+        if val:
+            meta["cc"] = str(val).strip()
+        elif "cc" in meta:
+            meta.pop("cc")
+    if "bcc" in updates:
+        val = updates.pop("bcc")
+        if val:
+            meta["bcc"] = str(val).strip()
+        elif "bcc" in meta:
+            meta.pop("bcc")
+
     for field, value in updates.items():
         if field == "metadata":
-            campaign.metadata_json = to_json_text(value)
+            if isinstance(value, dict):
+                meta.update(value)
         else:
             setattr(campaign, field, value)
+
+    campaign.metadata_json = to_json_text(meta)
     db.commit()
     invalidate_campaigns_cache()
     return serialize_campaign(campaign)
@@ -1891,6 +1924,8 @@ class PreparePreviewRequest(BaseModel):
     name: str
     from_email: Optional[str] = None
     signature_id: Optional[int] = None
+    cc: Optional[str] = None
+    bcc: Optional[str] = None
     subject: str
     body: str
     recipients: List[Dict[str, Any]]
@@ -1905,6 +1940,17 @@ def api_prepare_preview(campaign_id: int, request: PreparePreviewRequest, db: Se
     campaign.name = request.name
     campaign.from_email = request.from_email
     campaign.signature_id = request.signature_id
+    
+    meta = json.loads(campaign.metadata_json) if campaign.metadata_json else {}
+    if request.cc:
+        meta["cc"] = request.cc.strip()
+    elif "cc" in meta:
+        meta.pop("cc")
+    if request.bcc:
+        meta["bcc"] = request.bcc.strip()
+    elif "bcc" in meta:
+        meta.pop("bcc")
+    campaign.metadata_json = json.dumps(meta)
     
     first_step = db.query(SequenceStep).filter(SequenceStep.campaign_id == campaign_id).order_by(SequenceStep.step_order.asc()).first()
     

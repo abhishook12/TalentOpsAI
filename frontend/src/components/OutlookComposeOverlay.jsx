@@ -148,28 +148,40 @@ export function OutlookComposeOverlay({ recipients, onClose, onSend }) {
 
             {/* Cc */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', borderBottom: '1px solid #444', minHeight: '36px', paddingBottom: '4px', paddingTop: '4px' }}>
-              <button style={{
-                backgroundColor: '#333', color: '#ccc', border: '1px solid #444', borderRadius: '4px',
-                padding: '4px 8px', fontSize: '13px', width: '70px', textAlign: 'center'
-              }}>
-                Cc
+              <button 
+                type="button"
+                style={{
+                  backgroundColor: cc ? 'rgba(59, 130, 246, 0.25)' : '#333', 
+                  color: cc ? '#60a5fa' : '#ccc', 
+                  border: cc ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid #444', 
+                  borderRadius: '4px',
+                  padding: '4px 8px', fontSize: '13px', width: '70px', textAlign: 'center', fontWeight: 600
+                }}>
+                Cc {cc ? `(${cc.split(/[,;]+/).filter(Boolean).length})` : ''}
               </button>
               <input 
                 value={cc} onChange={e => setCc(e.target.value)}
+                placeholder="colleague@company.com, manager@company.com (comma-separated)"
                 style={{ flex: 1, background: 'transparent', border: 'none', color: '#ccc', fontSize: '13px', outline: 'none', padding: 0 }}
               />
             </div>
 
             {/* Bcc */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', borderBottom: '1px solid #444', minHeight: '36px', paddingBottom: '4px', paddingTop: '4px' }}>
-              <button style={{
-                backgroundColor: '#333', color: '#ccc', border: '1px solid #444', borderRadius: '4px',
-                padding: '4px 8px', fontSize: '13px', width: '70px', textAlign: 'center'
-              }}>
-                Bcc
+              <button 
+                type="button"
+                style={{
+                  backgroundColor: bcc ? 'rgba(59, 130, 246, 0.25)' : '#333', 
+                  color: bcc ? '#60a5fa' : '#ccc', 
+                  border: bcc ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid #444', 
+                  borderRadius: '4px',
+                  padding: '4px 8px', fontSize: '13px', width: '70px', textAlign: 'center', fontWeight: 600
+                }}>
+                Bcc {bcc ? `(${bcc.split(/[,;]+/).filter(Boolean).length})` : ''}
               </button>
               <input 
                 value={bcc} onChange={e => setBcc(e.target.value)}
+                placeholder="audit@company.com (comma-separated)"
                 style={{ flex: 1, background: 'transparent', border: 'none', color: '#ccc', fontSize: '13px', outline: 'none', padding: 0 }}
               />
             </div>

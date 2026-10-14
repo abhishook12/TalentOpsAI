@@ -140,6 +140,10 @@ export default function Campaigns() {
   const [senderAccountId, setSenderAccountId] = useState(null);
   const [sendError, setSendError] = useState(null);
   const [fromEmail, setFromEmail] = useState('');
+  const [cc, setCc] = useState('');
+  const [showCc, setShowCc] = useState(false);
+  const [bcc, setBcc] = useState('');
+  const [showBcc, setShowBcc] = useState(false);
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [signatureId, setSignatureId] = useState(null);
@@ -336,6 +340,8 @@ export default function Campaigns() {
             from_email: fromEmail,
             signature_id: signatureId,
             sender_account_id: senderAccountId,
+            cc: cc.trim() || null,
+            bcc: bcc.trim() || null,
           });
         } else {
           const res = await api.post('/campaigns', {
@@ -344,6 +350,8 @@ export default function Campaigns() {
             status: 'draft',
             signature_id: signatureId,
             sender_account_id: senderAccountId,
+            cc: cc.trim() || null,
+            bcc: bcc.trim() || null,
           });
           cid = res.data.campaign_id;
           setActiveCampaignId(cid);
@@ -363,7 +371,7 @@ export default function Campaigns() {
     };
     savePromiseRef.current = doSave();
     return savePromiseRef.current;
-  }, [activeCampaignId, campaignName, fromEmail, signatureId, senderAccountId, subject, body, setActiveCampaignId]);
+  }, [activeCampaignId, campaignName, fromEmail, signatureId, senderAccountId, subject, body, cc, bcc, setActiveCampaignId]);
 
   useEffect(() => {
     if (view !== 'workspace' || workspaceMode !== 'compose') return;
@@ -374,7 +382,7 @@ export default function Campaigns() {
       }
     }, 1200);
     return () => clearTimeout(timer);
-  }, [subject, body, signatureId, senderAccountId, campaignName, view, workspaceMode, activeCampaignId, saveDraft]);
+  }, [subject, body, cc, bcc, signatureId, senderAccountId, campaignName, view, workspaceMode, activeCampaignId, saveDraft]);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Live readiness checks (frontend-side, immediate)
@@ -514,6 +522,21 @@ export default function Campaigns() {
       setFromEmail(c.from_email || '');
       setSenderAccountId(c.sender_account_id || null);
       setSignatureId(c.signature_id || null);
+      const campMeta = c.metadata || {};
+      if (campMeta.cc) {
+        setCc(campMeta.cc);
+        setShowCc(true);
+      } else {
+        setCc('');
+        setShowCc(false);
+      }
+      if (campMeta.bcc) {
+        setBcc(campMeta.bcc);
+        setShowBcc(true);
+      } else {
+        setBcc('');
+        setShowBcc(false);
+      }
       if (c.templates?.length > 0) {
         setSubject(c.templates[0].subject || '');
         setBody(c.templates[0].body || '');
@@ -561,6 +584,8 @@ export default function Campaigns() {
         from_email: fromEmail,
         sender_account_id: senderAccountId,
         signature_id: signatureId,
+        cc: cc.trim() || undefined,
+        bcc: bcc.trim() || undefined,
         subject: subject,
         body: body,
         recipients: validRecipients,
@@ -592,7 +617,7 @@ export default function Campaigns() {
     } finally {
       setIsSending(false);
     }
-  }, [activeCampaignId, isSending, validatedRecipients, campaignName, fromEmail, senderAccountId, signatureId, subject, subjectB, isABTest, smartTimezone, body, setActiveCampaignId, setWorkspaceMode]);
+  }, [activeCampaignId, isSending, validatedRecipients, campaignName, fromEmail, senderAccountId, signatureId, cc, bcc, subject, subjectB, isABTest, smartTimezone, body, setActiveCampaignId, setWorkspaceMode]);
 
   const handleConfirmLaunch = useCallback(async ({ excludeRisky }) => {
     if (isSending) return;
@@ -611,6 +636,8 @@ export default function Campaigns() {
         from_email: fromEmail,
         sender_account_id: senderAccountId,
         signature_id: signatureId,
+        cc: cc.trim() || undefined,
+        bcc: bcc.trim() || undefined,
         subject: subject,
         body: body,
         recipients: validRecipients,
@@ -642,7 +669,7 @@ export default function Campaigns() {
     } finally {
       setIsSending(false);
     }
-  }, [activeCampaignId, isSending, validatedRecipients, campaignName, fromEmail, senderAccountId, signatureId, subject, subjectB, isABTest, smartTimezone, body, setActiveCampaignId, setWorkspaceMode]);
+  }, [activeCampaignId, isSending, validatedRecipients, campaignName, fromEmail, senderAccountId, signatureId, cc, bcc, subject, subjectB, isABTest, smartTimezone, body, setActiveCampaignId, setWorkspaceMode]);
 
   const handleProgressStatusChange = useCallback((st) => {
     if (st === 'completed') {
@@ -1045,28 +1072,122 @@ export default function Campaigns() {
                     <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>
                       {isABTest ? 'Subject Line Matrix (A/B Test)' : 'Subject Line'}
                     </label>
-                    <button
-                      type="button"
-                      onClick={() => setIsABTest(!isABTest)}
-                      style={{
-                        fontSize: 11,
-                        fontWeight: 600,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 5,
-                        padding: '3px 9px',
-                        borderRadius: 6,
-                        background: isABTest ? 'rgba(161, 161, 170, 0.12)' : 'var(--bg-hover)',
-                        color: isABTest ? '#a1a1aa' : 'var(--text-muted)',
-                        border: isABTest ? '1px solid rgba(161, 161, 170, 0.25)' : '1px solid var(--border)',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s ease'
-                      }}
-                    >
-                      <Sparkles size={12} />
-                      {isABTest ? 'Disable A/B Split' : 'Enable A/B Split Test'}
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <button
+                        type="button"
+                        onClick={() => setShowCc(!showCc)}
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 600,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          padding: '3px 8px',
+                          borderRadius: 6,
+                          background: (showCc || cc) ? 'rgba(59, 130, 246, 0.15)' : 'var(--bg-hover)',
+                          color: (showCc || cc) ? '#60a5fa' : 'var(--text-muted)',
+                          border: (showCc || cc) ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid var(--border)',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        Cc {cc ? `(${cc.split(/[,;]+/).filter(Boolean).length})` : ''}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowBcc(!showBcc)}
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 600,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          padding: '3px 8px',
+                          borderRadius: 6,
+                          background: (showBcc || bcc) ? 'rgba(59, 130, 246, 0.15)' : 'var(--bg-hover)',
+                          color: (showBcc || bcc) ? '#60a5fa' : 'var(--text-muted)',
+                          border: (showBcc || bcc) ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid var(--border)',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        Bcc {bcc ? `(${bcc.split(/[,;]+/).filter(Boolean).length})` : ''}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsABTest(!isABTest)}
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 600,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 5,
+                          padding: '3px 9px',
+                          borderRadius: 6,
+                          background: isABTest ? 'rgba(161, 161, 170, 0.12)' : 'var(--bg-hover)',
+                          color: isABTest ? '#a1a1aa' : 'var(--text-muted)',
+                          border: isABTest ? '1px solid rgba(161, 161, 170, 0.25)' : '1px solid var(--border)',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <Sparkles size={12} />
+                        {isABTest ? 'Disable A/B Split' : 'Enable A/B Split Test'}
+                      </button>
+                    </div>
                   </div>
+
+                  {/* CC Input Row */}
+                  {(showCc || cc) && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-surface)', border: '1px solid var(--card-border)', borderRadius: 6, padding: '6px 10px', marginBottom: 8 }}>
+                      <span style={{ fontSize: 11, fontWeight: 800, color: '#60a5fa', textTransform: 'uppercase', letterSpacing: '0.05em', width: 28 }}>
+                        Cc
+                      </span>
+                      <input
+                        type="text"
+                        value={cc}
+                        onChange={e => setCc(e.target.value)}
+                        placeholder="colleague@company.com, manager@company.com (comma-separated)"
+                        style={{ flex: 1, background: 'transparent', border: 'none', fontSize: 13, color: 'var(--text-primary)', outline: 'none' }}
+                      />
+                      {cc && (
+                        <button
+                          type="button"
+                          onClick={() => { setCc(''); setShowCc(false); }}
+                          title="Clear Cc"
+                          style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '0 4px', fontSize: 14 }}
+                        >
+                          &times;
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* BCC Input Row */}
+                  {(showBcc || bcc) && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-surface)', border: '1px solid var(--card-border)', borderRadius: 6, padding: '6px 10px', marginBottom: 8 }}>
+                      <span style={{ fontSize: 11, fontWeight: 800, color: '#60a5fa', textTransform: 'uppercase', letterSpacing: '0.05em', width: 28 }}>
+                        Bcc
+                      </span>
+                      <input
+                        type="text"
+                        value={bcc}
+                        onChange={e => setBcc(e.target.value)}
+                        placeholder="audit@company.com (comma-separated)"
+                        style={{ flex: 1, background: 'transparent', border: 'none', fontSize: 13, color: 'var(--text-primary)', outline: 'none' }}
+                      />
+                      {bcc && (
+                        <button
+                          type="button"
+                          onClick={() => { setBcc(''); setShowBcc(false); }}
+                          title="Clear Bcc"
+                          style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '0 4px', fontSize: 14 }}
+                        >
+                          &times;
+                        </button>
+                      )}
+                    </div>
+                  )}
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     <div style={{ position: 'relative' }}>

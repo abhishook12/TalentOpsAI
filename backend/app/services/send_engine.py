@@ -41,6 +41,27 @@ BRIDGE_URL = "http://127.0.0.1:1337"
 import threading
 _outlook_com_lock = threading.Lock()
 
+def _parse_email_list(val) -> list[str]:
+    """Parse a string or list of emails into a cleaned, unique list of email addresses."""
+    if not val:
+        return []
+    import re
+    raw_items = val if isinstance(val, (list, tuple, set)) else [val]
+    emails = []
+    for item in raw_items:
+        if not item or not isinstance(item, str):
+            continue
+        parts = re.split(r'[,;]+', item)
+        for part in parts:
+            part = part.strip()
+            if not part:
+                continue
+            match = re.search(r'<([^>]+)>', part)
+            clean = match.group(1).strip() if match else part
+            if '@' in clean and clean not in emails:
+                emails.append(clean)
+    return emails
+
 def _send_via_local_outlook_com(payload: dict) -> tuple[bool, str]:
     """
     Send an email directly through the locally-installed Outlook desktop client
@@ -59,6 +80,10 @@ def _send_via_local_outlook_com(payload: dict) -> tuple[bool, str]:
     subject = payload.get("subject", "")
     html_body = payload.get("html_body", "")
     from_email = payload.get("from_email")
+    cc_raw = payload.get("cc") or payload.get("cc_email") or payload.get("cc_emails")
+    bcc_raw = payload.get("bcc") or payload.get("bcc_email") or payload.get("bcc_emails")
+    cc_list = _parse_email_list(cc_raw)
+    bcc_list = _parse_email_list(bcc_raw)
 
     if not to_email:
         return False, "Missing to_email"
@@ -89,6 +114,10 @@ def _send_via_local_outlook_com(payload: dict) -> tuple[bool, str]:
             # ── 2. Create and configure the mail item ──
             mail = outlook.CreateItem(0)  # olMailItem
             mail.To = to_email
+            if cc_list:
+                mail.CC = "; ".join(cc_list)
+            if bcc_list:
+                mail.BCC = "; ".join(bcc_list)
             mail.Subject = subject
             mail.HTMLBody = html_body
 
@@ -406,6 +435,9 @@ async def _send_email_via_provider(sender_account_id: int, user_id: int, payload
                         "Authorization": f"Bearer {access_token}",
                         "Content-Type": "application/json"
                     }
+                    cc_list = _parse_email_list(payload.get("cc") or payload.get("cc_email") or payload.get("cc_emails"))
+                    bcc_list = _parse_email_list(payload.get("bcc") or payload.get("bcc_email") or payload.get("bcc_emails"))
+                    
                     msg_obj = {
                         "subject": payload.get("subject", ""),
                         "body": {
@@ -428,6 +460,10 @@ async def _send_email_via_provider(sender_account_id: int, user_id: int, payload
                             }
                         ]
                     }
+                    if cc_list:
+                        msg_obj["ccRecipients"] = [{"emailAddress": {"address": c}} for c in cc_list]
+                    if bcc_list:
+                        msg_obj["bccRecipients"] = [{"emailAddress": {"address": b}} for b in bcc_list]
                     
                     # HARD GUARD: NEVER put an external Gmail/Yahoo address in Microsoft Graph's "from"
                     # because Exchange stamps 'outlook_[HEX]@outlook.com on behalf of ...'.
@@ -465,9 +501,14 @@ async def _send_email_via_provider(sender_account_id: int, user_id: int, payload
                     from email.mime.multipart import MIMEMultipart
                     from ..utils.encryption import decrypt_token
                     
+                    cc_list = _parse_email_list(payload.get("cc") or payload.get("cc_email") or payload.get("cc_emails"))
+                    bcc_list = _parse_email_list(payload.get("bcc") or payload.get("bcc_email") or payload.get("bcc_emails"))
+
                     msg = MIMEMultipart()
                     msg['From'] = f"{sender_name} <{final_sender_email}>"
                     msg['To'] = payload.get("to_email")
+                    if cc_list:
+                        msg['Cc'] = ", ".join(cc_list)
                     msg['Subject'] = payload.get("subject", "")
                     
                     # RFC-8058 deliverability headers
@@ -528,7 +569,8 @@ async def _send_email_via_provider(sender_account_id: int, user_id: int, payload
                     try:
                         server.starttls()
                         server.login(smtp_user, smtp_pass)
-                        server.send_message(msg)
+                        envelope_recipients = [payload.get("to_email")] + cc_list + bcc_list
+                        server.send_message(msg, to_addrs=envelope_recipients)
                     finally:
                         try:
                             server.quit()
@@ -754,7 +796,11 @@ async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, s
                     log.body_preview = body[:500] if body else ""
                     log.body_html = body or ""
                     db.commit()
-                    return rec_email, subject, body, log.log_id
+
+                    camp_meta = json.loads(camp.metadata_json) if (camp and camp.metadata_json) else {}
+                    camp_cc = camp_meta.get("cc")
+                    camp_bcc = camp_meta.get("bcc")
+                    return rec_email, subject, body, log.log_id, camp_cc, camp_bcc
 
             result = await asyncio.to_thread(_process_recipient_db, recipient_id)
             if not result:
@@ -762,12 +808,14 @@ async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, s
                 await asyncio.to_thread(_check_and_finalize_campaign, campaign_id)
                 continue
                 
-            rec_email, subject, body, log_id = result
+            rec_email, subject, body, log_id, camp_cc, camp_bcc = result
             
             payload = {
                 "campaign_id": campaign_id,
                 "from_email": from_email,
                 "to_email": rec_email,
+                "cc": camp_cc,
+                "bcc": camp_bcc,
                 "subject": subject,
                 "html_body": body or ""
             }

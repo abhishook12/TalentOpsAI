@@ -19,6 +19,15 @@ export default function Settings() {
   const [loadingAccounts, setLoadingAccounts] = useState(true);
   const [showConnectionWizard, setShowConnectionWizard] = useState(false);
   const [showAddScoutModal, setShowAddScoutModal] = useState(false);
+  const [testModalAccount, setTestModalAccount] = useState(null);
+  const [testToEmail, setTestToEmail] = useState('');
+  const [testCcEmail, setTestCcEmail] = useState('');
+  const [showTestCc, setShowTestCc] = useState(false);
+  const [testBccEmail, setTestBccEmail] = useState('');
+  const [showTestBcc, setShowTestBcc] = useState(false);
+  const [testSubject, setTestSubject] = useState('TalentOps Test Verification Email');
+  const [testBody, setTestBody] = useState('<p>This is a live test email from TalentOps AI to verify genuine sender delivery and CC routing.</p>');
+  const [sendingTest, setSendingTest] = useState(false);
   
   const [formData, setFormData] = useState({
     firstName: user?.first_name || '',
@@ -98,6 +107,42 @@ export default function Settings() {
       } catch {
         toast.error("Failed to update sender name");
       }
+    }
+  };
+
+  const handleOpenTestModal = (acc) => {
+    setTestModalAccount(acc);
+    setTestToEmail(acc.email_address || user?.email || '');
+    setTestCcEmail('');
+    setShowTestCc(false);
+    setTestBccEmail('');
+    setShowTestBcc(false);
+    setTestSubject('TalentOps Test Verification Email with CC');
+    setTestBody('<p>This is a live test email from TalentOps AI verifying genuine sender delivery and CC routing.</p>');
+  };
+
+  const handleSendTestEmail = async (e) => {
+    if (e) e.preventDefault();
+    if (!testToEmail.trim()) {
+      toast.error('Recipient email (To) is required');
+      return;
+    }
+    setSendingTest(true);
+    const t = toast.loading(`Sending test email via ${testModalAccount.email_address}...`);
+    try {
+      const res = await api.post(`/accounts/${testModalAccount.account_id}/test-send`, {
+        to_email: testToEmail.trim(),
+        cc: testCcEmail.trim() || undefined,
+        bcc: testBccEmail.trim() || undefined,
+        subject: testSubject.trim(),
+        body: testBody
+      });
+      toast.success(res.data.message || 'Test email dispatched successfully! Checked Sent Items.', { id: t });
+      setTestModalAccount(null);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to send test email', { id: t });
+    } finally {
+      setSendingTest(false);
     }
   };
   const handleSaveProfile = async (e) => {
@@ -511,7 +556,10 @@ export default function Settings() {
                                 {!acc.is_default && (
                                   <button onClick={() => handleSetDefaultAccount(acc.account_id)} style={{ padding: '6px 12px', background: 'transparent', border: '1px solid var(--card-border)', color: 'var(--text-primary)', borderRadius: 6, fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>Make Default</button>
                                 )}
-                                <button onClick={() => handleTestConnection(acc.account_id)} style={{ padding: '6px 12px', background: 'transparent', border: '1px solid var(--card-border)', color: 'var(--text-primary)', borderRadius: 6, fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>Test</button>
+                                <button onClick={() => handleTestConnection(acc.account_id)} style={{ padding: '6px 12px', background: 'transparent', border: '1px solid var(--card-border)', color: 'var(--text-primary)', borderRadius: 6, fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>Verify</button>
+                                <button onClick={() => handleOpenTestModal(acc)} style={{ padding: '6px 12px', background: 'rgba(59, 130, 246, 0.12)', border: '1px solid rgba(59, 130, 246, 0.3)', color: '#60a5fa', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+                                  <Mail size={12} /> Send Test (CC)
+                                </button>
                                 <button onClick={() => handleDeleteAccount(acc.account_id)} style={{ padding: '6px 8px', background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                                   <MoreVertical size={16} />
                                 </button>
@@ -689,6 +737,153 @@ export default function Settings() {
 
               {showAddScoutModal && (
                 <AddScoutModal onClose={() => setShowAddScoutModal(false)} />
+              )}
+
+              {testModalAccount && (
+                <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.75)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+                  <div style={{ width: '100%', maxWidth: 540, background: '#18181b', border: '1px solid #27272a', borderRadius: 12, padding: 24, boxShadow: '0 20px 40px rgba(0,0,0,0.6)', color: '#ffffff' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                      <div>
+                        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Send Real Test Email (with CC)</h3>
+                        <p style={{ margin: '4px 0 0', fontSize: 12, color: '#a1a1aa' }}>
+                          Dispatching through: <strong style={{ color: '#fff' }}>{testModalAccount.email_address}</strong>
+                        </p>
+                      </div>
+                      <button onClick={() => setTestModalAccount(null)} style={{ background: 'none', border: 'none', color: '#a1a1aa', fontSize: 20, cursor: 'pointer', padding: 4 }}>&times;</button>
+                    </div>
+
+                    <form onSubmit={handleSendTestEmail} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      {/* To Field */}
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                          <label style={{ fontSize: 12, fontWeight: 600, color: '#d4d4d8' }}>To Recipient *</label>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button
+                              type="button"
+                              onClick={() => setShowTestCc(!showTestCc)}
+                              style={{
+                                background: (showTestCc || testCcEmail) ? 'rgba(59, 130, 246, 0.2)' : '#27272a',
+                                border: (showTestCc || testCcEmail) ? '1px solid #3b82f6' : '1px solid #3f3f46',
+                                color: (showTestCc || testCcEmail) ? '#60a5fa' : '#a1a1aa',
+                                borderRadius: 4,
+                                padding: '2px 8px',
+                                fontSize: 11,
+                                fontWeight: 600,
+                                cursor: 'pointer'
+                              }}
+                            >
+                              + Cc {testCcEmail ? `(${testCcEmail.split(',').length})` : ''}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setShowTestBcc(!showTestBcc)}
+                              style={{
+                                background: (showTestBcc || testBccEmail) ? 'rgba(59, 130, 246, 0.2)' : '#27272a',
+                                border: (showTestBcc || testBccEmail) ? '1px solid #3b82f6' : '1px solid #3f3f46',
+                                color: (showTestBcc || testBccEmail) ? '#60a5fa' : '#a1a1aa',
+                                borderRadius: 4,
+                                padding: '2px 8px',
+                                fontSize: 11,
+                                fontWeight: 600,
+                                cursor: 'pointer'
+                              }}
+                            >
+                              + Bcc {testBccEmail ? `(${testBccEmail.split(',').length})` : ''}
+                            </button>
+                          </div>
+                        </div>
+                        <input
+                          type="email"
+                          required
+                          value={testToEmail}
+                          onChange={e => setTestToEmail(e.target.value)}
+                          placeholder="recipient@example.com"
+                          style={{ width: '100%', background: '#09090b', border: '1px solid #27272a', borderRadius: 6, padding: '8px 12px', color: '#fff', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+                        />
+                      </div>
+
+                      {/* CC Field */}
+                      {(showTestCc || testCcEmail) && (
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                            <label style={{ fontSize: 12, fontWeight: 600, color: '#60a5fa' }}>Cc (Carbon Copy)</label>
+                            <button type="button" onClick={() => { setTestCcEmail(''); setShowTestCc(false); }} style={{ background: 'none', border: 'none', color: '#71717a', fontSize: 11, cursor: 'pointer' }}>Remove</button>
+                          </div>
+                          <input
+                            type="text"
+                            value={testCcEmail}
+                            onChange={e => setTestCcEmail(e.target.value)}
+                            placeholder="colleague@company.com, manager@company.com (comma-separated)"
+                            style={{ width: '100%', background: '#09090b', border: '1px solid #3b82f6', borderRadius: 6, padding: '8px 12px', color: '#fff', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+                          />
+                        </div>
+                      )}
+
+                      {/* BCC Field */}
+                      {(showTestBcc || testBccEmail) && (
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                            <label style={{ fontSize: 12, fontWeight: 600, color: '#60a5fa' }}>Bcc (Blind Carbon Copy)</label>
+                            <button type="button" onClick={() => { setTestBccEmail(''); setShowTestBcc(false); }} style={{ background: 'none', border: 'none', color: '#71717a', fontSize: 11, cursor: 'pointer' }}>Remove</button>
+                          </div>
+                          <input
+                            type="text"
+                            value={testBccEmail}
+                            onChange={e => setTestBccEmail(e.target.value)}
+                            placeholder="audit@company.com (comma-separated)"
+                            style={{ width: '100%', background: '#09090b', border: '1px solid #3b82f6', borderRadius: 6, padding: '8px 12px', color: '#fff', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+                          />
+                        </div>
+                      )}
+
+                      {/* Subject */}
+                      <div>
+                        <label style={{ fontSize: 12, fontWeight: 600, color: '#d4d4d8', display: 'block', marginBottom: 4 }}>Subject</label>
+                        <input
+                          type="text"
+                          required
+                          value={testSubject}
+                          onChange={e => setTestSubject(e.target.value)}
+                          style={{ width: '100%', background: '#09090b', border: '1px solid #27272a', borderRadius: 6, padding: '8px 12px', color: '#fff', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+                        />
+                      </div>
+
+                      {/* Body */}
+                      <div>
+                        <label style={{ fontSize: 12, fontWeight: 600, color: '#d4d4d8', display: 'block', marginBottom: 4 }}>Message Content</label>
+                        <textarea
+                          rows={4}
+                          value={testBody}
+                          onChange={e => setTestBody(e.target.value)}
+                          style={{ width: '100%', background: '#09090b', border: '1px solid #27272a', borderRadius: 6, padding: '8px 12px', color: '#fff', fontSize: 13, outline: 'none', boxSizing: 'border-box', resize: 'vertical' }}
+                        />
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
+                        <span style={{ fontSize: 11, color: '#a1a1aa' }}>
+                          Verified in Outlook Sent Items
+                        </span>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button
+                            type="button"
+                            onClick={() => setTestModalAccount(null)}
+                            style={{ background: '#27272a', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 14px', fontSize: 13, cursor: 'pointer' }}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="submit"
+                            disabled={sendingTest}
+                            style={{ background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 18px', fontSize: 13, fontWeight: 600, cursor: sendingTest ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+                          >
+                            {sendingTest ? <Loader2 size={14} className="animate-spin" /> : <Mail size={14} />}
+                            {sendingTest ? 'Sending...' : 'Send Test Email'}
+                          </button>
+                        </div>
+                      </div>
+                    </form>
+                  </div>
+                </div>
               )}
             </div>
           )}

@@ -312,12 +312,14 @@ def connect_local_outlook(db: Session = Depends(get_db), current_user: User = De
 
 class TestSendRequest(BaseModel):
     to_email: str
+    cc: Optional[str] = None
+    bcc: Optional[str] = None
     subject: Optional[str] = "TalentOps Test Verification Email"
     body: Optional[str] = "<p>This is a live test email sent from TalentOps AI to verify genuine sender delivery.</p>"
 
 @router.post("/{account_id}/test-send")
 async def send_test_email(account_id: int, req: TestSendRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
-    """Send an immediate real test email through the specified connected account to verify clean sender headers."""
+    """Send an immediate real test email through the specified connected account to verify clean sender headers and CC support."""
     from ..services.send_engine import _send_email_via_provider
     account = db.query(ConnectedEmailAccount).filter(ConnectedEmailAccount.account_id == account_id, ConnectedEmailAccount.user_id == current_user.id).first()
     if not account:
@@ -327,10 +329,69 @@ async def send_test_email(account_id: int, req: TestSendRequest, db: Session = D
         "campaign_id": 0,
         "from_email": account.email_address,
         "to_email": req.to_email,
+        "cc": req.cc,
+        "bcc": req.bcc,
         "subject": req.subject or "TalentOps Test Verification Email",
         "html_body": req.body or "<p>This is a live test email sent from TalentOps AI to verify genuine sender delivery.</p>"
     }
     success, error, err_type = await _send_email_via_provider(account_id, current_user.id, payload)
     if not success:
         raise HTTPException(status_code=400, detail=f"Send failed: {error}")
-    return {"status": "success", "message": f"Test email sent successfully from {account.email_address} to {req.to_email}"}
+    return {
+        "status": "success",
+        "message": f"Test email sent successfully from {account.email_address} to {req.to_email}",
+        "cc": req.cc,
+        "bcc": req.bcc
+    }
+
+class QuickSendRequest(BaseModel):
+    account_id: Optional[int] = None
+    to_email: str
+    cc: Optional[str] = None
+    bcc: Optional[str] = None
+    subject: str
+    body: str
+
+@router.post("/quick-send")
+async def quick_send_email(req: QuickSendRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    """Quick direct email dispatch with CC/BCC support via connected email account (e.g. from Outlook overlay or recruiter directory)."""
+    from ..services.send_engine import _send_email_via_provider
+    account = None
+    if req.account_id:
+        account = db.query(ConnectedEmailAccount).filter(
+            ConnectedEmailAccount.account_id == req.account_id,
+            ConnectedEmailAccount.user_id == current_user.id
+        ).first()
+    if not account and current_user.default_sender_id:
+        account = db.query(ConnectedEmailAccount).filter(
+            ConnectedEmailAccount.account_id == current_user.default_sender_id,
+            ConnectedEmailAccount.user_id == current_user.id
+        ).first()
+    if not account:
+        account = db.query(ConnectedEmailAccount).filter(
+            ConnectedEmailAccount.user_id == current_user.id,
+            ConnectedEmailAccount.status == "connected"
+        ).first()
+    if not account:
+        raise HTTPException(status_code=400, detail="No connected sending account available. Connect your Outlook or Gmail in Settings.")
+
+    payload = {
+        "campaign_id": 0,
+        "from_email": account.email_address,
+        "to_email": req.to_email,
+        "cc": req.cc,
+        "bcc": req.bcc,
+        "subject": req.subject,
+        "html_body": req.body
+    }
+    success, error, err_type = await _send_email_via_provider(account.account_id, current_user.id, payload)
+    if not success:
+        raise HTTPException(status_code=400, detail=f"Send failed: {error}")
+    return {
+        "status": "success",
+        "message": f"Email sent successfully from {account.email_address} to {req.to_email}",
+        "from_email": account.email_address,
+        "to_email": req.to_email,
+        "cc": req.cc,
+        "bcc": req.bcc
+    }

@@ -1161,26 +1161,29 @@ def get_campaign_progress(campaign_id: int) -> dict:
         
         return _get_campaign_eta(campaign_id)
 
-def restart_active_campaigns():
+async def restart_active_campaigns():
     """Crash recovery: Resume any campaign that was in active state when the server crashed.
     Fix #10: Route through start_campaign() which has dedup guard to prevent double-send."""
     try:
-        with SessionLocal() as db:
-            # Reset any queued or sending items back to pending in case of crash
-            db.query(CampaignRecruiter).filter(
-                CampaignRecruiter.status.in_([
-                    CampaignRecruiterStatus.queued.value,
-                    CampaignRecruiterStatus.sending.value,
-                    'Queued', 'queued', 'Sending', 'sending'
-                ])
-            ).update({"status": CampaignRecruiterStatus.pending.value}, synchronize_session=False)
-            db.commit()
-            
-            active_campaigns = db.query(Campaign).filter(Campaign.status == CampaignStatus.active.value).all()
-            for c in active_campaigns:
-                logger.info(f"Crash recovery: Restarting campaign {c.campaign_id} via start_campaign()...")
-                # Route through start_campaign which has the _campaign_start_lock dedup guard
-                asyncio.create_task(start_campaign(c.campaign_id))
+        def _reset_db():
+            with SessionLocal() as db:
+                # Reset any queued or sending items back to pending in case of crash
+                db.query(CampaignRecruiter).filter(
+                    CampaignRecruiter.status.in_([
+                        CampaignRecruiterStatus.queued.value,
+                        CampaignRecruiterStatus.sending.value,
+                        'Queued', 'queued', 'Sending', 'sending'
+                    ])
+                ).update({"status": CampaignRecruiterStatus.pending.value}, synchronize_session=False)
+                db.commit()
+                
+                active_campaigns = db.query(Campaign).filter(Campaign.status == CampaignStatus.active.value).all()
+                return [c.campaign_id for c in active_campaigns]
+
+        active_ids = await asyncio.to_thread(_reset_db)
+        for cid in active_ids:
+            logger.info(f"Crash recovery: Restarting campaign {cid} via start_campaign()...")
+            asyncio.create_task(start_campaign(cid))
     except Exception as e:
         logger.error(f"Failed to run crash recovery for active campaigns: {e}")
 

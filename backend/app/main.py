@@ -698,7 +698,7 @@ async def startup_event():
             asyncio.create_task(discovery_batch_processor_loop())
 
         try:
-            await asyncio.to_thread(restart_active_campaigns)
+            await restart_active_campaigns()
         except Exception as e:
             logger.warning(f"Restart active campaigns note: {e}")
 

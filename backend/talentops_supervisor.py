@@ -71,13 +71,16 @@ def launch_backend_process() -> subprocess.Popen:
         "--port", "8000",
     ]
 
+    uvicorn_log_path = os.path.join(WORKSPACE_DIR, "backend", "uvicorn_live.log")
+    log_fp = open(uvicorn_log_path, "a", encoding="utf-8")
+
     proc = subprocess.Popen(
         cmd,
         cwd=WORKSPACE_DIR,
         env=env,
         creationflags=creation_flags,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        stdout=log_fp,
+        stderr=log_fp,
     )
     logger.info(f"Backend launched successfully with PID {proc.pid}")
     return proc

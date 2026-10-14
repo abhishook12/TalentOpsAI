@@ -970,6 +970,31 @@ export default function Campaigns() {
           <button onClick={handleSaveAsTemplate} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border border-[var(--border)] rounded-lg text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors">
             <Save size={13} /> Save as Template
           </button>
+
+          <button
+            onClick={handleSend}
+            disabled={isSending || !localIsReady}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 16px',
+              borderRadius: 6,
+              fontSize: 13,
+              fontWeight: 800,
+              letterSpacing: '0.01em',
+              cursor: (isSending || !localIsReady) ? 'not-allowed' : 'pointer',
+              background: localIsReady ? '#2563eb' : 'var(--bg-hover)',
+              color: localIsReady ? '#ffffff' : 'var(--text-muted)',
+              border: localIsReady ? '1px solid #1d4ed8' : '1px solid var(--border)',
+              boxShadow: localIsReady ? '0 1px 3px rgba(37, 99, 235, 0.4)' : 'none',
+              transition: 'all 0.15s ease',
+              marginLeft: 6,
+            }}
+          >
+            {isSending ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
+            {sendLabel}
+          </button>
         </div>
       </div>
 
@@ -1404,6 +1429,27 @@ export default function Campaigns() {
                     </span>
                   )}
                 </div>
+                <button
+                  onClick={handleSend}
+                  disabled={isSending || !localIsReady}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    padding: '5px 12px',
+                    borderRadius: 5,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: (isSending || !localIsReady) ? 'not-allowed' : 'pointer',
+                    background: localIsReady ? '#2563eb' : 'var(--bg-hover)',
+                    color: localIsReady ? '#ffffff' : 'var(--text-muted)',
+                    border: localIsReady ? '1px solid #1d4ed8' : '1px solid var(--border)',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  {isSending ? <Loader2 size={12} className="animate-spin" /> : <Zap size={12} />}
+                  {sendLabel}
+                </button>
               </div>
 
               {/* Recipient count summary */}

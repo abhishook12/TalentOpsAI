@@ -22,6 +22,7 @@ from datetime import datetime, timezone, timedelta
 from sqlalchemy.orm import Session
 import requests
 import concurrent.futures
+import json
 
 from ..database import SessionLocal
 from ..models.campaigns import (
@@ -88,85 +89,84 @@ def _send_via_local_outlook_com(payload: dict) -> tuple[bool, str]:
     if not to_email:
         return False, "Missing to_email"
 
-    try:
-        # Each thread must initialise COM independently
-        pythoncom.CoInitialize()
+    with _outlook_com_lock:
         try:
-            outlook = win32com.client.Dispatch("Outlook.Application")
-            ns = outlook.GetNamespace("MAPI")
-
-            # ── 1. Find the matching Outlook account by SmtpAddress ──
-            matching_account = None
+            # Each thread must initialise COM independently
+            pythoncom.CoInitialize()
             try:
-                accounts = ns.Accounts
-                for i in range(1, accounts.Count + 1):
-                    acc = accounts.Item(i)
-                    smtp = getattr(acc, "SmtpAddress", "") or ""
-                    if from_email and smtp.lower() == from_email.lower():
-                        matching_account = acc
-                        break
-                # Fallback: use the first available account
-                if not matching_account and accounts.Count > 0:
-                    matching_account = accounts.Item(1)
-            except Exception:
-                pass
+                outlook = win32com.client.Dispatch("Outlook.Application")
+                ns = outlook.GetNamespace("MAPI")
 
-            # ── 2. Create and configure the mail item ──
-            mail = outlook.CreateItem(0)  # olMailItem
-            mail.To = to_email
-            if cc_list:
-                mail.CC = "; ".join(cc_list)
-            if bcc_list:
-                mail.BCC = "; ".join(bcc_list)
-            mail.Subject = subject
-            mail.HTMLBody = html_body
-
-            if matching_account:
-                # Use the low-level OLEOBJ invoke to set SendUsingAccount
-                # (property DISPID 64209 = SendUsingAccount)
+                # ── 1. Find the matching Outlook account by SmtpAddress ──
+                matching_account = None
                 try:
-                    mail._oleobj_.Invoke(*(64209, 0, 8, 0, matching_account))
+                    accounts = ns.Accounts
+                    for i in range(1, accounts.Count + 1):
+                        acc = accounts.Item(i)
+                        smtp = getattr(acc, "SmtpAddress", "") or ""
+                        if from_email and smtp.lower() == from_email.lower():
+                            matching_account = acc
+                            break
+                    # Fallback: use the first available account
+                    if not matching_account and accounts.Count > 0:
+                        matching_account = accounts.Item(1)
                 except Exception:
-                    # Fallback — assign directly (works on most Outlook builds)
+                    pass
+
+                # ── 2. Create and configure the mail item ──
+                mail = outlook.CreateItem(0)  # olMailItem
+                mail.To = to_email
+                if cc_list:
+                    mail.CC = "; ".join(cc_list)
+                if bcc_list:
+                    mail.BCC = "; ".join(bcc_list)
+                mail.Subject = subject
+                mail.HTMLBody = html_body
+
+                if matching_account:
+                    # Use the low-level OLEOBJ invoke to set SendUsingAccount
+                    # (property DISPID 64209 = SendUsingAccount)
                     try:
-                        mail.SendUsingAccount = matching_account
+                        mail._oleobj_.Invoke(*(64209, 0, 8, 0, matching_account))
+                    except Exception:
+                        # Fallback — assign directly (works on most Outlook builds)
+                        try:
+                            mail.SendUsingAccount = matching_account
+                        except Exception:
+                            pass
+
+                # ── 3. SentOnBehalfOfName guard — NEVER set for cross-domain ──
+                # Identical logic to local_outlook_bridge.py lines 83-95
+                if from_email and matching_account:
+                    try:
+                        account_addr = str(getattr(matching_account, "SmtpAddress", ""))
+                        account_domain = account_addr.split("@")[-1].lower() if "@" in account_addr else ""
+                        from_domain = str(from_email).split("@")[-1].lower() if "@" in str(from_email) else ""
+                        if (
+                            account_domain
+                            and account_domain == from_domain
+                            and str(from_email).lower() != account_addr.lower()
+                        ):
+                            mail.SentOnBehalfOfName = str(from_email)
                     except Exception:
                         pass
 
-            # ── 3. SentOnBehalfOfName guard — NEVER set for cross-domain ──
-            # Identical logic to local_outlook_bridge.py lines 83-95
-            if from_email and matching_account:
-                try:
-                    account_addr = str(getattr(matching_account, "SmtpAddress", ""))
-                    account_domain = account_addr.split("@")[-1].lower() if "@" in account_addr else ""
-                    from_domain = str(from_email).split("@")[-1].lower() if "@" in str(from_email) else ""
-                    if (
-                        account_domain
-                        and account_domain == from_domain
-                        and str(from_email).lower() != account_addr.lower()
-                    ):
-                        mail.SentOnBehalfOfName = str(from_email)
-                except Exception:
-                    pass
+                # ── 4. ReplyTo for clean reply routing ──
+                if from_email and not str(from_email).lower().startswith("outlook_"):
+                    try:
+                        mail.ReplyRecipients.Add(str(from_email))
+                    except Exception:
+                        pass
 
-            # ── 4. ReplyTo for clean reply routing ──
-            if from_email and not str(from_email).lower().startswith("outlook_"):
-                try:
-                    mail.ReplyRecipients.Add(str(from_email))
-                except Exception:
-                    pass
-
-            # ── 5. Send — this puts the mail into Outbox → Sent Items ──
-            with _outlook_com_lock:
+                # ── 5. Send — this puts the mail into Outbox → Sent Items ──
                 mail.Send()
+                return True, None
 
-            return True, None
+            finally:
+                pythoncom.CoUninitialize()
 
-        finally:
-            pythoncom.CoUninitialize()
-
-    except Exception as e:
-        return False, f"Outlook COM error: {e}"
+        except Exception as e:
+            return False, f"Outlook COM error: {e}"
 WORKER_COUNT = 16  # High-throughput asynchronous worker pool
 MAX_RETRIES_OVERALL = 3
 MAX_RECIPIENTS_PER_CAMPAIGN = 200  # Raised cap — handles real outreach volumes
@@ -596,6 +596,8 @@ def _advance_recipient_to_next_step(db, cr, campaign_id):
     from ..models.campaigns import Campaign, SequenceStep, CampaignRecruiterStatus
     try:
         if not cr.current_step_id:
+            cr.completed_at = datetime.now(timezone.utc)
+            db.flush()
             return
         current_step = db.query(SequenceStep).filter(
             SequenceStep.step_id == cr.current_step_id
@@ -738,7 +740,10 @@ async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, s
                         EmailLog.status == EmailLogStatus.sending.value
                     ).first()
                     if existing_active_log and not can_direct_send:
-                        return existing_active_log.recipient_email, existing_active_log.subject, existing_active_log.body_html, existing_active_log.log_id
+                        camp_meta = json.loads(camp.metadata_json) if (camp and camp.metadata_json) else {}
+                        camp_cc = camp_meta.get("cc")
+                        camp_bcc = camp_meta.get("bcc")
+                        return existing_active_log.recipient_email, existing_active_log.subject, existing_active_log.body_html, existing_active_log.log_id, camp_cc, camp_bcc
 
                     # Mark sending
                     recruiter = recipient.recruiter
@@ -975,11 +980,23 @@ async def process_campaign_queue(campaign_id: int):
             fallback_template = step_templates[active_steps[0].step_id]
         template = fallback_template  # Keep for backward compatibility
         
+        # Auto-recover any orphaned "sending" or "queued" recipients (e.g. from prior server restart or worker crash)
+        db.query(CampaignRecruiter).filter(
+            CampaignRecruiter.campaign_id == campaign_id,
+            CampaignRecruiter.status.in_([
+                CampaignRecruiterStatus.sending.value,
+                CampaignRecruiterStatus.queued.value,
+                'Sending', 'sending', 'Queued', 'queued'
+            ])
+        ).update({"status": CampaignRecruiterStatus.pending.value}, synchronize_session=False)
+        db.commit()
+
         pending_recipients = db.query(CampaignRecruiter).filter(
             CampaignRecruiter.campaign_id == campaign_id,
             CampaignRecruiter.status.in_([
                 CampaignRecruiterStatus.pending.value,
                 CampaignRecruiterStatus.retrying.value,
+                'Pending', 'pending', 'Retrying', 'retrying'
             ])
         ).all()
         
@@ -1127,6 +1144,8 @@ async def resume_campaign(campaign_id: int):
                 CampaignRecruiterStatus.pending.value,
                 CampaignRecruiterStatus.queued.value,
                 CampaignRecruiterStatus.retrying.value,
+                CampaignRecruiterStatus.sending.value,
+                'Pending', 'pending', 'Queued', 'queued', 'Retrying', 'retrying', 'Sending', 'sending'
             ])
         ).update({"status": CampaignRecruiterStatus.pending.value}, synchronize_session=False)
         db.commit()
@@ -1147,9 +1166,13 @@ def restart_active_campaigns():
     Fix #10: Route through start_campaign() which has dedup guard to prevent double-send."""
     try:
         with SessionLocal() as db:
-            # Reset any queued items back to pending in case of crash
+            # Reset any queued or sending items back to pending in case of crash
             db.query(CampaignRecruiter).filter(
-                CampaignRecruiter.status == CampaignRecruiterStatus.queued.value
+                CampaignRecruiter.status.in_([
+                    CampaignRecruiterStatus.queued.value,
+                    CampaignRecruiterStatus.sending.value,
+                    'Queued', 'queued', 'Sending', 'sending'
+                ])
             ).update({"status": CampaignRecruiterStatus.pending.value}, synchronize_session=False)
             db.commit()
             

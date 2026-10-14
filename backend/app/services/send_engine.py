@@ -173,8 +173,14 @@ def _check_account_health(sender_account_id: int, user_id: int) -> tuple[bool, s
                 
         if not account or account.status != "connected":
             return False, "Email account not connected"
-        if account.provider == "microsoft" and not account.access_token:
-            return False, "Missing Microsoft access token"
+        if account.provider in ("microsoft", "outlook"):
+            if not account.access_token or account.access_token == "local_outlook_com":
+                # Check if local Outlook COM is available
+                try:
+                    import win32com.client
+                    return True, "healthy (local outlook com)"
+                except Exception:
+                    return False, "Local Outlook not available"
         if account.provider == "smtp" and not account.smtp_host:
             return False, "Missing SMTP host"
             
@@ -391,9 +397,10 @@ async def _send_email_via_provider(sender_account_id: int, user_id: int, payload
                         account = gmail_acc
                         sender_email = account.email_address
 
-                if account.provider == "microsoft":
-                    if not account.access_token:
-                        return False, "Missing Microsoft access token", "auth_error"
+                if account.provider in ("microsoft", "outlook"):
+                    if not account.access_token or account.access_token == "local_outlook_com":
+                        com_ok, com_err = _send_via_local_outlook_com(payload)
+                        return com_ok, com_err, "outlook_com_error" if not com_ok else None
                     access_token = account.access_token
                     headers = {
                         "Authorization": f"Bearer {access_token}",

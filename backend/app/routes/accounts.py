@@ -163,27 +163,53 @@ def verify_account(account_id: int, db: Session = Depends(get_db), current_user:
         except Exception as e:
             account.health_status = "error"
             account.status = "disconnected"
-    elif account.provider == "microsoft":
-        # Check token via graph api
-        import requests
-        headers = {"Authorization": f"Bearer {account.access_token}"}
-        try:
-            r = requests.get("https://graph.microsoft.com/v1.0/me", headers=headers, timeout=5)
-            if r.ok:
-                account.health_status = "healthy"
-                account.status = "connected"
-            else:
-                from ..services.send_engine import _refresh_msal_token
-                new_token = _refresh_msal_token(account)
-                if new_token:
+    elif account.provider in ("microsoft", "outlook"):
+        if account.access_token and account.access_token != "local_outlook_com":
+            # Check token via graph api
+            import requests
+            headers = {"Authorization": f"Bearer {account.access_token}"}
+            try:
+                r = requests.get("https://graph.microsoft.com/v1.0/me", headers=headers, timeout=5)
+                if r.ok:
                     account.health_status = "healthy"
                     account.status = "connected"
                 else:
-                    account.health_status = "error"
-                    account.status = "expired"
-        except Exception:
-            account.health_status = "error"
-            account.status = "disconnected"
+                    from ..services.send_engine import _refresh_msal_token
+                    new_token = _refresh_msal_token(account)
+                    if new_token:
+                        account.health_status = "healthy"
+                        account.status = "connected"
+                    else:
+                        account.health_status = "error"
+                        account.status = "expired"
+            except Exception:
+                account.health_status = "error"
+                account.status = "disconnected"
+        else:
+            # Check local Outlook COM
+            try:
+                import pythoncom, win32com.client
+                pythoncom.CoInitialize()
+                try:
+                    outlook = win32com.client.Dispatch("Outlook.Application")
+                    ns = outlook.GetNamespace("MAPI")
+                    found = False
+                    for i in range(1, ns.Accounts.Count + 1):
+                        acc = ns.Accounts.Item(i)
+                        if acc.SmtpAddress and acc.SmtpAddress.lower() == account.email_address.lower():
+                            found = True
+                            break
+                    if found:
+                        account.health_status = "healthy"
+                        account.status = "connected"
+                    else:
+                        account.health_status = "error"
+                        account.status = "disconnected"
+                finally:
+                    pythoncom.CoUninitialize()
+            except Exception:
+                account.health_status = "error"
+                account.status = "disconnected"
     elif account.provider == "google":
         import requests
         headers = {"Authorization": f"Bearer {account.access_token}"}
@@ -212,6 +238,77 @@ def verify_account(account_id: int, db: Session = Depends(get_db), current_user:
     db.commit()
     
     return {"status": "success", "health_status": account.health_status}
+
+@router.post("/connect-local-outlook")
+def connect_local_outlook(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    """Automatically detect and connect the local desktop Outlook profile."""
+    try:
+        import pythoncom
+        import win32com.client
+    except ImportError:
+        raise HTTPException(status_code=500, detail="pywin32 not installed on server host")
+
+    pythoncom.CoInitialize()
+    try:
+        outlook = win32com.client.Dispatch("Outlook.Application")
+        ns = outlook.GetNamespace("MAPI")
+        if ns.Accounts.Count == 0:
+            raise HTTPException(status_code=400, detail="No Outlook accounts configured in local Microsoft Outlook")
+
+        # Pick primary account (prefer technovion or first account)
+        primary_acc = None
+        for i in range(1, ns.Accounts.Count + 1):
+            acc = ns.Accounts.Item(i)
+            addr = getattr(acc, "SmtpAddress", "") or ""
+            if "technovion" in addr.lower():
+                primary_acc = acc
+                break
+        if not primary_acc:
+            primary_acc = ns.Accounts.Item(1)
+
+        email_addr = getattr(primary_acc, "SmtpAddress", "") or getattr(primary_acc, "DisplayName", "")
+        display_name = getattr(primary_acc, "DisplayName", "") or f"{current_user.first_name or ''} {current_user.last_name or ''}".strip() or email_addr.split("@")[0].title()
+
+        account = db.query(ConnectedEmailAccount).filter(
+            ConnectedEmailAccount.user_id == current_user.id,
+            ConnectedEmailAccount.email_address == email_addr
+        ).first()
+
+        if not account:
+            account = ConnectedEmailAccount(
+                user_id=current_user.id,
+                provider="microsoft",
+                email_address=email_addr,
+                display_name=display_name,
+                access_token="local_outlook_com",
+                status="connected",
+                health_status="healthy",
+                last_verified_at=datetime.now(timezone.utc)
+            )
+            db.add(account)
+        else:
+            account.status = "connected"
+            account.health_status = "healthy"
+            account.access_token = "local_outlook_com"
+            account.display_name = display_name
+            account.last_verified_at = datetime.now(timezone.utc)
+
+        db.flush()
+        # Always promote as default sender
+        current_user.default_sender_id = account.account_id
+        db.commit()
+        db.refresh(account)
+
+        return {
+            "status": "success",
+            "account_id": account.account_id,
+            "email_address": account.email_address,
+            "display_name": account.display_name
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to connect local Outlook: {str(e)}")
+    finally:
+        pythoncom.CoUninitialize()
 
 class TestSendRequest(BaseModel):
     to_email: str

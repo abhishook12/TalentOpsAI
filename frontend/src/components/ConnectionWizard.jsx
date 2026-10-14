@@ -66,6 +66,18 @@ export default function ConnectionWizard({ onClose, onSuccess }) {
     }, 5 * 60 * 1000);
   };
 
+  const handleConnectLocalOutlook = async () => {
+    const t = toast.loading('Connecting to local Outlook desktop application...');
+    try {
+      const res = await api.post('/accounts/connect-local-outlook');
+      toast.success(`Connected to Outlook: ${res.data.email_address}!`, { id: t });
+      if (onSuccess) onSuccess();
+      onClose();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to connect to local Outlook', { id: t });
+    }
+  };
+
   const handleSmtpSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -139,6 +151,14 @@ export default function ConnectionWizard({ onClose, onSuccess }) {
         
         {step === 'provider' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <ProviderCard 
+              name="Desktop Outlook (1-Click Local Connect)" 
+              description="Sends via your local Outlook app — emails land in Sent Items instantly"
+              icon={<Mail size={20} />} 
+              bgColor="rgba(0, 120, 212, 0.15)" 
+              textColor="#0078d4" 
+              onClick={handleConnectLocalOutlook} 
+            />
             <ProviderCard 
               name="Gmail (App Password - Recommended)" 
               description="Genuine Gmail delivery, permanent connection, zero proxy"

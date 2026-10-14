@@ -34,6 +34,110 @@ logger = logging.getLogger(__name__)
 
 # Bridge configuration
 BRIDGE_URL = "http://127.0.0.1:1337"
+
+# ──────────────────────────────────────────────────────────────────────
+# Direct Local Outlook COM Send — Emails appear in Sent Items instantly
+# ──────────────────────────────────────────────────────────────────────
+import threading
+_outlook_com_lock = threading.Lock()
+
+def _send_via_local_outlook_com(payload: dict) -> tuple[bool, str]:
+    """
+    Send an email directly through the locally-installed Outlook desktop client
+    via COM automation.  Because mail.Send() goes through Outlook's native pipeline,
+    the message automatically lands in the user's Sent Items folder.
+
+    Returns (success: bool, error_message: str | None).
+    """
+    try:
+        import pythoncom
+        import win32com.client
+    except ImportError:
+        return False, "pywin32 not installed — cannot use local Outlook COM"
+
+    to_email = payload.get("to_email", "")
+    subject = payload.get("subject", "")
+    html_body = payload.get("html_body", "")
+    from_email = payload.get("from_email")
+
+    if not to_email:
+        return False, "Missing to_email"
+
+    try:
+        # Each thread must initialise COM independently
+        pythoncom.CoInitialize()
+        try:
+            outlook = win32com.client.Dispatch("Outlook.Application")
+            ns = outlook.GetNamespace("MAPI")
+
+            # ── 1. Find the matching Outlook account by SmtpAddress ──
+            matching_account = None
+            try:
+                accounts = ns.Accounts
+                for i in range(1, accounts.Count + 1):
+                    acc = accounts.Item(i)
+                    smtp = getattr(acc, "SmtpAddress", "") or ""
+                    if from_email and smtp.lower() == from_email.lower():
+                        matching_account = acc
+                        break
+                # Fallback: use the first available account
+                if not matching_account and accounts.Count > 0:
+                    matching_account = accounts.Item(1)
+            except Exception:
+                pass
+
+            # ── 2. Create and configure the mail item ──
+            mail = outlook.CreateItem(0)  # olMailItem
+            mail.To = to_email
+            mail.Subject = subject
+            mail.HTMLBody = html_body
+
+            if matching_account:
+                # Use the low-level OLEOBJ invoke to set SendUsingAccount
+                # (property DISPID 64209 = SendUsingAccount)
+                try:
+                    mail._oleobj_.Invoke(*(64209, 0, 8, 0, matching_account))
+                except Exception:
+                    # Fallback — assign directly (works on most Outlook builds)
+                    try:
+                        mail.SendUsingAccount = matching_account
+                    except Exception:
+                        pass
+
+            # ── 3. SentOnBehalfOfName guard — NEVER set for cross-domain ──
+            # Identical logic to local_outlook_bridge.py lines 83-95
+            if from_email and matching_account:
+                try:
+                    account_addr = str(getattr(matching_account, "SmtpAddress", ""))
+                    account_domain = account_addr.split("@")[-1].lower() if "@" in account_addr else ""
+                    from_domain = str(from_email).split("@")[-1].lower() if "@" in str(from_email) else ""
+                    if (
+                        account_domain
+                        and account_domain == from_domain
+                        and str(from_email).lower() != account_addr.lower()
+                    ):
+                        mail.SentOnBehalfOfName = str(from_email)
+                except Exception:
+                    pass
+
+            # ── 4. ReplyTo for clean reply routing ──
+            if from_email and not str(from_email).lower().startswith("outlook_"):
+                try:
+                    mail.ReplyRecipients.Add(str(from_email))
+                except Exception:
+                    pass
+
+            # ── 5. Send — this puts the mail into Outbox → Sent Items ──
+            with _outlook_com_lock:
+                mail.Send()
+
+            return True, None
+
+        finally:
+            pythoncom.CoUninitialize()
+
+    except Exception as e:
+        return False, f"Outlook COM error: {e}"
 WORKER_COUNT = 16  # High-throughput asynchronous worker pool
 MAX_RETRIES_OVERALL = 3
 MAX_RECIPIENTS_PER_CAMPAIGN = 200  # Raised cap — handles real outreach volumes
@@ -527,7 +631,7 @@ async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, s
 
     # Check if direct provider dispatch (Google API / Graph API / SMTP) is available
     can_direct_send = False
-    provider_name = "outlook_bridge"
+    provider_name = "outlook_com"  # Default: direct local Outlook COM send (lands in Sent Items)
     with SessionLocal() as db:
         if sender_account_id:
             acc = db.query(ConnectedEmailAccount).filter(ConnectedEmailAccount.account_id == sender_account_id).first()
@@ -704,8 +808,53 @@ async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, s
                 # Check and finalize if all recipients in campaign are sent
                 await asyncio.to_thread(_check_and_finalize_campaign, campaign_id)
             else:
-                # Queued for local Outlook COM bridge
-                logger.info(f"Worker {worker_id}: queued Outlook Bridge task for {rec_email} (log {log_id})")
+                # ── Direct Local Outlook COM Send ──
+                # Send through the locally-installed Outlook via COM automation.
+                # This guarantees the email appears in the user's Sent Items folder.
+                def _outlook_com_dispatch():
+                    return _send_via_local_outlook_com(payload)
+
+                com_success, com_error = await asyncio.to_thread(_outlook_com_dispatch)
+
+                def _record_outlook_com_result(success, error):
+                    with SessionLocal() as db:
+                        log = db.query(EmailLog).filter(EmailLog.log_id == log_id).first()
+                        cr = db.query(CampaignRecruiter).filter(CampaignRecruiter.campaign_recruiter_id == recipient_id).first()
+                        now = datetime.now(timezone.utc)
+                        if success:
+                            if log:
+                                log.status = EmailLogStatus.delivered.value
+                                log.delivered_at = now
+                                log.outlook_accepted = True
+                                log.error_message = None
+                            if cr:
+                                cr.status = CampaignRecruiterStatus.delivered.value
+                                cr.last_sent_at = now
+                                cr.sent_count = (cr.sent_count or 0) + 1
+                                _advance_recipient_to_next_step(db, cr, campaign_id)
+                        else:
+                            if log:
+                                log.status = EmailLogStatus.failed.value
+                                log.failed_at = now
+                                log.error_message = str(error)[:500] if error else "Outlook COM send failed"
+                            if cr:
+                                cr.status = CampaignRecruiterStatus.failed.value
+                                cr.last_error = str(error)[:500] if error else "Outlook COM send failed"
+                        db.commit()
+
+                await asyncio.to_thread(_record_outlook_com_result, com_success, com_error)
+
+                if com_success:
+                    logger.info(f"Worker {worker_id}: SENT via local Outlook COM to {rec_email} (log {log_id}) — in Sent Items")
+                    if failure_counter:
+                        failure_counter['consecutive'] = 0
+                else:
+                    logger.warning(f"Worker {worker_id}: Outlook COM send failed for {rec_email}: {com_error}")
+                    if failure_counter:
+                        failure_counter['consecutive'] += 1
+
+                # Check and finalize campaign
+                await asyncio.to_thread(_check_and_finalize_campaign, campaign_id)
                 
         except Exception as e:
             logger.error(f"Worker {worker_id} exception for {recipient_id}: {e}")

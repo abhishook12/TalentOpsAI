@@ -95,26 +95,26 @@ export default function Sidebar() {
       flexShrink: 0,
       zIndex: 20,
     }}>
-      <div style={{ padding: '32px 24px', flexShrink: 0 }}>
+      <div style={{ padding: '24px 20px', flexShrink: 0 }}>
         
-        <NavLink to="/" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28, textDecoration: 'none', color: 'inherit', cursor: 'pointer' }} title="TalentOps Home">
+        <NavLink to="/" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, textDecoration: 'none', color: 'inherit', cursor: 'pointer' }} title="TalentOps Home">
           <img 
             src="/talentops-logo.png" 
             alt="TalentOps" 
             style={{ 
-              width: 36, 
-              height: 36, 
-              borderRadius: 8, 
+              width: 34, 
+              height: 34, 
+              borderRadius: 6, 
               objectFit: 'contain',
               flexShrink: 0,
-              boxShadow: '0 2px 10px rgba(0, 0, 0, 0.3)'
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.4)'
             }} 
           />
           <div style={{
             fontSize: 18,
-            fontWeight: 700,
-            lineHeight: 1.1,
-            letterSpacing: '-0.02em',
+            fontWeight: 600,
+            lineHeight: 1.15,
+            letterSpacing: '-0.015em',
             color: 'var(--text-primary)',
           }}>
             TalentOps
@@ -122,26 +122,26 @@ export default function Sidebar() {
         </NavLink>
 
         <div style={{ minWidth: 0 }}>
-          <div style={{ color: 'var(--text-primary)', fontSize: 13, fontWeight: 600 }}>
-            {isAdmin ? 'Admin Console' : 'TalentOps'}
+          <div style={{ color: 'var(--text-primary)', fontSize: 13.5, fontWeight: 600 }}>
+            {isAdmin ? 'Admin Console' : 'TalentOps Intelligence'}
           </div>
-          <div style={{ color: 'var(--text-muted)', fontSize: 10, fontWeight: 500, marginTop: 4, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-            {isAdmin ? 'OPERATIONS' : 'RECRUITER INTEL'}
+          <div style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 500, marginTop: 2, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+            {isAdmin ? 'OPERATIONS' : 'RECRUITER WORKSPACE'}
           </div>
         </div>
       </div>
 
-      <nav style={{ flex: 1, minHeight: 0, padding: '0 12px 24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <nav style={{ flex: 1, minHeight: 0, padding: '0 10px 20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
         {nav.map((item, index) => {
           if (item.isGroupHeader) {
             return (
               <div key={`header-${index}`} style={{
                 color: 'var(--text-muted)',
-                fontSize: 10,
+                fontSize: 11.5,
                 fontWeight: 600,
                 textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-                padding: '24px 12px 8px',
+                letterSpacing: '0.04em',
+                padding: '18px 12px 6px',
               }}>
                 {item.label}
               </div>
@@ -161,19 +161,20 @@ export default function Sidebar() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 12,
-                padding: '10px 12px',
+                padding: '9px 12px',
                 borderRadius: 6,
                 textDecoration: 'none',
-                color: active ? 'var(--sidebar-active-color, var(--text-primary))' : 'var(--text-secondary)',
+                color: active ? '#ffffff' : 'var(--text-secondary)',
                 background: active ? 'var(--sidebar-active-bg)' : 'transparent',
-                fontSize: 13,
-                fontWeight: active ? 600 : 400,
-                position: 'relative'
+                fontSize: 14,
+                fontWeight: active ? 600 : 500,
+                position: 'relative',
+                transition: 'background 0.15s ease, color 0.15s ease'
               }}
               onMouseEnter={(event) => {
                 if (active) return
                 event.currentTarget.style.background = 'var(--hover-bg)'
-                event.currentTarget.style.color = 'var(--text-primary)'
+                event.currentTarget.style.color = '#ffffff'
               }}
               onMouseLeave={(event) => {
                 if (active) return
@@ -184,32 +185,34 @@ export default function Sidebar() {
               {active && (
                 <div style={{
                   position: 'absolute',
-                  left: -12,
+                  left: 0,
                   top: '50%',
                   transform: 'translateY(-50%)',
                   width: 3,
-                  height: 16,
-                  background: 'var(--text-primary)',
-                  borderRadius: '0 4px 4px 0'
+                  height: 20,
+                  background: 'var(--brand)',
+                  borderRadius: '0 3px 3px 0'
                 }} />
               )}
-              <Icon size={16} strokeWidth={active ? 2.5 : 2} />
-              <span style={{ flex: 1 }}>{label}</span>
+              <Icon size={18} strokeWidth={active ? 2.2 : 1.8} style={{ color: active ? 'var(--brand)' : 'inherit', flexShrink: 0 }} />
+              <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
               {item.badge && (
                 <div style={{
                   background: item.badgeVariant === 'pending' || item.badgeVariant === 'danger' || (typeof item.badge === 'number' && item.badge > 0)
-                    ? 'rgba(239, 68, 68, 0.14)'
-                    : 'rgba(255, 255, 255, 0.08)',
+                    ? 'rgba(239, 68, 68, 0.16)'
+                    : 'rgba(34, 184, 207, 0.14)',
                   color: item.badgeVariant === 'pending' || item.badgeVariant === 'danger' || (typeof item.badge === 'number' && item.badge > 0)
-                    ? '#ef4444'
-                    : '#e4e4e7',
+                    ? '#f87171'
+                    : '#22B8CF',
                   border: item.badgeVariant === 'pending' || item.badgeVariant === 'danger' || (typeof item.badge === 'number' && item.badge > 0)
                     ? '1px solid rgba(239, 68, 68, 0.35)'
-                    : '1px solid rgba(255, 255, 255, 0.18)',
-                  fontSize: '10px',
+                    : '1px solid rgba(34, 184, 207, 0.35)',
+                  fontSize: '11px',
                   fontWeight: 600,
-                  padding: '2px 6px',
-                  borderRadius: '999px',
+                  padding: '2px 7px',
+                  borderRadius: '4px',
+                  lineHeight: 1.2,
+                  flexShrink: 0
                 }}>
                   {item.badge}
                 </div>
@@ -220,7 +223,8 @@ export default function Sidebar() {
       </nav>
 
       <div style={{
-        padding: '24px 24px',
+        padding: '16px 20px',
+        borderTop: '1px solid var(--sidebar-border)',
         flexShrink: 0,
       }}>
         {user && (
@@ -230,30 +234,28 @@ export default function Sidebar() {
               display: 'flex',
               alignItems: 'center',
               gap: 12,
-              marginBottom: 18,
+              marginBottom: 12,
               padding: '6px 8px',
-              marginLeft: -8,
-              marginRight: -8,
-              borderRadius: 8,
+              borderRadius: 6,
               textDecoration: 'none',
               transition: 'background 0.15s ease',
             }}
-            onMouseEnter={(e) => e.currentTarget.style.background = 'var(--panel-bg, rgba(255,255,255,0.04))'}
+            onMouseEnter={(e) => e.currentTarget.style.background = 'var(--hover-bg)'}
             onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
             title="View & Edit Profile"
           >
             {user.avatar_url ? (
-              <img src={user.avatar_url} alt="User Avatar" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--card-border, #27272a)' }} />
+              <img src={user.avatar_url} alt="User Avatar" style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--card-border)' }} />
             ) : (
-              <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--card-border)', display: 'grid', placeItems: 'center', color: 'var(--text-primary)', fontWeight: 600, fontSize: 12 }}>
-                {user.first_name?.[0]}
+              <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--bg-elevated)', border: '1px solid var(--card-border)', display: 'grid', placeItems: 'center', color: 'var(--text-primary)', fontWeight: 600, fontSize: 13 }}>
+                {user.first_name?.[0] || 'U'}
               </div>
             )}
             <div style={{ minWidth: 0, flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <div style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {user.first_name} {user.last_name}
               </div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {user.email}
               </div>
             </div>
@@ -267,28 +269,27 @@ export default function Sidebar() {
             display: 'flex',
             alignItems: 'center',
             gap: 12,
-            padding: '10px 12px',
+            padding: '8px 8px',
             borderRadius: 6,
             border: 'none',
             background: 'transparent',
-            color: 'var(--text-muted)',
+            color: 'var(--text-secondary)',
             cursor: 'pointer',
-            fontSize: 13,
+            fontSize: 13.5,
             fontWeight: 500,
-            transition: 'all 0.15s',
-            textAlign: 'left',
-            marginLeft: -12
+            transition: 'all 0.15s ease',
+            textAlign: 'left'
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.color = 'var(--text-primary)'
-            e.currentTarget.style.background = 'var(--hover-bg, #1D1D1D)'
+            e.currentTarget.style.color = '#ffffff'
+            e.currentTarget.style.background = 'var(--hover-bg)'
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.color = 'var(--text-muted)'
+            e.currentTarget.style.color = 'var(--text-secondary)'
             e.currentTarget.style.background = 'transparent'
           }}
         >
-          <LogOut size={16} strokeWidth={2} />
+          <LogOut size={17} strokeWidth={1.8} />
           <span>Sign Out</span>
         </button>
       </div>

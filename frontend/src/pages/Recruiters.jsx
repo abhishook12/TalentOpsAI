@@ -165,29 +165,29 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleA
       e.currentTarget.style.boxShadow = 'none'
     }}
     >
-      <td style={{ padding: '24px 24px', verticalAlign: 'middle' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+      <td style={{ padding: '14px 20px', verticalAlign: 'middle' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <div style={{
-            width: 44, height: 44, borderRadius: '50%', 
+            width: 40, height: 40, borderRadius: '50%', 
             background: avatarStyle.bg,
             border: `1px solid ${avatarStyle.border}`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 15, color: avatarStyle.text, fontWeight: 600, flexShrink: 0,
+            fontSize: 14, color: avatarStyle.text, fontWeight: 600, flexShrink: 0,
             letterSpacing: '0.02em'
           }}>
             {r.recruiter_name?.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase() || '?'}
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14.5, letterSpacing: '-0.01em' }}>{r.recruiter_name}</div>
+                <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14, letterSpacing: '-0.01em' }}>{r.recruiter_name}</div>
                 <SourceProvenanceBadge source={r.data_source} size="xs" />
                 {r.linkedin && (
-                  <a href={r.linkedin} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} title="LinkedIn Profile" style={{ color: '#ffffff', display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
+                  <a href={r.linkedin} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} title="LinkedIn Profile" style={{ color: '#22B8CF', display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
                     <i className="ti ti-brand-linkedin" style={{ fontSize: 15 }} />
                   </a>
                 )}
                 {r.notes && (
-                  <div title="Has internal notes" style={{ color: '#d4d4d8', display: 'flex', alignItems: 'center' }}>
+                  <div title="Has internal notes" style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
                     <i className="ti ti-file-description" style={{ fontSize: 14 }} />
                   </div>
                 )}
@@ -197,18 +197,18 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleA
                 <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>{r.email?.toLowerCase()}</div>
                 {r.seniority_level && r.seniority_level !== 'Specialist' && (
                   <div style={{ 
-                    display: 'inline-flex', alignItems: 'center', gap: 3, 
-                    padding: '2px 6px', borderRadius: 4, fontSize: 10, fontWeight: 700,
-                    background: r.seniority_level === 'Executive' ? 'rgba(161, 161, 170,0.15)' :
-                                r.seniority_level === 'Lead' ? 'rgba(161, 161, 170,0.15)' :
-                                r.seniority_level === 'Senior' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.05)',
-                    color: r.seniority_level === 'Executive' ? '#d4d4d8' :
-                           r.seniority_level === 'Lead' ? '#a1a1aa' :
-                           r.seniority_level === 'Senior' ? '#e4e4e7' : '#d4d4d8',
+                    display: 'inline-flex', alignItems: 'center', gap: 4, 
+                    padding: '2px 7px', borderRadius: 4, fontSize: 11.5, fontWeight: 500,
+                    background: r.seniority_level === 'Executive' ? 'rgba(245, 158, 11, 0.14)' :
+                                r.seniority_level === 'Lead' ? 'rgba(34, 184, 207, 0.14)' :
+                                r.seniority_level === 'Senior' ? 'rgba(255, 255, 255, 0.08)' : 'var(--bg-elevated)',
+                    color: r.seniority_level === 'Executive' ? '#fbbf24' :
+                           r.seniority_level === 'Lead' ? '#22B8CF' :
+                           r.seniority_level === 'Senior' ? '#f2f2f2' : 'var(--text-secondary)',
                     border: `1px solid ${
-                      r.seniority_level === 'Executive' ? 'rgba(161, 161, 170,0.3)' :
-                      r.seniority_level === 'Lead' ? 'rgba(161, 161, 170,0.3)' :
-                      r.seniority_level === 'Senior' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.05)'
+                      r.seniority_level === 'Executive' ? 'rgba(245, 158, 11, 0.35)' :
+                      r.seniority_level === 'Lead' ? 'rgba(34, 184, 207, 0.35)' :
+                      r.seniority_level === 'Senior' ? 'rgba(255, 255, 255, 0.16)' : 'var(--card-border)'
                     }`
                   }}>
                     <i className={r.seniority_level === 'Executive' ? "ti ti-crown" : r.seniority_level === 'Lead' ? "ti ti-star" : "ti ti-badge"} style={{ fontSize: 11 }} />
@@ -217,26 +217,26 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleA
                 )}
                 {r.email_generated && (
                   <div style={{ 
-                    display: 'inline-flex', alignItems: 'center', gap: 3, 
-                    padding: '2px 6px', borderRadius: 4, fontSize: 10, fontWeight: 700,
-                    background: 'rgba(255, 255, 255, 0.08)', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.15)'
+                    display: 'inline-flex', alignItems: 'center', gap: 4, 
+                    padding: '2px 7px', borderRadius: 4, fontSize: 11.5, fontWeight: 500,
+                    background: 'rgba(245, 158, 11, 0.14)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.35)'
                   }} title={r.email_source ? `AI Synthesized via ${r.email_source} (${r.email_confidence || 0}% conf)` : 'Corporate Email Inferred by Engine'}>
                     <i className="ti ti-sparkles" style={{ fontSize: 11 }} /> AI Inferred
                   </div>
                 )}
                 {r.email_status === 'PATTERN_VERIFIED' ? (
                   <div style={{ 
-                    display: 'inline-flex', alignItems: 'center', gap: 3, 
-                    padding: '2px 6px', borderRadius: 4, fontSize: 10, fontWeight: 700,
-                    background: 'rgba(255, 255, 255, 0.08)', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.15)'
+                    display: 'inline-flex', alignItems: 'center', gap: 4, 
+                    padding: '2px 7px', borderRadius: 4, fontSize: 11.5, fontWeight: 500,
+                    background: 'rgba(34, 184, 207, 0.14)', color: '#22B8CF', border: '1px solid rgba(34, 184, 207, 0.35)'
                   }} title={r.email_source ? `Pattern Verified | Source: ${r.email_source} | ${r.email_confidence || 0}% safe` : `Company Pattern Verified (${r.email_confidence || 0}%)`}>
                     <i className="ti ti-bolt" style={{ fontSize: 11 }} /> Pattern Verified
                   </div>
                 ) : (r.email_status === 'MX_VERIFIED' || r.is_deliverable === true) ? (
                   <div style={{ 
-                    display: 'inline-flex', alignItems: 'center', gap: 3, 
-                    padding: '2px 6px', borderRadius: 4, fontSize: 10, fontWeight: 700,
-                    background: 'rgba(255, 255, 255, 0.08)', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.08)'
+                    display: 'inline-flex', alignItems: 'center', gap: 4, 
+                    padding: '2px 7px', borderRadius: 4, fontSize: 11.5, fontWeight: 500,
+                    background: 'rgba(34, 197, 94, 0.14)', color: '#4ade80', border: '1px solid rgba(34, 197, 94, 0.35)'
                   }} title="DNS MX Mail Server Pre-Validated & Deliverable">
                     <i className="ti ti-circle-check" style={{ fontSize: 11 }} /> MX Verified
                   </div>
@@ -244,17 +244,17 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleA
                 {r.email_status && !['unknown', '', 'PATTERN_VERIFIED', 'MX_VERIFIED'].includes(r.email_status) && (
                   <div style={{ 
                     display: 'inline-flex', alignItems: 'center', gap: 4, 
-                    padding: '2px 6px', borderRadius: 4, fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
-                    background: r.email_status === 'verified' ? 'rgba(255, 255, 255, 0.08)' : 
-                                r.email_status === 'likely_valid' ? 'rgba(212, 212, 216,0.1)' :
-                                r.email_status === 'needs_monitoring' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(239,68,68,0.1)',
-                    color: r.email_status === 'verified' ? '#ffffff' : 
-                           r.email_status === 'likely_valid' ? '#d4d4d8' :
-                           r.email_status === 'needs_monitoring' ? '#d4d4d8' : '#ef4444',
+                    padding: '2px 7px', borderRadius: 4, fontSize: 11.5, fontWeight: 500,
+                    background: r.email_status === 'verified' ? 'rgba(34, 197, 94, 0.14)' : 
+                                r.email_status === 'likely_valid' ? 'rgba(34, 184, 207, 0.14)' :
+                                r.email_status === 'needs_monitoring' ? 'rgba(245, 158, 11, 0.14)' : 'rgba(239, 68, 68, 0.14)',
+                    color: r.email_status === 'verified' ? '#4ade80' : 
+                           r.email_status === 'likely_valid' ? '#22B8CF' :
+                           r.email_status === 'needs_monitoring' ? '#fbbf24' : '#f87171',
                     border: `1px solid ${
-                      r.email_status === 'verified' ? 'rgba(255, 255, 255, 0.08)' : 
-                      r.email_status === 'likely_valid' ? 'rgba(212, 212, 216,0.2)' :
-                      r.email_status === 'needs_monitoring' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(239,68,68,0.2)'
+                      r.email_status === 'verified' ? 'rgba(34, 197, 94, 0.35)' : 
+                      r.email_status === 'likely_valid' ? 'rgba(34, 184, 207, 0.35)' :
+                      r.email_status === 'needs_monitoring' ? 'rgba(245, 158, 11, 0.35)' : 'rgba(239, 68, 68, 0.35)'
                     }`
                   }} title={r.email_source ? `Confidence: ${r.email_confidence}% | Source: ${r.email_source}` : `Confidence: ${r.email_confidence || 0}%`}>
                     {r.email_status.replace('_', ' ')}
@@ -573,7 +573,7 @@ export default function Recruiters() {
   }, [setSearch, setFilters, setPage])
 
   return (
-    <div className="page-enter" style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
+    <div className="page-enter" style={{ display: 'flex', gap: 24, alignItems: 'flex-start', paddingBottom: 64 }}>
       
       {/* Sidebar Filters */}
       {showFilters && (
@@ -802,25 +802,25 @@ export default function Recruiters() {
                   value={filters.state} 
                   onChange={val => updateFilter('state', val)}
                   options={STATE_OPTIONS}
-                  style={{ width: 140, height: 36 }}
+                  style={{ width: 145, height: 38 }}
                 />
                 <CustomSelect 
                   value={filters.title} 
                   onChange={val => updateFilter('title', val)}
                   options={TITLE_OPTIONS}
-                  style={{ width: 150, height: 36 }}
+                  style={{ width: 165, height: 38 }}
                 />
                 <CustomSelect 
                   value={filters.company} 
                   onChange={val => updateFilter('company', val)}
                   options={COMPANY_OPTIONS}
-                  style={{ width: 150, height: 36 }}
+                  style={{ width: 185, height: 38 }}
                 />
                 <CustomSelect 
                   value={filters.status} 
                   onChange={val => updateFilter('status', val)}
                   options={STATUS_OPTIONS}
-                  style={{ width: 140, height: 36 }}
+                  style={{ width: 145, height: 38 }}
                 />
               </div>
 

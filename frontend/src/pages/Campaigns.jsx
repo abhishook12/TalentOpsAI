@@ -5,11 +5,13 @@ import {
   Send, ArrowLeft, Plus, Mail, Activity, AlertCircle, FileText,
   CheckCircle2, Loader2, ChevronRight, Play, Eye, Download, Search,
   Pause, MoreHorizontal, Copy, Trash2, Archive, Save, Clock, RefreshCw, X,
-  ChevronDown, ChevronUp, Zap, ShieldCheck, Sparkles
+  ChevronDown, ChevronUp, Zap, ShieldCheck, Sparkles, Building2, Check,
+  RotateCcw, Users
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import { useSessionState } from '../hooks/useSessionState';
+import { detectDominantCompany } from '../utils/domain';
 
 import BridgeStatus from '../components/BridgeStatus';
 import SignatureManager from '../components/SignatureManager';
@@ -66,28 +68,86 @@ const CampaignRow = memo(function CampaignRow({
   campaign: c,
   isSelected,
   onToggleSelection,
-  onLoad,
+  onOpen,
+  onResend,
+  onReuseTemplate,
   onToggleStatus,
   onDuplicate,
   onArchive,
   onDelete
 }) {
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setShowMenu(false);
+      }
+    };
+    if (showMenu) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showMenu]);
+
   const isFailed = (c.stats?.failed || 0) > 0;
+
   return (
     <tr className={`transition-colors ${isSelected ? 'bg-[var(--bg-hover)]' : 'hover:bg-white/[0.02]'}`}>
-      <td className="px-4 py-4"><input type="checkbox" checked={isSelected} onChange={() => onToggleSelection(c.campaign_id)} className="w-3.5 h-3.5 rounded" /></td>
-      <td className="px-4 py-4">
-        <div className="font-bold text-[var(--text-primary)]">{c.name}</div>
-        <div className="text-xs text-[var(--text-muted)] mt-0.5 font-mono">{String(c.campaign_id).slice(0, 8)}</div>
-        {isFailed && <span className="text-[10px] px-1.5 py-0.5 bg-red-500/20 text-red-400 font-bold rounded-full">{c.stats.failed} failed</span>}
+      <td className="px-4 py-3.5"><input type="checkbox" checked={isSelected} onChange={() => onToggleSelection(c.campaign_id)} className="w-3.5 h-3.5 rounded" /></td>
+      
+      {/* Campaign Name + Subject + Sample Recipients */}
+      <td className="px-4 py-3.5">
+        <div className="flex items-center gap-2">
+          <button 
+            type="button" 
+            onClick={() => onOpen(c.campaign_id)}
+            className="font-bold text-left text-[var(--text-primary)] hover:text-cyan-400 transition-colors cursor-pointer text-sm"
+          >
+            {c.name}
+          </button>
+          {c.dominant_company && c.dominant_company !== c.name && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
+              {c.dominant_company}
+            </span>
+          )}
+          {isFailed && <span className="text-[10px] px-1.5 py-0.5 bg-red-500/20 text-red-400 font-bold rounded-full">{c.stats.failed} failed</span>}
+        </div>
+
+        {/* Email subject preview */}
+        {c.subject && (
+          <div className="text-xs text-[var(--text-secondary)] mt-1 flex items-center gap-1.5 truncate max-w-md" title={c.subject}>
+            <Mail size={12} className="shrink-0 text-[var(--text-muted)]" />
+            <span className="truncate italic">"{c.subject}"</span>
+          </div>
+        )}
+
+        {/* Sample recipient chips */}
+        {c.sample_recipients && c.sample_recipients.length > 0 && (
+          <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+            <Users size={11} className="text-[var(--text-muted)] shrink-0" />
+            {c.sample_recipients.map((rec, idx) => (
+              <span key={idx} className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--bg-hover)] text-[var(--text-muted)] font-mono truncate max-w-[150px]">
+                {rec.email}
+              </span>
+            ))}
+            {(c.stats?.total || 0) > c.sample_recipients.length && (
+              <span className="text-[10px] text-[var(--text-muted)] font-medium">
+                +{c.stats.total - c.sample_recipients.length} more
+              </span>
+            )}
+          </div>
+        )}
       </td>
-      <td className="px-4 py-4">
+
+      <td className="px-4 py-3.5">
         <StatusBadge status={c.status} />
       </td>
-      <td className="px-4 py-4 text-sm font-medium text-[var(--text-primary)]">
+
+      <td className="px-4 py-3.5 text-xs text-[var(--text-muted)] whitespace-nowrap">
         {new Date(c.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
       </td>
-      <td className="px-4 py-4 w-56">
+
+      <td className="px-4 py-3.5 w-48">
         {c.status === 'draft' ? (
           <span className="text-xs text-[var(--text-muted)]">Not sent</span>
         ) : (
@@ -102,17 +162,95 @@ const CampaignRow = memo(function CampaignRow({
           </div>
         )}
       </td>
-      <td className="px-4 py-4 text-right">
-        <div className="flex items-center justify-end gap-2">
-          <button onClick={() => onLoad(c.campaign_id)} className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors" title="Open"><Eye size={15} /></button>
+
+      {/* Prominent Action Buttons: Resend, Open, More */}
+      <td className="px-4 py-3.5 text-right whitespace-nowrap">
+        <div className="flex items-center justify-end gap-1.5">
+          {/* Primary Resend Button */}
+          <button
+            type="button"
+            onClick={() => onResend(c.campaign_id)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold bg-[rgba(34,184,207,0.14)] text-[#22B8CF] border border-[rgba(34,184,207,0.35)] hover:bg-[rgba(34,184,207,0.22)] transition-colors cursor-pointer"
+            title="Reopen last email and reuse all recipients in the composer ready to send again"
+          >
+            <RotateCcw size={12} />
+            <span>Resend</span>
+          </button>
+
+          {/* Open Button */}
+          <button
+            type="button"
+            onClick={() => onOpen(c.campaign_id)}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--card-border)] hover:bg-[#323232] transition-colors cursor-pointer"
+            title="Open campaign details & delivery monitor"
+          >
+            <Eye size={12} />
+            <span>Open</span>
+          </button>
+
+          {/* Toggle Pause/Play for active/paused */}
           {(c.status === 'active' || c.status === 'paused') && (
-            <button onClick={() => onToggleStatus(c.campaign_id, c.status)} className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
-              {c.status === 'active' ? <Pause size={15} /> : <Play size={15} />}
+            <button
+              onClick={() => onToggleStatus(c.campaign_id, c.status)}
+              className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--card-border)] rounded hover:bg-[var(--bg-elevated)] transition-colors"
+              title={c.status === 'active' ? 'Pause Campaign' : 'Resume Campaign'}
+            >
+              {c.status === 'active' ? <Pause size={13} /> : <Play size={13} />}
             </button>
           )}
-          <button onClick={() => onDuplicate(c.campaign_id)} className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors" title="Duplicate"><Copy size={15} /></button>
-          <button onClick={() => onArchive(c.campaign_id)} className="p-1.5 text-[var(--text-muted)] hover:text-yellow-400 transition-colors" title="Archive"><Archive size={15} /></button>
-          <button onClick={() => onDelete(c.campaign_id)} className="p-1.5 text-[var(--text-muted)] hover:text-red-400 transition-colors" title="Delete"><Trash2 size={15} /></button>
+
+          {/* More Actions Dropdown */}
+          <div className="relative inline-block" ref={menuRef}>
+            <button
+              type="button"
+              onClick={() => setShowMenu(prev => !prev)}
+              className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--card-border)] rounded hover:bg-[var(--bg-elevated)] transition-colors cursor-pointer"
+              title="More options"
+            >
+              <MoreHorizontal size={14} />
+            </button>
+
+            {showMenu && (
+              <div 
+                className="absolute right-0 top-full mt-1.5 w-52 rounded-md border border-[var(--card-border)] bg-[var(--bg-elevated)] shadow-2xl p-1 z-50 text-left"
+                style={{ backdropFilter: 'blur(16px)' }}
+              >
+                <button
+                  type="button"
+                  onClick={() => { setShowMenu(false); onReuseTemplate(c.campaign_id); }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--text-primary)] hover:bg-white/[0.06] rounded-lg transition-colors text-left"
+                >
+                  <FileText size={13} className="text-cyan-400" />
+                  <span>Reuse Template (New Batch)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowMenu(false); onDuplicate(c.campaign_id); }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--text-primary)] hover:bg-white/[0.06] rounded-lg transition-colors text-left"
+                >
+                  <Copy size={13} className="text-blue-400" />
+                  <span>Duplicate Campaign</span>
+                </button>
+                <div className="my-1 border-t border-white/5" />
+                <button
+                  type="button"
+                  onClick={() => { setShowMenu(false); onArchive(c.campaign_id); }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-yellow-400/90 hover:bg-yellow-500/10 rounded-lg transition-colors text-left"
+                >
+                  <Archive size={13} />
+                  <span>Archive</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowMenu(false); onDelete(c.campaign_id); }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-red-400 hover:bg-red-500/10 rounded-lg transition-colors text-left"
+                >
+                  <Trash2 size={13} />
+                  <span>Delete</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </td>
     </tr>
@@ -140,14 +278,76 @@ export default function Campaigns() {
   const [senderAccountId, setSenderAccountId] = useState(null);
   const [sendError, setSendError] = useState(null);
   const [fromEmail, setFromEmail] = useState('');
-  const [cc, setCc] = useState('');
-  const [showCc, setShowCc] = useState(false);
+  // ── CC Memory & Persistence ────────────────────────────────────────────────
+  const DEFAULT_INITIAL_CC = 'yatin@technovion.com';
+
+  const [showCc, setShowCc] = useState(() => {
+    try {
+      return localStorage.getItem('talentops_show_cc') !== 'false';
+    } catch {
+      return true; // Always open by default
+    }
+  });
+
+  const [cc, setCc] = useState(() => {
+    try {
+      const saved = localStorage.getItem('talentops_saved_cc');
+      return saved !== null ? saved : DEFAULT_INITIAL_CC;
+    } catch {
+      return DEFAULT_INITIAL_CC;
+    }
+  });
+
+  const [ccHistory, setCcHistory] = useState(() => {
+    try {
+      const parsed = JSON.parse(localStorage.getItem('talentops_cc_history') || 'null');
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      return [DEFAULT_INITIAL_CC];
+    } catch {
+      return [DEFAULT_INITIAL_CC];
+    }
+  });
+
+  const handleCcChange = useCallback((newVal) => {
+    setCc(newVal);
+    try {
+      localStorage.setItem('talentops_saved_cc', newVal);
+      const emails = newVal
+        .split(/[,;\s]+/)
+        .map(e => e.trim().toLowerCase())
+        .filter(e => e.includes('@') && e.length > 3);
+      if (emails.length > 0) {
+        setCcHistory(prev => {
+          const merged = Array.from(new Set([...emails, ...prev])).slice(0, 8);
+          localStorage.setItem('talentops_cc_history', JSON.stringify(merged));
+          return merged;
+        });
+      }
+    } catch (e) {
+      console.warn('Could not persist CC memory:', e);
+    }
+  }, []);
+
   const [bcc, setBcc] = useState('');
   const [showBcc, setShowBcc] = useState(false);
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [signatureId, setSignatureId] = useState(null);
   const [validatedRecipients, setValidatedRecipients] = useState({ recipients: [], valid_count: 0 });
+  const [isUserEditedName, setIsUserEditedName] = useState(false);
+
+  // ── Auto-Detected Dominant Company ────────────────────────────────────────────
+  const dominantCompany = useMemo(() => {
+    return detectDominantCompany(validatedRecipients.recipients);
+  }, [validatedRecipients.recipients]);
+
+  useEffect(() => {
+    if (dominantCompany && dominantCompany.companyName) {
+      if (!isUserEditedName || !campaignName || campaignName.trim() === '' || campaignName === 'New Campaign' || campaignName === 'Draft') {
+        setCampaignName(dominantCompany.companyName);
+      }
+    }
+  }, [dominantCompany, isUserEditedName, campaignName]);
 
   // ── Accounts State ────────────────────────────────────────────────────────────
   const [accounts, setAccounts] = useState([]);
@@ -499,19 +699,28 @@ export default function Campaigns() {
   // ─────────────────────────────────────────────────────────────────────────────
   const startNewCampaign = useCallback((initialTemplate = null) => {
     setActiveCampaignId(null);
+    setIsUserEditedName(false);
     setCampaignName(initialTemplate?.name || 'New Campaign');
     setSubject(initialTemplate?.subject || '');
     setBody(initialTemplate?.html_body || initialTemplate?.text_body || initialTemplate?.body || '');
     setSignatureId(null);
     setSenderAccountId(null);
     setFromEmail('');
+    // Auto-populate remembered CC from memory and keep CC tab open
+    try {
+      const rememberedCc = localStorage.getItem('talentops_saved_cc');
+      setCc(rememberedCc !== null ? rememberedCc : DEFAULT_INITIAL_CC);
+    } catch {
+      setCc(DEFAULT_INITIAL_CC);
+    }
+    setShowCc(true);
     setValidatedRecipients({ recipients: [], valid_count: 0 });
     setPreflightData(null);
     setChecks({ sender: 'idle', recipients: 'idle', template: (initialTemplate?.subject || initialTemplate?.body) ? 'ok' : 'idle', bridge: 'idle' });
     setWorkspaceMode('compose');
     setLastSaved(null);
     setView('workspace');
-  }, [setActiveCampaignId, setView, setWorkspaceMode]);
+  }, [setActiveCampaignId, setView, setWorkspaceMode, DEFAULT_INITIAL_CC]);
 
   const loadCampaign = useCallback(async (id) => {
     try {
@@ -519,17 +728,22 @@ export default function Campaigns() {
       const c = res.data;
       setActiveCampaignId(c.campaign_id);
       setCampaignName(c.name);
+      setIsUserEditedName(Boolean(c.name && c.name !== 'New Campaign' && c.name.trim() !== ''));
       setFromEmail(c.from_email || '');
       setSenderAccountId(c.sender_account_id || null);
       setSignatureId(c.signature_id || null);
       const campMeta = c.metadata || {};
       if (campMeta.cc) {
         setCc(campMeta.cc);
-        setShowCc(true);
       } else {
-        setCc('');
-        setShowCc(false);
+        try {
+          const rememberedCc = localStorage.getItem('talentops_saved_cc');
+          setCc(rememberedCc !== null ? rememberedCc : DEFAULT_INITIAL_CC);
+        } catch {
+          setCc(DEFAULT_INITIAL_CC);
+        }
       }
+      setShowCc(true); // Always keep CC tab open
       if (campMeta.bcc) {
         setBcc(campMeta.bcc);
         setShowBcc(true);
@@ -553,6 +767,108 @@ export default function Campaigns() {
       setView('workspace');
     } catch {
       toast.error('Failed to load campaign');
+    }
+  }, [setActiveCampaignId, setView, setWorkspaceMode]);
+
+  const resendCampaign = useCallback(async (id) => {
+    try {
+      const res = await api.get(`/campaigns/${id}?include_recruiters=true`);
+      const c = res.data;
+      // Start a brand-new campaign cycle so past sending ledger is preserved
+      setActiveCampaignId(null);
+      setCampaignName(c.name ? `${c.name} (Resend)` : 'New Campaign');
+      setIsUserEditedName(false);
+      setFromEmail(c.from_email || '');
+      setSenderAccountId(c.sender_account_id || null);
+      setSignatureId(c.signature_id || null);
+      
+      const campMeta = c.metadata || {};
+      if (campMeta.cc) {
+        setCc(campMeta.cc);
+      } else {
+        try {
+          const rememberedCc = localStorage.getItem('talentops_saved_cc');
+          setCc(rememberedCc !== null ? rememberedCc : DEFAULT_INITIAL_CC);
+        } catch {
+          setCc(DEFAULT_INITIAL_CC);
+        }
+      }
+      setShowCc(true);
+      
+      if (campMeta.bcc) {
+        setBcc(campMeta.bcc);
+        setShowBcc(true);
+      } else {
+        setBcc('');
+        setShowBcc(false);
+      }
+
+      if (c.templates?.length > 0) {
+        setSubject(c.templates[0].subject || '');
+        setBody(c.templates[0].body || '');
+      } else {
+        setSubject(''); setBody('');
+      }
+
+      const validRecs = (c.campaign_recruiters || [])
+        .map(cr => ({
+          email: cr.recruiter_email,
+          name: cr.recruiter_name || '',
+          recruiter_id: cr.recruiter_id,
+          status: 'valid'
+        }))
+        .filter(r => r.email && !r.email.includes('@noemail') && !r.email.includes('@unknown'));
+
+      setValidatedRecipients({ recipients: validRecs, valid_count: validRecs.length });
+      setPreflightData(null);
+      setChecks({
+        sender: c.sender_account_id ? 'ok' : 'idle',
+        recipients: validRecs.length > 0 ? 'ok' : 'idle',
+        template: (c.templates?.[0]?.subject || c.templates?.[0]?.body) ? 'ok' : 'idle',
+        bridge: 'idle'
+      });
+
+      // ALWAYS open into 'compose' mode so the user can immediately review & send!
+      setWorkspaceMode('compose');
+      setView('workspace');
+      toast.success(`Reopened "${c.name}" with ${validRecs.length} recipients ready to send!`, {
+        icon: '⚡',
+        duration: 4000
+      });
+    } catch (e) {
+      console.error('Failed to reopen campaign:', e);
+      toast.error('Failed to reopen campaign for resend');
+    }
+  }, [setActiveCampaignId, setView, setWorkspaceMode, DEFAULT_INITIAL_CC]);
+
+  const reuseTemplateOnly = useCallback(async (id) => {
+    try {
+      const res = await api.get(`/campaigns/${id}?include_recruiters=false`);
+      const c = res.data;
+      setActiveCampaignId(null);
+      setCampaignName('New Campaign');
+      setIsUserEditedName(false);
+      setFromEmail(c.from_email || '');
+      setSenderAccountId(c.sender_account_id || null);
+      setSignatureId(c.signature_id || null);
+
+      const campMeta = c.metadata || {};
+      if (campMeta.cc) setCc(campMeta.cc);
+      setShowCc(true);
+
+      if (c.templates?.length > 0) {
+        setSubject(c.templates[0].subject || '');
+        setBody(c.templates[0].body || '');
+      }
+
+      // Empty recipients so they can paste a fresh list
+      setValidatedRecipients({ recipients: [], valid_count: 0 });
+      setPreflightData(null);
+      setWorkspaceMode('compose');
+      setView('workspace');
+      toast.success('Email template loaded! Paste your new recipients on the right.', { icon: '📋' });
+    } catch {
+      toast.error('Failed to load template');
     }
   }, [setActiveCampaignId, setView, setWorkspaceMode]);
 
@@ -671,11 +987,19 @@ export default function Campaigns() {
     }
   }, [activeCampaignId, isSending, validatedRecipients, campaignName, fromEmail, senderAccountId, signatureId, cc, bcc, subject, subjectB, isABTest, smartTimezone, body, setActiveCampaignId, setWorkspaceMode]);
 
-  const handleProgressStatusChange = useCallback((st) => {
-    if (st === 'completed') {
-      toast.success('Campaign completely delivered!');
+  const notifiedCampaignsRef = useRef(new Set());
+  const handleProgressStatusChange = useCallback((newStatus, oldStatus) => {
+    if (newStatus === 'completed' && oldStatus && oldStatus !== 'completed') {
+      const campId = activeCampaignId || 'current';
+      if (!notifiedCampaignsRef.current.has(campId)) {
+        notifiedCampaignsRef.current.add(campId);
+        toast.success('Campaign completely delivered!', {
+          id: `campaign-completed-toast-${campId}`,
+          duration: 4000
+        });
+      }
     }
-  }, []);
+  }, [activeCampaignId]);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // List actions
@@ -793,6 +1117,89 @@ export default function Campaigns() {
           ))}
         </div>
 
+        {/* ── Prominent Campaign Search Bar ── */}
+        <div className="bg-[var(--bg-surface)] border border-[var(--card-border)] rounded-xl p-4 shadow-sm flex flex-col gap-3">
+          <div className="relative flex items-center">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-cyan-400 shrink-0" size={18} />
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder="Search old campaigns by company (e.g. Entegee), recipient email, email subject, or campaign title..."
+              value={searchQuery}
+              onChange={e => {
+                setSearchQuery(e.target.value);
+                setPage(1);
+              }}
+              className="w-full bg-[var(--bg-hover)] border border-[var(--border)] focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 rounded-xl pr-28 py-3 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none transition-all shadow-inner"
+              style={{ paddingLeft: 44 }}
+            />
+            {searchQuery && (
+              <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                <span className="text-[11px] font-bold text-cyan-400 bg-cyan-500/10 px-2.5 py-1 rounded-full border border-cyan-500/20">
+                  {rawCampaigns.length} found
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setPage(1);
+                  }}
+                  className="p-1 text-[var(--text-muted)] hover:text-white hover:bg-white/10 rounded-md transition-colors"
+                  title="Clear search"
+                >
+                  <X size={15} />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Quick Search Chips */}
+          <div className="flex items-center gap-2 flex-wrap text-xs text-[var(--text-muted)]">
+            <span className="font-bold text-[10px] uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1 shrink-0">
+              <Sparkles size={11} className="text-cyan-400" /> Quick Search:
+            </span>
+            {['Entegee', 'Elite Technical', 'Refactor Talent', 'Akkodis', 'Drafts'].map((chip) => {
+              const isActive = searchQuery.toLowerCase() === chip.toLowerCase() || (chip === 'Drafts' && statusFilter === 'draft' && !searchQuery);
+              return (
+                <button
+                  key={chip}
+                  type="button"
+                  onClick={() => {
+                    if (chip === 'Drafts') {
+                      setStatusFilter(statusFilter === 'draft' ? 'all' : 'draft');
+                      setSearchQuery('');
+                    } else {
+                      setSearchQuery(searchQuery === chip ? '' : chip);
+                      setStatusFilter('all');
+                    }
+                    setPage(1);
+                  }}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
+                    isActive
+                      ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+                      : 'bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-white border-[var(--border)] hover:border-white/20'
+                  }`}
+                >
+                  {chip}
+                </button>
+              );
+            })}
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery('');
+                  setStatusFilter('all');
+                  setPage(1);
+                }}
+                className="ml-auto text-xs text-red-400 hover:text-red-300 font-medium hover:underline cursor-pointer"
+              >
+                Reset Search
+              </button>
+            )}
+          </div>
+        </div>
+
         {/* Toolbar */}
         <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--card-border)', borderRadius: 6, overflow: 'hidden' }}>
           <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--card-border)', display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', justifyContent: 'space-between' }}>
@@ -806,13 +1213,8 @@ export default function Campaigns() {
                 </button>
               ))}
             </div>
-            {/* Search + controls */}
+            {/* Controls */}
             <div className="flex items-center gap-2">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={13} />
-                <input ref={searchInputRef} type="text" placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-                  className="bg-[var(--bg-hover)] border border-[var(--border)] rounded-lg pl-8 pr-4 py-2 text-sm text-[var(--text-primary)] focus:outline-none w-48" />
-              </div>
               <select value={limit} onChange={e => { setLimit(Number(e.target.value)); setPage(1); }} className="bg-[var(--bg-hover)] border border-[var(--border)] rounded-lg px-2 py-2 text-sm text-[var(--text-primary)] focus:outline-none">
                 {[10, 20, 50].map(n => <option key={n} value={n}>{n}/page</option>)}
               </select>
@@ -875,7 +1277,9 @@ export default function Campaigns() {
                       campaign={c}
                       isSelected={selectedIds.has(c.campaign_id)}
                       onToggleSelection={toggleSelection}
-                      onLoad={loadCampaign}
+                      onOpen={loadCampaign}
+                      onResend={resendCampaign}
+                      onReuseTemplate={reuseTemplateOnly}
                       onToggleStatus={toggleCampaignStatus}
                       onDuplicate={duplicateCampaign}
                       onArchive={archiveCampaign}
@@ -932,42 +1336,69 @@ export default function Campaigns() {
       <div className="h-full bg-[var(--bg-page)] text-[var(--text-primary)] flex flex-col overflow-hidden">
 
       {/* ── Workspace Header ── */}
-      <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--card-border)', background: 'var(--bg-surface)', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-        <button onClick={() => setView('list')} className="p-1.5 hover:bg-[var(--bg-hover)] rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
+      <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--card-border)', background: 'var(--panel-bg)', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+        <button onClick={() => setView('list')} className="p-1.5 hover:bg-[var(--bg-elevated)] rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
           <ArrowLeft size={18} />
         </button>
 
-        <input
-          type="text"
-          value={campaignName}
-          onChange={e => setCampaignName(e.target.value)}
-          className="bg-transparent text-lg font-bold text-[var(--text-primary)] border-none focus:outline-none focus:ring-1 focus:ring-white/20 rounded px-1 -ml-1"
-          style={{ minWidth: 160, maxWidth: 280 }}
-          placeholder="Campaign Name"
-        />
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={campaignName}
+            onChange={e => {
+              setCampaignName(e.target.value);
+              setIsUserEditedName(true);
+            }}
+            className="bg-transparent text-base font-semibold text-[var(--text-primary)] border-none focus:outline-none focus:ring-1 focus:ring-cyan-500/50 rounded px-1.5 py-0.5"
+            style={{ minWidth: 160, maxWidth: 280 }}
+            placeholder="Campaign Name"
+          />
+
+          {dominantCompany && (
+            <button
+              type="button"
+              onClick={() => {
+                setCampaignName(dominantCompany.companyName);
+                setIsUserEditedName(false);
+                toast.success(`Campaign named '${dominantCompany.companyName}'`);
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-all border cursor-pointer shrink-0"
+              style={{
+                background: campaignName === dominantCompany.companyName ? 'rgba(34, 184, 207, 0.14)' : 'var(--bg-elevated)',
+                borderColor: campaignName === dominantCompany.companyName ? 'rgba(34, 184, 207, 0.35)' : 'var(--card-border)',
+                color: campaignName === dominantCompany.companyName ? '#22B8CF' : 'var(--text-secondary)',
+              }}
+              title={`Dominant Company: ${dominantCompany.count} of ${dominantCompany.total} recipients (${dominantCompany.percentage}%) from ${dominantCompany.companyName}. Click to re-apply.`}
+            >
+              <Building2 size={12} />
+              <span>{dominantCompany.companyName}</span>
+              <span className="opacity-75 text-[11px]">({dominantCompany.count})</span>
+            </button>
+          )}
+        </div>
 
         {/* Autosave indicator */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginLeft: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 500, color: 'var(--text-muted)', marginLeft: 4 }}>
           {isSaving ? (
-            <><Loader2 size={11} className="animate-spin" /> Saving</>
+            <><Loader2 size={12} className="animate-spin" /> Saving</>
           ) : lastSaved ? (
-            <><CheckCircle2 size={11} style={{ color: '#ffffff' }} /> Saved {lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</>
+            <><CheckCircle2 size={12} style={{ color: '#22c55e' }} /> Saved {lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</>
           ) : (
-            <><Clock size={11} /> Unsaved</>
+            <><Clock size={12} /> Unsaved</>
           )}
         </div>
 
         <div className="ml-auto flex items-center gap-2">
-          <button onClick={() => setShowDomainHealth(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border border-[var(--border)] rounded-lg text-emerald-400 hover:bg-[var(--bg-hover)] transition-colors">
+          <button onClick={() => setShowDomainHealth(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-[var(--card-border)] rounded bg-[var(--bg-elevated)] text-emerald-400 hover:bg-[#323232] transition-colors">
             <Activity size={13} /> Domain Health
           </button>
-          <button onClick={() => setShowSequenceGenerator(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border border-[var(--border)] rounded-lg text-cyan-400 hover:bg-[var(--bg-hover)] transition-colors">
+          <button onClick={() => setShowSequenceGenerator(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-[var(--card-border)] rounded bg-[var(--bg-elevated)] text-[#22B8CF] hover:bg-[#323232] transition-colors">
             <Zap size={13} /> Sequence
           </button>
-          <button onClick={() => setShowTemplateLibrary(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border border-[var(--border)] rounded-lg text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors">
+          <button onClick={() => setShowTemplateLibrary(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-[var(--card-border)] rounded bg-[var(--bg-elevated)] text-[var(--text-primary)] hover:bg-[#323232] transition-colors">
             <FileText size={13} /> Templates
           </button>
-          <button onClick={handleSaveAsTemplate} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border border-[var(--border)] rounded-lg text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors">
+          <button onClick={handleSaveAsTemplate} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-[var(--card-border)] rounded bg-[var(--bg-elevated)] text-[var(--text-primary)] hover:bg-[#323232] transition-colors">
             <Save size={13} /> Save as Template
           </button>
 
@@ -980,14 +1411,13 @@ export default function Campaigns() {
               gap: 6,
               padding: '6px 16px',
               borderRadius: 6,
-              fontSize: 13,
-              fontWeight: 800,
-              letterSpacing: '0.01em',
+              fontSize: 13.5,
+              fontWeight: 600,
               cursor: (isSending || !localIsReady) ? 'not-allowed' : 'pointer',
-              background: localIsReady ? '#2563eb' : 'var(--bg-hover)',
-              color: localIsReady ? '#ffffff' : 'var(--text-muted)',
-              border: localIsReady ? '1px solid #1d4ed8' : '1px solid var(--border)',
-              boxShadow: localIsReady ? '0 1px 3px rgba(37, 99, 235, 0.4)' : 'none',
+              background: localIsReady ? 'var(--brand)' : 'var(--bg-elevated)',
+              color: localIsReady ? '#0f172a' : 'var(--text-muted)',
+              border: localIsReady ? '1px solid transparent' : '1px solid var(--card-border)',
+              boxShadow: localIsReady ? '0 1px 3px rgba(34, 184, 207, 0.35)' : 'none',
               transition: 'all 0.15s ease',
               marginLeft: 6,
             }}
@@ -1019,16 +1449,16 @@ export default function Campaigns() {
                 {/* FROM selector */}
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                    <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>From (Sending Account)</label>
+                    <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>From (Sending Account)</label>
                     {selectedAccount && (
-                      <span style={{ fontSize: 11, fontWeight: 600, color: selectedAccount.is_shadow_alias ? '#d4d4d8' : '#ffffff', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span style={{ fontSize: 12, fontWeight: 500, color: selectedAccount.is_shadow_alias ? '#f87171' : '#4ade80', display: 'flex', alignItems: 'center', gap: 4 }}>
                         {selectedAccount.is_shadow_alias ? (
                           <>
-                            <AlertCircle size={12} /> Personal Alias Detected
+                            <AlertCircle size={13} /> Personal Alias Detected
                           </>
                         ) : (
                           <>
-                            <ShieldCheck size={12} /> Official Verified Sender
+                            <ShieldCheck size={13} /> Official Verified Sender
                           </>
                         )}
                       </span>
@@ -1042,7 +1472,7 @@ export default function Campaigns() {
                           const acc = accounts.find(a => a.account_id === Number(e.target.value));
                           if (acc) { setSenderAccountId(acc.account_id); setFromEmail(acc.email_address); }
                         }}
-                        style={{ flex: 1, background: 'var(--bg-surface)', border: selectedAccount?.is_shadow_alias ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid var(--card-border)', borderRadius: 6, padding: '8px 12px', fontSize: 14, color: 'var(--text-primary)', outline: 'none' }}>
+                        style={{ flex: 1, background: 'var(--bg-surface)', border: selectedAccount?.is_shadow_alias ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid var(--card-border)', borderRadius: 6, padding: '8px 12px', minHeight: 40, fontSize: 14, color: 'var(--text-primary)', outline: 'none' }}>
                         <option value="">Select official sending account…</option>
                         {accounts.map(acc => {
                           const label = acc.display_name 
@@ -1061,19 +1491,19 @@ export default function Campaigns() {
                         })}
                       </select>
                     ) : (
-                      <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-surface)', border: '1px solid var(--card-border)', borderRadius: 6, padding: '8px 12px' }}>
-                        <Mail size={14} style={{ color: 'var(--text-muted)' }} />
-                        <span style={{ fontSize: 13, color: 'var(--text-muted)', flex: 1 }}>No sending accounts connected</span>
-                        <button onClick={() => setShowConnectionWizard(true)} style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', background: 'var(--bg-hover)', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 10px', cursor: 'pointer' }}>Connect</button>
+                      <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-surface)', border: '1px solid var(--card-border)', borderRadius: 6, padding: '8px 12px', minHeight: 40 }}>
+                        <Mail size={15} style={{ color: 'var(--text-muted)' }} />
+                        <span style={{ fontSize: 13.5, color: 'var(--text-muted)', flex: 1 }}>No sending accounts connected</span>
+                        <button onClick={() => setShowConnectionWizard(true)} style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-primary)', background: 'var(--bg-elevated)', border: '1px solid var(--card-border)', borderRadius: 4, padding: '4px 10px', cursor: 'pointer' }}>Connect</button>
                       </div>
                     )}
                   </div>
 
                   {/* Shadow Alias Warning Alert */}
                   {selectedAccount?.is_shadow_alias && (
-                    <div style={{ marginTop: 8, padding: '10px 12px', borderRadius: 6, background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.05)', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                    <div style={{ marginTop: 8, padding: '10px 12px', borderRadius: 6, background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.25)', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                       <AlertCircle size={15} style={{ color: '#ef4444', shrink: 0, marginTop: 1 }} />
-                      <div style={{ fontSize: 12, color: '#ef4444', lineHeight: 1.4 }}>
+                      <div style={{ fontSize: 12.5, color: '#f87171', lineHeight: 1.45 }}>
                         <strong>Bot-looking sender address detected:</strong> Microsoft assigns shadow addresses like <code style={{ background: 'rgba(0,0,0,0.3)', padding: '1px 4px', borderRadius: 3 }}>{selectedAccount.email_address}</code> when a Microsoft account was registered using a Gmail/third-party email.
                         <div style={{ marginTop: 4, color: 'var(--text-secondary)' }}>
                           👉 <strong>Fix:</strong> Switch to your connected <strong>Google (Gmail)</strong> account above to send directly with your clean official email address.
@@ -1084,8 +1514,8 @@ export default function Campaigns() {
 
                   {/* Official Sender Confirmation Pill */}
                   {selectedAccount && !selectedAccount.is_shadow_alias && (
-                    <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted)' }}>
-                      <CheckCircle2 size={13} style={{ color: '#ffffff' }} />
+                    <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--text-muted)' }}>
+                      <CheckCircle2 size={14} style={{ color: '#22c55e' }} />
                       <span>Recipients will see: <strong style={{ color: 'var(--text-primary)' }}>{selectedAccount.display_name ? `${selectedAccount.display_name} <${selectedAccount.email_address}>` : selectedAccount.email_address}</strong></span>
                     </div>
                   )}
@@ -1094,13 +1524,17 @@ export default function Campaigns() {
                 {/* SUBJECT & A/B TEST SWITCHER */}
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                    <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>
+                    <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>
                       {isABTest ? 'Subject Line Matrix (A/B Test)' : 'Subject Line'}
                     </label>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <button
                         type="button"
-                        onClick={() => setShowCc(!showCc)}
+                        onClick={() => {
+                          const next = !showCc;
+                          setShowCc(next);
+                          try { localStorage.setItem('talentops_show_cc', String(next)); } catch {}
+                        }}
                         style={{
                           fontSize: 11,
                           fontWeight: 600,
@@ -1164,26 +1598,75 @@ export default function Campaigns() {
 
                   {/* CC Input Row */}
                   {(showCc || cc) && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-surface)', border: '1px solid var(--card-border)', borderRadius: 6, padding: '6px 10px', marginBottom: 8 }}>
-                      <span style={{ fontSize: 11, fontWeight: 800, color: '#60a5fa', textTransform: 'uppercase', letterSpacing: '0.05em', width: 28 }}>
-                        Cc
-                      </span>
-                      <input
-                        type="text"
-                        value={cc}
-                        onChange={e => setCc(e.target.value)}
-                        placeholder="colleague@company.com, manager@company.com (comma-separated)"
-                        style={{ flex: 1, background: 'transparent', border: 'none', fontSize: 13, color: 'var(--text-primary)', outline: 'none' }}
-                      />
-                      {cc && (
-                        <button
-                          type="button"
-                          onClick={() => { setCc(''); setShowCc(false); }}
-                          title="Clear Cc"
-                          style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '0 4px', fontSize: 14 }}
-                        >
-                          &times;
-                        </button>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, background: 'var(--bg-surface)', border: '1px solid var(--card-border)', borderRadius: 6, padding: '7px 10px', marginBottom: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 11, fontWeight: 800, color: '#60a5fa', textTransform: 'uppercase', letterSpacing: '0.05em', width: 28 }}>
+                          Cc
+                        </span>
+                        <input
+                          type="text"
+                          value={cc}
+                          onChange={e => handleCcChange(e.target.value)}
+                          placeholder="colleague@company.com, manager@company.com (comma-separated)"
+                          style={{ flex: 1, background: 'transparent', border: 'none', fontSize: 13, color: 'var(--text-primary)', outline: 'none' }}
+                        />
+                        {cc && (
+                          <button
+                            type="button"
+                            onClick={() => handleCcChange('')}
+                            title="Clear Cc"
+                            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '0 4px', fontSize: 14 }}
+                          >
+                            &times;
+                          </button>
+                        )}
+                      </div>
+
+                      {/* CC Memory Chips & Suggestions */}
+                      {ccHistory && ccHistory.length > 0 && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', paddingTop: 5, borderTop: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                          <span style={{ fontSize: 10, color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: 3.5, fontWeight: 600 }}>
+                            <Clock size={10} /> CC Memory:
+                          </span>
+                          {ccHistory.map((memEmail) => {
+                            const isIncluded = cc.toLowerCase().includes(memEmail.toLowerCase());
+                            return (
+                              <button
+                                key={memEmail}
+                                type="button"
+                                onClick={() => {
+                                  if (!isIncluded) {
+                                    const next = cc ? `${cc.trim().replace(/[,;]+$/, '')}, ${memEmail}` : memEmail;
+                                    handleCcChange(next);
+                                  } else {
+                                    const filtered = cc
+                                      .split(/[,;\s]+/)
+                                      .filter(e => e.trim().toLowerCase() !== memEmail.toLowerCase())
+                                      .join(', ');
+                                    handleCcChange(filtered);
+                                  }
+                                }}
+                                style={{
+                                  fontSize: 11,
+                                  padding: '2px 8px',
+                                  borderRadius: 4,
+                                  background: isIncluded ? 'rgba(59, 130, 246, 0.2)' : 'var(--bg-hover)',
+                                  border: isIncluded ? '1px solid rgba(59, 130, 246, 0.45)' : '1px solid var(--border)',
+                                  color: isIncluded ? '#60a5fa' : 'var(--text-secondary)',
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  transition: 'all 0.15s ease'
+                                }}
+                                title={isIncluded ? `Click to remove ${memEmail}` : `Click to add ${memEmail}`}
+                              >
+                                <span>{memEmail}</span>
+                                {isIncluded ? <Check size={10} /> : <Plus size={10} />}
+                              </button>
+                            );
+                          })}
+                        </div>
                       )}
                     </div>
                   )}
@@ -1271,7 +1754,7 @@ export default function Campaigns() {
 
                 {/* BODY */}
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 280 }}>
-                  <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Message</label>
+                  <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>Message</label>
                   <div style={{ flex: 1, background: 'var(--bg-surface)', border: '1px solid var(--card-border)', borderRadius: 6, overflow: 'hidden', minHeight: 280 }}>
                     <React.Suspense fallback={<div style={{ padding: 24, color: 'var(--text-muted)', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}><span className="ti ti-loader animate-spin" /> Loading editor engine…</div>}>
                       <RichTextComposer content={body} onChange={setBody} placeholder="Write your email here… use {{ variables }} for personalization" />
@@ -1282,15 +1765,15 @@ export default function Campaigns() {
                 {/* DETECTED VARIABLES */}
                 {detectedVariables.length > 0 && (
                   <div>
-                    <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Detected Variables</label>
+                    <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>Detected Variables</label>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                       {detectedVariables.map(v => (
-                        <span key={v} style={{ fontSize: 11, fontWeight: 700, fontFamily: 'monospace', padding: '3px 8px', background: 'var(--bg-hover)', border: '1px solid var(--card-border)', borderRadius: 4, color: 'var(--text-primary)' }}>
+                        <span key={v} style={{ fontSize: 12, fontWeight: 500, fontFamily: 'monospace', padding: '3px 8px', background: 'var(--bg-elevated)', border: '1px solid var(--card-border)', borderRadius: 4, color: 'var(--brand)' }}>
                           {`{{ ${v} }}`}
                         </span>
                       ))}
                     </div>
-                    <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, fontStyle: 'italic' }}>These will be filled with real recipient data when sent.</p>
+                    <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, fontStyle: 'italic' }}>These will be filled with real recipient data when sent.</p>
                   </div>
                 )}
 
@@ -1420,11 +1903,11 @@ export default function Campaigns() {
             <div style={{ flex: '0 0 40%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }} className="workspace-recipients">
 
               {/* Recipients header */}
-              <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--card-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+              <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--card-border)', background: 'var(--panel-bg)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>Recipients</span>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Recipients</span>
                   {validatedRecipients.recipients.length > 0 && (
-                    <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', background: 'var(--bg-hover)', border: '1px solid var(--card-border)', borderRadius: 10, color: 'var(--text-primary)' }}>
+                    <span style={{ fontSize: 12, fontWeight: 500, padding: '2px 8px', background: 'var(--bg-elevated)', border: '1px solid var(--card-border)', borderRadius: 4, color: '#4ade80' }}>
                       {validatedRecipients.valid_count} valid
                     </span>
                   )}
@@ -1438,12 +1921,12 @@ export default function Campaigns() {
                     gap: 5,
                     padding: '5px 12px',
                     borderRadius: 5,
-                    fontSize: 12,
-                    fontWeight: 700,
+                    fontSize: 12.5,
+                    fontWeight: 600,
                     cursor: (isSending || !localIsReady) ? 'not-allowed' : 'pointer',
-                    background: localIsReady ? '#2563eb' : 'var(--bg-hover)',
-                    color: localIsReady ? '#ffffff' : 'var(--text-muted)',
-                    border: localIsReady ? '1px solid #1d4ed8' : '1px solid var(--border)',
+                    background: localIsReady ? 'var(--brand)' : 'var(--bg-elevated)',
+                    color: localIsReady ? '#0f172a' : 'var(--text-muted)',
+                    border: localIsReady ? '1px solid transparent' : '1px solid var(--card-border)',
                     transition: 'all 0.15s ease',
                   }}
                 >
@@ -1454,15 +1937,15 @@ export default function Campaigns() {
 
               {/* Recipient count summary */}
               {validatedRecipients.recipients.length > 0 && (
-                <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--card-border)', display: 'flex', gap: 16, flexShrink: 0 }}>
+                <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--card-border)', background: 'var(--bg-surface)', display: 'flex', gap: 16, flexShrink: 0 }}>
                   {[
                     { label: 'Total', value: validatedRecipients.recipients.length, color: 'var(--text-primary)' },
-                    { label: 'Valid', value: validatedRecipients.valid_count, color: '#ffffff' },
+                    { label: 'Valid', value: validatedRecipients.valid_count, color: '#4ade80' },
                     { label: 'Invalid', value: validatedRecipients.recipients.filter(r => r.status !== 'valid').length, color: '#f87171' },
                   ].map(item => (
                     <div key={item.label} style={{ textAlign: 'center' }}>
-                      <div style={{ fontSize: 18, fontWeight: 900, color: item.color, lineHeight: 1 }}>{item.value}</div>
-                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.05em', marginTop: 2 }}>{item.label}</div>
+                      <div style={{ fontSize: 18, fontWeight: 600, color: item.color, lineHeight: 1.1 }}>{item.value}</div>
+                      <div style={{ fontSize: 11.5, fontWeight: 500, color: 'var(--text-muted)', marginTop: 2 }}>{item.label}</div>
                     </div>
                   ))}
                 </div>
@@ -1514,11 +1997,23 @@ export default function Campaigns() {
                   {campaignName} — Real-time recipient delivery feed & deliverability watchdog
                 </p>
               </div>
-              <button
-                onClick={() => setWorkspaceMode('compose')}
-                className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold border border-[var(--border)] rounded-lg text-[var(--text-secondary)] hover:text-white hover:bg-[var(--bg-hover)] transition-colors cursor-pointer shadow-sm">
-                <ArrowLeft size={14} /> Back to Composer
-              </button>
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setWorkspaceMode('compose')}
+                  className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold border border-cyan-500/30 rounded-lg text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 transition-all cursor-pointer shadow-sm"
+                  title="Edit or review email template and recipients in composer"
+                >
+                  <RotateCcw size={14} /> Reopen in Composer
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setView('list')}
+                  className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold border border-[var(--border)] rounded-lg text-[var(--text-secondary)] hover:text-white hover:bg-[var(--bg-hover)] transition-colors cursor-pointer shadow-sm"
+                >
+                  <ArrowLeft size={14} /> Back to Campaigns
+                </button>
+              </div>
             </div>
 
             {activeCampaignId ? (

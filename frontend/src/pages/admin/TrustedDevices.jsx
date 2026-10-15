@@ -265,6 +265,7 @@ export default function TrustedDevices() {
               placeholder="Search user, device, IP..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
+              style={{ paddingLeft: 34 }}
             />
             {searchQuery && (
               <button onClick={() => setSearchQuery('')} className="td-search-clear"><X size={14}/></button>

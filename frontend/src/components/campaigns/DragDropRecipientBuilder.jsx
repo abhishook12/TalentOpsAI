@@ -60,13 +60,13 @@ export default function DragDropRecipientBuilder({ recipients, onChange, onValid
   });
 
   return (
-    <div className="flex h-[600px] border border-[var(--card-border)] rounded-xl overflow-hidden bg-[var(--main-bg)] shadow-sm">
+    <div className="flex h-[600px] border border-[var(--card-border)] rounded-md overflow-hidden bg-[var(--main-bg)] shadow-sm">
       
       {/* Left Pane: Sources */}
       <div className="w-[48%] flex flex-col border-r border-[var(--card-border)] bg-[var(--card-bg)] min-w-0 overflow-hidden">
         
         {/* Tabs */}
-        <div className="flex border-b border-[var(--card-border)] bg-[var(--card-bg)] h-12 shrink-0">
+        <div className="flex border-b border-[var(--card-border)] bg-[var(--panel-bg)] h-10 shrink-0">
           {[
             { id: 'paste', icon: ClipboardPaste, label: 'Paste', enabled: true },
             { id: 'upload', icon: FileSpreadsheet, label: 'CSV', enabled: true },
@@ -77,18 +77,18 @@ export default function DragDropRecipientBuilder({ recipients, onChange, onValid
               disabled={!tab.enabled}
               title={!tab.enabled ? 'Coming soon' : ''}
               onClick={() => tab.enabled && setActiveTab(tab.id)}
-              className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1 text-xs font-medium transition-colors border-b-2 relative truncate min-w-0 ${
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-medium transition-colors border-b-2 relative truncate min-w-0 ${
                 activeTab === tab.id 
                   ? 'border-[var(--brand)] text-[var(--text-primary)] font-semibold bg-[var(--card-bg)]' 
                   : !tab.enabled
                     ? 'border-transparent text-[var(--text-muted)] opacity-50 cursor-not-allowed'
-                    : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
+                    : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)]'
               }`}
             >
-              <tab.icon size={14} className="shrink-0" />
+              <tab.icon size={15} className="shrink-0" />
               <span className="truncate">{tab.label}</span>
               {!tab.enabled && (
-                <span style={{ fontSize: '9px', lineHeight: 1 }} className="uppercase tracking-wider font-bold bg-[var(--main-bg)] border border-[var(--card-border)] px-1 py-[2px] rounded text-[var(--text-muted)] ml-1 shrink-0">Soon</span>
+                <span style={{ fontSize: '10px', lineHeight: 1 }} className="uppercase font-semibold bg-[var(--bg-elevated)] border border-[var(--card-border)] px-1 py-[2px] rounded text-[var(--text-muted)] ml-1 shrink-0">Soon</span>
               )}
             </button>
           ))}
@@ -106,11 +106,11 @@ export default function DragDropRecipientBuilder({ recipients, onChange, onValid
       <div className="w-[52%] flex flex-col bg-[var(--card-bg)] min-w-0 overflow-hidden">
         
         {/* Header & Stats */}
-        <div className="p-4 border-b border-[var(--card-border)] bg-[var(--card-bg)]">
+        <div className="p-3.5 border-b border-[var(--card-border)] bg-[var(--panel-bg)]">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <Mail className="text-[var(--brand)]" size={20} />
-              <h3 className="font-semibold text-[var(--text-primary)]">Campaign Recipients</h3>
+              <Mail className="text-[var(--brand)]" size={18} />
+              <h3 className="font-semibold text-sm text-[var(--text-primary)]">Campaign Recipients</h3>
             </div>
             
             <div className="flex items-center gap-3">
@@ -118,13 +118,13 @@ export default function DragDropRecipientBuilder({ recipients, onChange, onValid
                 showClearConfirm ? (
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-red-500 font-medium">Are you sure?</span>
-                    <button onClick={clearAll} className="text-xs text-[var(--text-primary)] bg-red-500 hover:bg-red-600 px-2 py-1 rounded transition-colors">Yes</button>
-                    <button onClick={() => setShowClearConfirm(false)} className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] px-2 py-1 transition-colors">No</button>
+                    <button onClick={clearAll} className="text-xs text-white bg-red-600 hover:bg-red-700 px-2 py-0.5 rounded transition-colors font-medium">Yes</button>
+                    <button onClick={() => setShowClearConfirm(false)} className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] px-2 py-0.5 transition-colors">No</button>
                   </div>
                 ) : (
                   <button 
                     onClick={() => setShowClearConfirm(true)}
-                    className="text-xs text-[var(--text-muted)] hover:text-red-500 transition-colors"
+                    className="text-xs text-[var(--text-muted)] hover:text-red-400 transition-colors"
                   >
                     Clear All
                   </button>
@@ -133,7 +133,7 @@ export default function DragDropRecipientBuilder({ recipients, onChange, onValid
               <button 
                 onClick={() => onValidate(recipients.map(r => r.email).join(','))}
                 disabled={recipients.length === 0}
-                className="text-sm font-medium text-[var(--brand)] hover:text-[var(--brand)]/80 disabled:opacity-50 transition-colors"
+                className="text-xs font-semibold px-2.5 py-1 rounded bg-[rgba(34,184,207,0.14)] text-[#22B8CF] border border-[rgba(34,184,207,0.35)] hover:bg-[rgba(34,184,207,0.22)] disabled:opacity-40 transition-colors"
               >
                 Validate All
               </button>

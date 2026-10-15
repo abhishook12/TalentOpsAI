@@ -43,17 +43,19 @@ function fadeHex(hex, alpha) {
 const SectionCard = memo(function SectionCard({ title, icon, children, style, compact }) {
   return (
     <div style={{
-      padding: compact ? '8px 10px' : 24,
+      padding: compact ? '14px 16px' : 20,
       display: 'flex',
       flexDirection: 'column',
       minHeight: 0,
       overflow: 'hidden',
-      border: '1px solid var(--color-outline-variant)',
-      background: 'var(--color-surface)',
+      borderRadius: 6,
+      border: '1px solid var(--card-border)',
+      background: 'var(--card-bg)',
       ...style,
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: compact ? 6 : 12, flexShrink: 0, paddingBottom: 8, borderBottom: '1px solid var(--color-outline-variant)' }}>
-        <h2 style={{ fontSize: compact ? 11.5 : 13, fontWeight: 700, color: 'var(--color-on-surface)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{title}</h2>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: compact ? 10 : 14, flexShrink: 0, paddingBottom: 8, borderBottom: '1px solid var(--card-border)' }}>
+        {icon && <i className={`ti ${icon}`} style={{ fontSize: 16, color: 'var(--accent-primary)' }} />}
+        <h2 style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>{title}</h2>
       </div>
       <div style={{ flex: 1, minHeight: 0, position: 'relative', display: 'flex', flexDirection: 'column' }}>{children}</div>
     </div>
@@ -64,29 +66,31 @@ const KPI = memo(function KPI({ label, value, sub, color, icon, compact, inline 
   if (inline) {
     return (
       <div style={{
-        background: 'var(--color-surface)', border: '1px solid var(--color-outline-variant)',
-        padding: '6px 10px',
-        display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1,
+        background: 'var(--card-bg)', border: '1px solid var(--card-border)',
+        borderRadius: 6,
+        padding: '10px 14px',
+        display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1,
       }}>
         <div style={{ minWidth: 0 }}>
-          <p style={{ color: 'var(--color-on-surface-variant)', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', lineHeight: 1.1, margin: 0 }}>{label}</p>
-          <p style={{ color: 'var(--color-on-surface)', fontSize: 15, fontWeight: 700, lineHeight: 1.1, margin: 0 }}>{value ?? '—'}</p>
-          {sub && <p style={{ fontSize: 9, color: 'var(--color-on-surface-variant)', margin: 0, lineHeight: 1.1 }}>{sub}</p>}
+          <p style={{ color: 'var(--text-secondary)', fontSize: 12.5, fontWeight: 500, margin: '0 0 2px 0' }}>{label}</p>
+          <p style={{ color: color || 'var(--text-primary)', fontSize: 18, fontWeight: 600, lineHeight: 1.2, margin: 0 }}>{value ?? '—'}</p>
+          {sub && <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0 0' }}>{sub}</p>}
         </div>
       </div>
     )
   }
   return (
     <div style={{
-      background: 'var(--color-surface)', border: '1px solid var(--color-outline-variant)',
-      padding: compact ? '10px 12px' : '18px 20px',
-      display: 'flex', flexDirection: 'column', gap: compact ? 2 : 6, minHeight: 0,
+      background: 'var(--card-bg)', border: '1px solid var(--card-border)',
+      borderRadius: 6,
+      padding: compact ? '12px 14px' : '18px 20px',
+      display: 'flex', flexDirection: 'column', gap: compact ? 4 : 8, minHeight: 0,
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-        <p style={{ color: 'var(--color-on-surface-variant)', fontSize: compact ? 10 : 11, fontWeight: 700, textTransform: 'uppercase', lineHeight: 1.2 }}>{label}</p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <p style={{ color: 'var(--text-secondary)', fontSize: 13, fontWeight: 500, margin: 0 }}>{label}</p>
       </div>
-      <h3 style={{ color: 'var(--color-on-surface)', fontSize: compact ? 18 : 26, fontWeight: 700, lineHeight: 1 }}>{value ?? '—'}</h3>
-      {sub && <p style={{ fontSize: 10, color: 'var(--color-on-surface-variant)', lineHeight: 1.2 }}>{sub}</p>}
+      <h3 style={{ color: color || 'var(--text-primary)', fontSize: compact ? 20 : 26, fontWeight: 600, lineHeight: 1, margin: 0 }}>{value ?? '—'}</h3>
+      {sub && <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>{sub}</p>}
     </div>
   )
 });
@@ -283,36 +287,37 @@ export default function Analytics() {
       style={{
         flex: 1,
         minHeight: 0,
-        height: '100%',
-        display: 'grid',
-        gridTemplateRows: isEmptyAnalytics
-          ? 'auto auto'
-          : (hasStateData ? 'auto minmax(0, 1fr) minmax(0, 1fr)' : 'auto auto minmax(0, 1fr)'),
-        gridTemplateColumns: '1fr 1fr 1fr',
-        gap: 8,
-        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 16,
+        paddingBottom: 64,
         boxSizing: 'border-box',
       }}
     >
       {/* Header + KPI strip */}
-      <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
-        <h1 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', margin: 0, lineHeight: 1.1 }}>Advanced Metrics</h1>
-        <div style={{ display: 'flex', gap: 8 }}>
+      <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 12, flexShrink: 0 }}>
+        <div>
+          <h1 style={{ fontSize: 24, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>Advanced Metrics</h1>
+          <div style={{ marginTop: 4, color: 'var(--text-secondary)', fontSize: 13.5 }}>
+            Real-time traffic, state intelligence, and funnel engagement telemetry.
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 10 }}>
           <KPI inline label="Total Visits" value={(visits?.total_visits || 0).toLocaleString()} color="var(--text-primary)" icon="ti-eye" />
           <KPI inline label="Today" value={(visits?.today || 0).toLocaleString()} sub={todayChange !== null ? `${todayChange > 0 ? '▲' : '▼'} ${Math.abs(todayChange)}%` : null} color="#ffffff" icon="ti-calendar-today" />
           <KPI inline label="Yesterday" value={(visits?.yesterday || 0).toLocaleString()} color="#d4d4d8" icon="ti-calendar" />
         </div>
         
-        <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', margin: '8px 0 0', lineHeight: 1.1 }}>State Extraction Intelligence</h2>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', margin: '8px 0 0' }}>State Extraction Intelligence</h2>
+        <div style={{ display: 'flex', gap: 10 }}>
           <KPI inline label="Known State" value={dq?.known_state_count?.toLocaleString()} color="#ffffff" icon="ti-map-pin-filled" />
           <KPI inline label="Explicit State" value={dq?.explicit_state_count?.toLocaleString()} color="#d4d4d8" icon="ti-target" />
           <KPI inline label="Inferred State" value={dq?.inferred_state_count?.toLocaleString()} color="#a1a1aa" icon="ti-wand" />
           <KPI inline label="Unknown State" value={dq?.unknown_state_count?.toLocaleString()} color="#ef4444" icon="ti-alert-triangle" />
         </div>
-        <div style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4, padding: '8px 12px', background: 'rgba(239, 68, 68, 0.05)', borderRadius: 8, border: '1px solid rgba(239, 68, 68, 0.1)' }}>
-          <i className="ti ti-info-circle" style={{ marginRight: 4, color: '#ef4444' }} />
-          <strong>Unknown State Records:</strong> These records lack any parsable state, location, or company metadata. They cannot be placed into the directory map until updated.
+        <div style={{ fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.5, padding: '10px 14px', background: 'var(--card-bg-elevated)', borderRadius: 6, border: '1px solid var(--card-border)' }}>
+          <i className="ti ti-info-circle" style={{ marginRight: 6, color: 'var(--accent-primary)' }} />
+          <strong style={{ color: 'var(--text-primary)' }}>Unknown State Records:</strong> These records lack any parsable state, location, or company metadata. They cannot be placed into the directory map until updated.
         </div>
       </div>
 
@@ -451,78 +456,78 @@ export default function Analytics() {
 
       {/* Bottom row: 3 equal panels */}
       {!isEmptyAnalytics && (
-        <>
-      <SectionCard title="Daily — 7 Days" icon="ti-chart-area-line" compact style={{ minHeight: 0 }}>
-        {dailyData.length === 0 ? (
-          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>No data</div>
-        ) : (
-          <div style={{ position: 'relative', width: '100%', height: 240 }}>
-            <ChartBox>
-              <AreaChart data={dailyData} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
-                <defs>
-                  <linearGradient id="visitGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#ffffff" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="#ffffff" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" vertical={false} />
-                <XAxis dataKey="day" tick={CHART_TICK} axisLine={false} tickLine={false} />
-                <YAxis tick={CHART_TICK} axisLine={false} tickLine={false} width={36} allowDecimals={false} />
-                <Tooltip {...customTooltipStyle} />
-                <Area type="monotone" dataKey="visits" stroke="#ffffff" strokeWidth={1.5} fill="url(#visitGrad)" dot={false} />
-              </AreaChart>
-            </ChartBox>
-          </div>
-        )}
-      </SectionCard>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 16 }}>
+          <SectionCard title="Daily — 7 Days" icon="ti-chart-area-line" compact style={{ minHeight: 0 }}>
+            {dailyData.length === 0 ? (
+              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>No data</div>
+            ) : (
+              <div style={{ position: 'relative', width: '100%', height: 240 }}>
+                <ChartBox>
+                  <AreaChart data={dailyData} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
+                    <defs>
+                      <linearGradient id="visitGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#ffffff" stopOpacity={0.25} />
+                        <stop offset="95%" stopColor="#ffffff" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" vertical={false} />
+                    <XAxis dataKey="day" tick={CHART_TICK} axisLine={false} tickLine={false} />
+                    <YAxis tick={CHART_TICK} axisLine={false} tickLine={false} width={36} allowDecimals={false} />
+                    <Tooltip {...customTooltipStyle} />
+                    <Area type="monotone" dataKey="visits" stroke="#ffffff" strokeWidth={1.5} fill="url(#visitGrad)" dot={false} />
+                  </AreaChart>
+                </ChartBox>
+              </div>
+            )}
+          </SectionCard>
 
-      <SectionCard title="Weekly — 4 Wks" icon="ti-calendar-week" compact style={{ minHeight: 0 }}>
-        {weeklyData.length === 0 ? (
-          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>No data</div>
-        ) : (
-          <div style={{ position: 'relative', width: '100%', height: 240 }}>
-            <ChartBox>
-              <BarChart data={weeklyData} margin={{ top: 16, right: 8, left: 0, bottom: 4 }} maxBarSize={28}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" vertical={false} />
-                <XAxis dataKey="week" tick={CHART_TICK} axisLine={false} tickLine={false} />
-                <YAxis tick={CHART_TICK} axisLine={false} tickLine={false} width={36} allowDecimals={false} />
-                <Tooltip {...customTooltipStyle} />
-                <Bar dataKey="visits" fill="#e4e4e7" radius={[3, 3, 0, 0]}>
-                  <LabelList dataKey="visits" position="top" {...BAR_LABEL_PROPS} />
-                </Bar>
-              </BarChart>
-            </ChartBox>
-          </div>
-        )}
-      </SectionCard>
+          <SectionCard title="Weekly — 4 Wks" icon="ti-calendar-week" compact style={{ minHeight: 0 }}>
+            {weeklyData.length === 0 ? (
+              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>No data</div>
+            ) : (
+              <div style={{ position: 'relative', width: '100%', height: 240 }}>
+                <ChartBox>
+                  <BarChart data={weeklyData} margin={{ top: 16, right: 8, left: 0, bottom: 4 }} maxBarSize={28}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" vertical={false} />
+                    <XAxis dataKey="week" tick={CHART_TICK} axisLine={false} tickLine={false} />
+                    <YAxis tick={CHART_TICK} axisLine={false} tickLine={false} width={36} allowDecimals={false} />
+                    <Tooltip {...customTooltipStyle} />
+                    <Bar dataKey="visits" fill="#e4e4e7" radius={[3, 3, 0, 0]}>
+                      <LabelList dataKey="visits" position="top" {...BAR_LABEL_PROPS} />
+                    </Bar>
+                  </BarChart>
+                </ChartBox>
+              </div>
+            )}
+          </SectionCard>
 
-      <SectionCard title="Top Pages" icon="ti-layout-dashboard" compact style={{ minHeight: 0 }}>
-        {topPages.length === 0 ? (
-          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>No data</div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 5, overflow: 'hidden', height: '100%' }}>
-            {topPages.slice(0, 5).map((p, i) => {
-              const max = topPages[0].visits
-              const pct = Math.round((p.visits / max) * 100)
-              return (
-                <div key={p.page} style={{ flexShrink: 0 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 1 }}>
-                    <span style={{ fontSize: 9.5, color: 'var(--text-primary)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '72%' }}>
-                      <span style={{ color: PAGE_COLORS[i % PAGE_COLORS.length], marginRight: 3 }}>●</span>
-                      {p.page}
-                    </span>
-                    <span style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 700 }}>{p.visits.toLocaleString()}</span>
-                  </div>
-                  <div style={{ height: 3, background: 'var(--card-border)', borderRadius: 99 }}>
-                    <div style={{ height: '100%', width: `${pct}%`, background: PAGE_COLORS[i % PAGE_COLORS.length], borderRadius: 99 }} />
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </SectionCard>
-        </>
+          <SectionCard title="Top Pages" icon="ti-layout-dashboard" compact style={{ minHeight: 0 }}>
+            {topPages.length === 0 ? (
+              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>No data</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5, overflow: 'hidden', height: '100%' }}>
+                {topPages.slice(0, 5).map((p, i) => {
+                  const max = topPages[0].visits
+                  const pct = Math.round((p.visits / max) * 100)
+                  return (
+                    <div key={p.page} style={{ flexShrink: 0 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 1 }}>
+                        <span style={{ fontSize: 9.5, color: 'var(--text-primary)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '72%' }}>
+                          <span style={{ color: PAGE_COLORS[i % PAGE_COLORS.length], marginRight: 3 }}>●</span>
+                          {p.page}
+                        </span>
+                        <span style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 700 }}>{p.visits.toLocaleString()}</span>
+                      </div>
+                      <div style={{ height: 3, background: 'var(--card-border)', borderRadius: 99 }}>
+                        <div style={{ height: '100%', width: `${pct}%`, background: PAGE_COLORS[i % PAGE_COLORS.length], borderRadius: 99 }} />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </SectionCard>
+        </div>
       )}
 
       {/* Taxonomy Intelligence Row */}
@@ -590,8 +595,8 @@ export default function Analytics() {
                   disabled={syncing || (taxonomyData?.uncategorized === 0)}
                   style={{
                     padding: '8px 16px', borderRadius: 8, border: 'none',
-                    background: syncing ? 'var(--card-border)' : 'var(--text-primary)',
-                    color: 'var(--text-primary)', fontSize: 12, fontWeight: 600,
+                    background: syncing ? 'var(--card-border)' : 'var(--brand)',
+                    color: syncing ? 'var(--text-muted)' : '#0f172a', fontSize: 12, fontWeight: 600,
                     cursor: syncing ? 'not-allowed' : 'pointer',
                     display: 'flex', alignItems: 'center', gap: 6,
                     opacity: (taxonomyData?.uncategorized === 0) ? 0.5 : 1,

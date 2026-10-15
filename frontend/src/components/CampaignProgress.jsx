@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   Activity, CheckCircle2, XCircle, Clock, Loader2, AlertTriangle,
   ExternalLink, Pause, Play, Ban, RefreshCw, Send, Check, ShieldAlert
@@ -21,6 +21,8 @@ export default function CampaignProgress({ campaignId, onStatusChange }) {
   });
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const prevStatusRef = useRef(null);
+  const isFirstFetchRef = useRef(true);
 
   const fetchProgress = useCallback(async () => {
     if (!campaignId) return;
@@ -29,7 +31,14 @@ export default function CampaignProgress({ campaignId, onStatusChange }) {
       if (res.data) {
         setData(prev => ({ ...prev, ...res.data }));
         setLoading(false);
-        if (onStatusChange) onStatusChange(res.data.status);
+        const newStatus = res.data.status;
+        const oldStatus = prevStatusRef.current;
+        // Only trigger onStatusChange if status actually changed during active monitoring
+        if (onStatusChange && !isFirstFetchRef.current && oldStatus && newStatus !== oldStatus) {
+          onStatusChange(newStatus, oldStatus);
+        }
+        prevStatusRef.current = newStatus;
+        isFirstFetchRef.current = false;
       }
     } catch (err) {
       console.warn("Progress fetch fallback polling:", err);
@@ -39,13 +48,15 @@ export default function CampaignProgress({ campaignId, onStatusChange }) {
 
   useEffect(() => {
     fetchProgress();
-    // Poll every 1.5s while active/sending
+    // Poll every 1.5s while active/sending, slow down to 10s if terminal
+    const isTerminal = ['completed', 'failed', 'cancelled'].includes(data.status);
+    const intervalMs = isTerminal ? 10000 : 1500;
     const timer = setInterval(() => {
       fetchProgress();
-    }, 1500);
+    }, intervalMs);
 
     return () => clearInterval(timer);
-  }, [fetchProgress]);
+  }, [fetchProgress, data.status]);
 
   const handlePause = async () => {
     setActionLoading(true);

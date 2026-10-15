@@ -99,30 +99,30 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
         }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
-              <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary, #fafafa)', margin: 0, letterSpacing: '-0.3px' }}>
+              <h2 style={{ fontSize: 22, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
                 {profile?.header?.name || 'Scout User Profile'}
               </h2>
               {profile?.quality_scores && (
                 <span style={{
-                  fontSize: 11, fontWeight: 800, padding: '3px 8px', borderRadius: 6,
-                  background: profile.quality_scores.overall_score >= 80 ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.05)',
-                  color: profile.quality_scores.overall_score >= 80 ? '#ffffff' : '#d4d4d8',
-                  border: `1px solid ${profile.quality_scores.overall_score >= 80 ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.05)'}`
+                  fontSize: 11.5, fontWeight: 600, padding: '3px 8px', borderRadius: 4,
+                  background: profile.quality_scores.overall_score >= 80 ? 'rgba(34, 184, 207, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                  color: profile.quality_scores.overall_score >= 80 ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                  border: `1px solid ${profile.quality_scores.overall_score >= 80 ? 'rgba(34, 184, 207, 0.3)' : 'var(--card-border)'}`
                 }}>
                   {profile.quality_scores.tier} • {profile.quality_scores.overall_score}% QUALITY
                 </span>
               )}
             </div>
 
-            <div style={{ display: 'flex', gap: 16, fontSize: 13, color: 'var(--text-secondary, #a1a1aa)' }}>
+            <div style={{ display: 'flex', gap: 16, fontSize: 13.5, color: 'var(--text-secondary)' }}>
               <span>{profile?.header?.email}</span>
               <span>•</span>
-              <span>Tenant: <strong style={{ color: 'var(--text-primary, #d4d4d8)' }}>{profile?.header?.tenant}</strong></span>
+              <span>Tenant: <strong style={{ color: 'var(--text-primary)' }}>{profile?.header?.tenant}</strong></span>
               <span>•</span>
-              <span>Role: <strong style={{ color: 'var(--text-primary, #d4d4d8)' }}>{profile?.header?.role}</strong></span>
+              <span>Role: <strong style={{ color: 'var(--text-primary)' }}>{profile?.header?.role}</strong></span>
             </div>
 
-            <div style={{ display: 'flex', gap: 18, marginTop: 10, fontSize: 11, color: 'var(--text-muted, #71717a)' }}>
+            <div style={{ display: 'flex', gap: 18, marginTop: 10, fontSize: 12.5, color: 'var(--text-muted)' }}>
               <span>Registered: {profile?.header?.account_created}</span>
               <span>First Scout: {profile?.header?.first_scout_registration}</span>
               <span>Last Active: {profile?.header?.last_active}</span>
@@ -132,14 +132,14 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             <button
               onClick={() => refetch()}
-              style={{ padding: '6px 10px', background: 'var(--card-bg, #232326)', color: 'var(--text-secondary, #a1a1aa)', border: '1px solid var(--card-border, #27272a)', borderRadius: 6, cursor: 'pointer' }}
+              style={{ padding: '8px 12px', background: 'var(--card-bg)', color: 'var(--text-secondary)', border: '1px solid var(--card-border)', borderRadius: 6, cursor: 'pointer' }}
               title="Refresh Profile"
             >
               <RefreshCw size={14} />
             </button>
             <button
               onClick={onClose}
-              style={{ padding: '6px 10px', background: 'var(--card-bg, #232326)', color: 'var(--text-primary, #fafafa)', border: '1px solid var(--card-border, #27272a)', borderRadius: 6, cursor: 'pointer' }}
+              style={{ padding: '8px 12px', background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--card-border)', borderRadius: 6, cursor: 'pointer' }}
               title="Close Drawer"
             >
               <X size={16} />
@@ -148,7 +148,7 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
         </div>
 
         {/* Tab Navigation */}
-        <div style={{ display: 'flex', gap: 6, padding: '12px 28px', borderBottom: '1px solid var(--card-border, #232326)', background: 'var(--bg-base, #121214)' }}>
+        <div style={{ display: 'flex', gap: 6, padding: '12px 28px', borderBottom: '1px solid var(--card-border)', background: 'var(--panel-bg)' }}>
           {[
             { id: 'contributions', label: '📊 Contributions', icon: BarChart3 },
             { id: 'quality', label: '🎯 Quality & Impact', icon: Award },
@@ -161,11 +161,11 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               style={{
-                padding: '8px 14px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                padding: '8px 14px', borderRadius: 6, fontSize: 13, fontWeight: activeTab === tab.id ? 600 : 500,
                 cursor: 'pointer', border: 'none', transition: 'all 0.15s ease',
-                background: activeTab === tab.id ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
-                color: activeTab === tab.id ? '#ffffff' : 'var(--text-secondary, #a1a1aa)',
-                borderBottom: activeTab === tab.id ? '2px solid #ffffff' : '2px solid transparent'
+                background: activeTab === tab.id ? 'var(--card-bg)' : 'transparent',
+                color: activeTab === tab.id ? 'var(--text-primary)' : 'var(--text-secondary)',
+                borderBottom: activeTab === tab.id ? '2px solid var(--accent-primary)' : '2px solid transparent'
               }}
             >
               {tab.label}

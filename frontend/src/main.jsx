@@ -18,9 +18,9 @@ const queryClient = new QueryClient({
 })
 
 const savedTheme = localStorage.getItem('theme')
-document.documentElement.setAttribute('data-theme', savedTheme || 'light')
+document.documentElement.setAttribute('data-theme', savedTheme || 'dark')
 if (!savedTheme) {
-  localStorage.setItem('theme', 'light')
+  localStorage.setItem('theme', 'dark')
 }
 axios.defaults.withCredentials = true
 

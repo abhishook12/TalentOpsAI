@@ -63,6 +63,17 @@ class LaunchCampaignRequest(BaseModel):
     exclude_risky: bool = False
 
 
+from ..services.corporate_intel_enricher import (
+    PUBLIC_EMAIL_DOMAINS,
+    KNOWN_DOMAIN_MAP,
+    format_domain_to_company_name,
+    detect_dominant_company_from_recipients,
+    extract_clean_person_name,
+    resolve_or_create_company,
+    scrape_and_enrich_company_site,
+)
+
+
 async def _launch_campaign_background(
     campaign_id: int,
     user_id: int,
@@ -78,6 +89,13 @@ async def _launch_campaign_background(
         if not campaign:
             return
             
+        # Guarantee campaign name reflects dominant company if left as default
+        if not campaign.name or campaign.name.strip() in ["New Campaign", "Draft", ""]:
+            auto_comp = detect_dominant_company_from_recipients(request.recipients, db)
+            if auto_comp:
+                campaign.name = auto_comp
+                db.flush()
+                
         # 1. Upsert template & step 1
         first_step = db.query(SequenceStep).filter(SequenceStep.campaign_id == campaign_id).order_by(SequenceStep.step_order.asc()).first()
         t = None
@@ -123,6 +141,13 @@ async def _launch_campaign_background(
                     email_map[clean_email] = rec
 
         if email_map:
+            from ..services.corporate_intel_enricher import (
+                extract_clean_person_name,
+                resolve_or_create_company,
+                scrape_and_enrich_company_site,
+                PUBLIC_EMAIL_DOMAINS
+            )
+            
             emails_list = list(email_map.keys())
             existing_recs = db.query(Recruiter).filter(func.lower(Recruiter.email).in_(emails_list)).all()
             rec_by_email = {r.email.lower(): r for r in existing_recs}
@@ -131,21 +156,54 @@ async def _launch_campaign_background(
                     r.user_id = user_id
                     
             new_recs = []
+            companies_to_enrich = set()
+
             for email, rec_item in email_map.items():
+                domain = email.split('@')[-1] if '@' in email else ""
+                comp = None
+                if domain and domain not in PUBLIC_EMAIL_DOMAINS:
+                    comp = resolve_or_create_company(db, domain, explicit_name=rec_item.company, user_id=user_id)
+                    if comp:
+                        companies_to_enrich.add(comp.company_id)
+
+                whole_name = extract_clean_person_name(email, rec_item.name)
+
                 if email not in rec_by_email:
                     new_recs.append(Recruiter(
                         user_id=user_id,
                         email=email,
-                        recruiter_name=rec_item.name or email.split('@')[0],
+                        recruiter_name=whole_name or "Recruiter",
+                        normalized_recruiter_name=whole_name.lower() if whole_name else None,
+                        company_id=comp.company_id if comp else None,
                         title=rec_item.role,
-                        data_source="campaign_import"
+                        data_source="campaign_import",
+                        trust_score=95
                     ))
+                else:
+                    existing_r = rec_by_email[email]
+                    if comp and not existing_r.company_id:
+                        existing_r.company_id = comp.company_id
+                    curr_name = str(existing_r.recruiter_name or "").strip()
+                    if whole_name:
+                        if not curr_name or curr_name == email.split('@')[0] or curr_name.lower() == email or curr_name == "Recruiter":
+                            existing_r.recruiter_name = whole_name
+                            existing_r.normalized_recruiter_name = whole_name.lower()
+                    elif not curr_name:
+                        existing_r.recruiter_name = "Recruiter"
+                        existing_r.normalized_recruiter_name = None
             
             if new_recs:
                 db.add_all(new_recs)
                 db.flush()
                 for r in new_recs:
                     rec_by_email[r.email.lower()] = r
+
+            # Autonomously scrape & enrich company sites in background
+            for cid in companies_to_enrich:
+                try:
+                    scrape_and_enrich_company_site(db, cid)
+                except Exception as scrape_err:
+                    logger.debug("Background site scraping skipped for %s: %s", cid, scrape_err)
 
             all_rec_ids = [r.recruiter_id for r in rec_by_email.values()]
             existing_enrollments = db.query(CampaignRecruiter.recruiter_id).filter(
@@ -253,15 +311,31 @@ async def api_launch_campaign(
         if campaign.status == "active":
             return {"status": "already_running", "campaign_id": campaign_id, "message": "Campaign is already running"}
             
-        campaign.name = request.name or campaign.name
+        # Intelligent automatic company naming if default or empty
+        chosen_name = request.name
+        if not chosen_name or chosen_name.strip() in ["New Campaign", "Draft", ""]:
+            auto_name = detect_dominant_company_from_recipients(request.recipients, db)
+            if auto_name:
+                chosen_name = auto_name
+            elif campaign.name and campaign.name not in ["New Campaign", "Draft", ""]:
+                chosen_name = campaign.name
+            else:
+                chosen_name = "New Campaign"
+
+        campaign.name = chosen_name
         campaign.from_email = request.from_email
         campaign.sender_account_id = request.sender_account_id
         campaign.signature_id = request.signature_id
         campaign.status = "active"
     else:
+        chosen_name = request.name
+        if not chosen_name or chosen_name.strip() in ["New Campaign", "Draft", ""]:
+            auto_name = detect_dominant_company_from_recipients(request.recipients, db)
+            chosen_name = auto_name or "New Campaign"
+
         campaign = Campaign(
             user_id=current_user.id,
-            name=request.name or "New Campaign",
+            name=chosen_name,
             from_email=request.from_email,
             sender_account_id=request.sender_account_id,
             signature_id=request.signature_id,
@@ -1305,7 +1379,7 @@ def serialize_campaign(c: Campaign):
         "signature_id": getattr(c, "signature_id", None)
     }
 
-def serialize_campaign_list(c: Campaign, stats: dict = None):
+def serialize_campaign_list(c: Campaign, stats: dict = None, subject: str = "", sample_recipients: list = None):
     stats = stats or {"total": 0, "sent": 0, "failed": 0, "progress_percent": 0}
     return {
         "campaign_id": c.campaign_id,
@@ -1313,7 +1387,9 @@ def serialize_campaign_list(c: Campaign, stats: dict = None):
         "status": c.status,
         "created_at": c.created_at.isoformat() if c.created_at else None,
         "rate_per_minute": c.rate_per_minute,
-        "stats": stats
+        "stats": stats,
+        "subject": subject or "",
+        "sample_recipients": sample_recipients or []
     }
 
 
@@ -1484,13 +1560,48 @@ def list_campaigns(
     if cached and (now_ts - cached[1] < _CAMPAIGNS_CACHE_TTL):
         return cached[0]
 
-    from sqlalchemy import func, case
+    from sqlalchemy import func, case, or_
+    from ..models.models import Recruiter, Company
     
     base_query = db.query(Campaign).filter(Campaign.user_id == current_user.id)
     if not include_archived:
         base_query = base_query.filter(Campaign.is_archived.is_(False))
-    if search:
-        base_query = base_query.filter(Campaign.name.ilike(f"%{search}%"))
+    if search and search.strip():
+        search_term = f"%{search.strip()}%"
+        # 1. Matching campaigns via enrolled recruiters / companies / domains
+        matching_recruiter_cids = (
+            db.query(CampaignRecruiter.campaign_id)
+            .join(Recruiter, CampaignRecruiter.recruiter_id == Recruiter.recruiter_id)
+            .outerjoin(Company, Recruiter.company_id == Company.company_id)
+            .filter(
+                or_(
+                    Recruiter.email.ilike(search_term),
+                    Recruiter.recruiter_name.ilike(search_term),
+                    Company.company_name.ilike(search_term),
+                    Company.primary_domain.ilike(search_term)
+                )
+            )
+            .distinct()
+        )
+        # 2. Matching campaigns via template subject or title
+        matching_template_cids = (
+            db.query(EmailTemplate.campaign_id)
+            .filter(
+                or_(
+                    EmailTemplate.subject.ilike(search_term),
+                    EmailTemplate.name.ilike(search_term)
+                )
+            )
+            .distinct()
+        )
+        base_query = base_query.filter(
+            or_(
+                Campaign.name.ilike(search_term),
+                Campaign.from_email.ilike(search_term),
+                Campaign.campaign_id.in_(matching_recruiter_cids),
+                Campaign.campaign_id.in_(matching_template_cids)
+            )
+        )
     if status and status != 'all':
         base_query = base_query.filter(Campaign.status == status)
     if is_test is not None:
@@ -1507,6 +1618,8 @@ def list_campaigns(
     
     # 3. Fetch stats ONLY for those specific campaigns
     stats_dict = {}
+    template_dict = {}
+    sample_recipients_dict = {}
     if campaign_ids:
         stats_query = db.query(
             CampaignRecruiter.campaign_id,
@@ -1526,6 +1639,28 @@ def list_campaigns(
                 stats_dict[cid]["sent"] += count
             elif status_val == 'Failed':
                 stats_dict[cid]["failed"] += count
+
+        # Fetch first template subject
+        tpl_rows = db.query(EmailTemplate.campaign_id, EmailTemplate.subject).filter(
+            EmailTemplate.campaign_id.in_(campaign_ids)
+        ).order_by(EmailTemplate.template_id.asc()).all()
+        for cid, subj in tpl_rows:
+            if cid not in template_dict and subj:
+                template_dict[cid] = subj
+
+        # Fetch sample recipient emails for preview chips
+        rec_rows = (
+            db.query(CampaignRecruiter.campaign_id, Recruiter.email, Recruiter.recruiter_name)
+            .join(Recruiter, CampaignRecruiter.recruiter_id == Recruiter.recruiter_id)
+            .filter(CampaignRecruiter.campaign_id.in_(campaign_ids))
+            .limit(200)
+            .all()
+        )
+        for cid, em, nm in rec_rows:
+            if cid not in sample_recipients_dict:
+                sample_recipients_dict[cid] = []
+            if len(sample_recipients_dict[cid]) < 3 and em:
+                sample_recipients_dict[cid].append({"email": em, "name": nm or ""})
             
     # 4. Serialize
     ret = []
@@ -1537,7 +1672,9 @@ def list_campaigns(
         p = round((s / t) * 100, 1) if t > 0 else 0
         st["progress_percent"] = p
         
-        serialized = serialize_campaign_list(c, st)
+        subj = template_dict.get(c.campaign_id, "")
+        samples = sample_recipients_dict.get(c.campaign_id, [])
+        serialized = serialize_campaign_list(c, st, subject=subj, sample_recipients=samples)
         serialized["is_test"] = c.is_test
         ret.append(serialized)
         

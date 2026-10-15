@@ -138,7 +138,7 @@ export default function StagingPipeline() {
   }
 
   return (
-    <div style={{ padding: '24px 32px', maxWidth: 1400, margin: '0 auto', color: 'var(--text-primary)' }}>
+    <div style={{ padding: '24px 32px 100px', maxWidth: 1400, margin: '0 auto', color: 'var(--text-primary)' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
         <div>
@@ -328,9 +328,9 @@ export default function StagingPipeline() {
             padding: '10px 18px',
             border: 'none',
             background: 'none',
-            color: activeTab === 'pipeline' ? '#d4d4d8' : 'var(--text-secondary)',
+            color: activeTab === 'pipeline' ? 'var(--text-primary)' : 'var(--text-secondary)',
             fontWeight: activeTab === 'pipeline' ? 600 : 500,
-            borderBottom: activeTab === 'pipeline' ? '2px solid #d4d4d8' : '2px solid transparent',
+            borderBottom: activeTab === 'pipeline' ? '2px solid var(--accent-primary)' : '2px solid transparent',
             cursor: 'pointer',
             fontSize: 14,
           }}
@@ -344,9 +344,9 @@ export default function StagingPipeline() {
             padding: '10px 18px',
             border: 'none',
             background: 'none',
-            color: activeTab === 'graph' ? '#ffffff' : 'var(--text-secondary)',
+            color: activeTab === 'graph' ? 'var(--text-primary)' : 'var(--text-secondary)',
             fontWeight: activeTab === 'graph' ? 600 : 500,
-            borderBottom: activeTab === 'graph' ? '2px solid #ffffff' : '2px solid transparent',
+            borderBottom: activeTab === 'graph' ? '2px solid var(--accent-primary)' : '2px solid transparent',
             cursor: 'pointer',
             fontSize: 14,
             display: 'flex',
@@ -364,9 +364,9 @@ export default function StagingPipeline() {
             padding: '10px 18px',
             border: 'none',
             background: 'none',
-            color: activeTab === 'nodes' ? '#a1a1aa' : 'var(--text-secondary)',
+            color: activeTab === 'nodes' ? 'var(--text-primary)' : 'var(--text-secondary)',
             fontWeight: activeTab === 'nodes' ? 600 : 500,
-            borderBottom: activeTab === 'nodes' ? '2px solid #a1a1aa' : '2px solid transparent',
+            borderBottom: activeTab === 'nodes' ? '2px solid var(--accent-primary)' : '2px solid transparent',
             cursor: 'pointer',
             fontSize: 14,
             display: 'flex',
@@ -384,9 +384,9 @@ export default function StagingPipeline() {
             padding: '10px 18px',
             border: 'none',
             background: 'none',
-            color: activeTab === 'review' ? '#d4d4d8' : 'var(--text-secondary)',
+            color: activeTab === 'review' ? 'var(--text-primary)' : 'var(--text-secondary)',
             fontWeight: activeTab === 'review' ? 600 : 500,
-            borderBottom: activeTab === 'review' ? '2px solid #d4d4d8' : '2px solid transparent',
+            borderBottom: activeTab === 'review' ? '2px solid var(--accent-primary)' : '2px solid transparent',
             cursor: 'pointer',
             fontSize: 14,
             display: 'flex',

@@ -743,8 +743,8 @@ export default function AISearch() {
               <i className="ti ti-sparkles" style={{ fontSize: 16 }} />
             </div>
             <div>
-              <h1 style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>Recruiter Search</h1>
-              <p style={{ marginTop: 2, fontSize: 12, color: 'var(--text-muted)' }}>
+              <h1 style={{ fontSize: 24, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>Recruiter Search</h1>
+              <p style={{ marginTop: 4, fontSize: 13.5, color: 'var(--text-secondary)', margin: 0 }}>
                 Ranked recruiter search — exact matches first, fuzzy matches after. No demo data.
               </p>
             </div>
@@ -921,11 +921,9 @@ export default function AISearch() {
                   <div key={f.label}>
                     <div
                       style={{
-                        fontSize: 10,
-                        fontWeight: 700,
-                        color: 'var(--text-muted)',
-                        letterSpacing: '0.06em',
-                        textTransform: 'uppercase',
+                        fontSize: 13,
+                        fontWeight: 500,
+                        color: 'var(--text-secondary)',
                         marginBottom: 6,
                       }}
                     >
@@ -937,12 +935,12 @@ export default function AISearch() {
                       placeholder={f.placeholder}
                       style={{
                         width: '100%',
-                        padding: '9px 10px',
+                        padding: '9px 12px',
                         borderRadius: 6,
                         border: '1px solid var(--card-border)',
                         background: 'var(--panel-bg)',
                         color: 'var(--text-primary)',
-                        fontSize: 12,
+                        fontSize: 13.5,
                         outline: 'none',
                       }}
                     />

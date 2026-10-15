@@ -44,24 +44,30 @@ const ToolbarButton = ({ onClick, isActive, disabled, children, title }) => (
     disabled={disabled}
     title={title}
     style={{
-      width: '28px',
-      height: '28px',
+      width: '30px',
+      height: '30px',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       borderRadius: '4px',
       border: 'none',
       background: isActive ? 'var(--brand)' : 'transparent',
-      color: isActive ? 'var(--text-inverse)' : 'var(--text-secondary)',
+      color: isActive ? '#0f172a' : 'var(--text-secondary)',
       cursor: disabled ? 'not-allowed' : 'pointer',
-      opacity: disabled ? 0.5 : 1,
-      transition: 'all 0.2s',
+      opacity: disabled ? 0.45 : 1,
+      transition: 'background 0.12s ease, color 0.12s ease',
     }}
     onMouseEnter={(e) => {
-      if (!isActive && !disabled) e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+      if (!isActive && !disabled) {
+        e.currentTarget.style.background = 'var(--bg-elevated)';
+        e.currentTarget.style.color = '#ffffff';
+      }
     }}
     onMouseLeave={(e) => {
-      if (!isActive && !disabled) e.currentTarget.style.background = 'transparent';
+      if (!isActive && !disabled) {
+        e.currentTarget.style.background = 'transparent';
+        e.currentTarget.style.color = 'var(--text-secondary)';
+      }
     }}
   >
     {children}
@@ -69,7 +75,7 @@ const ToolbarButton = ({ onClick, isActive, disabled, children, title }) => (
 );
 
 const ToolbarSeparator = () => (
-  <div style={{ width: '1px', height: '20px', background: 'var(--border)', margin: '0 4px' }} />
+  <div style={{ width: '1px', height: '18px', background: 'var(--card-border)', margin: '0 4px' }} />
 );
 
 export default function RichTextComposer({
@@ -168,10 +174,10 @@ export default function RichTextComposer({
         display: 'flex',
         flexWrap: 'wrap',
         alignItems: 'center',
-        padding: '8px',
+        padding: '6px 10px',
         gap: '4px',
         borderBottom: '1px solid var(--card-border)',
-        background: 'var(--bg-surface)',
+        background: 'var(--panel-bg)',
         position: 'sticky',
         top: 0,
         zIndex: 10
@@ -270,11 +276,11 @@ export default function RichTextComposer({
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              padding: '6px 12px',
-              borderRadius: '6px',
-              background: 'var(--bg-surface)',
+              padding: '5px 12px',
+              borderRadius: '4px',
+              background: 'var(--bg-elevated)',
               color: 'var(--text-primary)',
-              border: '1px solid var(--border)',
+              border: '1px solid var(--card-border)',
               fontSize: '13px',
               fontWeight: 500,
               cursor: disabled ? 'not-allowed' : 'pointer',
@@ -284,14 +290,14 @@ export default function RichTextComposer({
             <Braces size={14} /> Variables
           </button>
           
-          <div className="absolute right-0 top-full mt-1 w-48 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 py-1">
+          <div className="absolute right-0 top-full mt-1 w-48 bg-[var(--bg-elevated)] border border-[var(--card-border)] rounded-md shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 py-1">
             {variablesList.map((v, i) => (
               <button
                 key={i}
                 type="button"
                 onClick={() => insertVariable(v.tag)}
                 disabled={disabled}
-                className="w-full text-left px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-surface)] hover:text-[var(--text-primary)] transition-colors flex justify-between items-center"
+                className="w-full text-left px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--card-bg)] hover:text-[var(--text-primary)] transition-colors flex justify-between items-center"
               >
                 <span>{v.label}</span>
                 <span className="text-xs text-[var(--text-muted)] font-mono">{v.tag}</span>

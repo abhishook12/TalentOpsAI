@@ -3,7 +3,8 @@ import {
   ShieldCheck, AlertTriangle, XCircle, Mail, Database, 
   Activity, ArrowUpRight, ArrowDownRight, CheckCircle2,
   Trash2, RefreshCw, ChevronRight, BarChart3, Filter,
-  Play, Pause, Zap, Clock, Sparkles, Check, Download
+  Play, Pause, Zap, Clock, Sparkles, Check, Download,
+  Inbox, Folder
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
@@ -47,8 +48,11 @@ export default function MailIntelDashboard() {
   const [stats, setStats] = useState(DEFAULT_STATS);
   const [domains, setDomains] = useState(DEFAULT_DOMAINS);
   const [engineState, setEngineState] = useState(null);
+  const [outlookStatus, setOutlookStatus] = useState(null);
+  const [bouncesList, setBouncesList] = useState([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [sweeping, setSweeping] = useState(false);
+  const [syncingOutlook, setSyncingOutlook] = useState(false);
 
   const fetchData = useCallback(async () => {
     setIsRefreshing(true);
@@ -56,10 +60,12 @@ export default function MailIntelDashboard() {
       const results = await Promise.allSettled([
         api.get(`/mailintel/stats`),
         api.get(`/mailintel/domains`),
-        api.get(`/mailintel/verification-progress`)
+        api.get(`/mailintel/verification-progress`),
+        api.get(`/outlook/feedback/status`),
+        api.get(`/outlook/feedback/bounces?limit=10`)
       ]);
       
-      const [statsRes, domainsRes, engineRes] = results;
+      const [statsRes, domainsRes, engineRes, outlookRes, bouncesRes] = results;
       if (statsRes.status === 'fulfilled' && statsRes.value?.data) {
         setStats(statsRes.value.data);
       }
@@ -68,6 +74,12 @@ export default function MailIntelDashboard() {
       }
       if (engineRes.status === 'fulfilled' && engineRes.value?.data) {
         setEngineState(engineRes.value.data);
+      }
+      if (outlookRes.status === 'fulfilled' && outlookRes.value?.data) {
+        setOutlookStatus(outlookRes.value.data);
+      }
+      if (bouncesRes.status === 'fulfilled' && bouncesRes.value?.data?.items) {
+        setBouncesList(bouncesRes.value.data.items);
       }
     } catch (e) {
       console.warn("Background revalidation note for mailintel:", e);
@@ -84,6 +96,27 @@ export default function MailIntelDashboard() {
     }, 25000);
     return () => clearInterval(interval);
   }, [fetchData]);
+
+  const handleSyncOutlook = async () => {
+    setSyncingOutlook(true);
+    const toastId = toast.loading('Connecting to Outlook and scanning feedback folders...');
+    try {
+      const res = await api.post('/outlook/feedback/sync', { limit: 100 });
+      const r = res.data?.result;
+      const b = r?.bounces ?? 0;
+      const d = r?.delivered ?? 0;
+      const s = r?.scanned ?? 0;
+      toast.success(
+        `Outlook Feedback Synced! Scanned: ${s}, Bounces quarantined: ${b}, Deliveries: ${d}`,
+        { id: toastId, duration: 5000 }
+      );
+      await fetchData();
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || err.message || 'Failed to sync Outlook folders', { id: toastId });
+    } finally {
+      setSyncingOutlook(false);
+    }
+  };
 
   const handleRunSweep = async () => {
     setSweeping(true);
@@ -278,6 +311,114 @@ export default function MailIntelDashboard() {
         <div style={{ width: '100%', height: 8, borderRadius: 4, background: 'var(--bg-elevated)', overflow: 'hidden' }}>
           <div style={{ width: `${deliverability_rate}%`, height: '100%', background: 'linear-gradient(90deg, #ffffff, #d4d4d8)', borderRadius: 4, transition: 'width 0.6s ease' }} />
         </div>
+      </div>
+
+      {/* Autonomous Outlook Delivery Feedback & NDR Sentinel Panel */}
+      <div className="card" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Inbox size={18} color="var(--brand)" />
+              Autonomous Outlook Delivery Feedback & NDR Sentinel
+              <span style={{ 
+                fontSize: 11, 
+                fontWeight: 700, 
+                padding: '2px 8px', 
+                borderRadius: 999, 
+                background: outlookStatus?.status === 'active' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(234, 179, 8, 0.15)',
+                color: outlookStatus?.status === 'active' ? '#22c55e' : '#eab308',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5
+              }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: outlookStatus?.status === 'active' ? '#22c55e' : '#eab308' }} />
+                {outlookStatus?.status === 'active' ? 'Active 60s Watcher' : 'Ready'}
+              </span>
+            </h3>
+            <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>
+              Direct MAPI folder connection listening to delivery feedback from <code style={{ color: '#ffffff' }}>Undilevered mail</code> and <code style={{ color: '#ffffff' }}>Psotmaster</code>.
+            </p>
+          </div>
+
+          <button
+            onClick={handleSyncOutlook}
+            disabled={syncingOutlook}
+            className="cc-ghost-button"
+            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', fontSize: 12, fontWeight: 600 }}
+          >
+            <RefreshCw className={syncingOutlook ? "animate-spin" : ""} size={14} />
+            {syncingOutlook ? 'Scanning Outlook...' : 'Sync Outlook Feedback'}
+          </button>
+        </div>
+
+        {/* Outlook Telemetry Summary Chips */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 16 }}>
+          <div style={{ background: 'var(--bg-elevated)', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--card-border)' }}>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Monitored Folders</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Folder size={14} color="var(--brand)" />
+              Undilevered mail • Psotmaster
+            </div>
+          </div>
+
+          <div style={{ background: 'var(--bg-elevated)', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--card-border)' }}>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>NDR Bounces Quarantined</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#ef4444', marginTop: 2 }}>
+              {outlookStatus?.total_bounces_recorded?.toLocaleString() ?? 0}
+            </div>
+          </div>
+
+          <div style={{ background: 'var(--bg-elevated)', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--card-border)' }}>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Deliveries Confirmed</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#22c55e', marginTop: 2 }}>
+              {outlookStatus?.total_delivered_recorded?.toLocaleString() ?? 0}
+            </div>
+          </div>
+
+          <div style={{ background: 'var(--bg-elevated)', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--card-border)' }}>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Last Folder Scan</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginTop: 4 }}>
+              {outlookStatus?.last_scan_time ? new Date(outlookStatus.last_scan_time).toLocaleTimeString() : 'Awaiting initial scan'}
+            </div>
+          </div>
+        </div>
+
+        {/* Live Detected Bounces Table */}
+        {bouncesList.length > 0 && (
+          <div style={{ borderTop: '1px solid var(--card-border)', paddingTop: 14 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 8 }}>
+              Recently Quarantined NDR Recipient Bounces
+            </div>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 12 }}>
+                <thead>
+                  <tr style={{ background: 'var(--table-header-bg, var(--bg-elevated))' }}>
+                    <th style={{ padding: '8px 12px', fontWeight: 600, color: 'var(--text-muted)' }}>Recipient Email</th>
+                    <th style={{ padding: '8px 12px', fontWeight: 600, color: 'var(--text-muted)' }}>SMTP Code</th>
+                    <th style={{ padding: '8px 12px', fontWeight: 600, color: 'var(--text-muted)' }}>Diagnostic Reason</th>
+                    <th style={{ padding: '8px 12px', fontWeight: 600, color: 'var(--text-muted)' }}>Source Folder</th>
+                    <th style={{ padding: '8px 12px', fontWeight: 600, color: 'var(--text-muted)', textAlign: 'right' }}>Detected</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bouncesList.map((b) => (
+                    <tr key={b.id} style={{ borderBottom: '1px solid var(--card-border)' }}>
+                      <td style={{ padding: '8px 12px', fontWeight: 600, color: 'var(--text-primary)' }}>{b.recipient_email}</td>
+                      <td style={{ padding: '8px 12px', color: '#ef4444', fontWeight: 700 }}>{b.smtp_code || '550'}</td>
+                      <td style={{ padding: '8px 12px', color: 'var(--text-secondary)', maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {b.diagnostic_reason}
+                      </td>
+                      <td style={{ padding: '8px 12px', color: 'var(--text-muted)' }}>{b.folder_name}</td>
+                      <td style={{ padding: '8px 12px', color: 'var(--text-muted)', textAlign: 'right' }}>
+                        {b.received_at ? new Date(b.received_at).toLocaleDateString() : 'Recent'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Domain Deliverability Breakdown Table */}

@@ -232,52 +232,53 @@ export default function Dashboard() {
       {isAdmin && (
         <div
           style={{
-            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)',
-            border: '1px solid rgba(255, 255, 255, 0.15)',
-            borderRadius: 8,
-            padding: '12px 18px',
+            background: 'var(--card-bg)',
+            border: '1px solid var(--card-border)',
+            borderRadius: 6,
+            padding: '14px 20px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            cursor: 'pointer'
+            cursor: 'pointer',
+            transition: 'border-color 0.15s ease'
           }}
           onClick={() => navigate({ to: '/admin/web-harvest' })}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ fontSize: 20 }}>🌐</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <span style={{ fontSize: 22 }}>🌐</span>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
                   WebHarvest Autonomous Discovery Engine
                 </span>
                 <span style={{
-                  fontSize: 10, fontWeight: 700,
-                  background: 'rgba(255, 255, 255, 0.08)',
-                  color: '#ffffff',
-                  padding: '2px 8px', borderRadius: 12,
-                  border: '1px solid rgba(255, 255, 255, 0.2)'
+                  fontSize: 11.5, fontWeight: 500,
+                  background: 'rgba(34, 184, 207, 0.14)',
+                  color: '#22B8CF',
+                  padding: '2px 8px', borderRadius: 4,
+                  border: '1px solid rgba(34, 184, 207, 0.35)'
                 }}>
-                  ● 24/7 ADMIN BACKGROUND JOB ACTIVE
+                  ● 24/7 Background Engine Active
                 </span>
               </div>
-              <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
+              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 3 }}>
                 Server-side crawler discovering & harvesting verified talent intelligence directly into the master database.
               </div>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Engine Status</div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>Autonomous Background Crawl</div>
+              <div style={{ fontSize: 11.5, color: 'var(--text-muted)', fontWeight: 500 }}>Engine Status</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Autonomous Background Crawl</div>
             </div>
             <button style={{
-              background: 'rgba(255, 255, 255, 0.08)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              color: '#ffffff',
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--card-border)',
+              color: 'var(--text-primary)',
               borderRadius: 6,
-              padding: '6px 12px',
-              fontSize: 11,
-              fontWeight: 700,
+              padding: '6px 14px',
+              fontSize: 12.5,
+              fontWeight: 500,
               cursor: 'pointer'
             }}>
               View Admin Harvesting Center →

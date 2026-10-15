@@ -209,7 +209,7 @@ export default function Settings() {
                 background: 'transparent',
                 color: activeTab === tab.id ? 'var(--text-primary)' : 'var(--text-secondary)',
                 border: 'none',
-                borderBottom: activeTab === tab.id ? '2px solid var(--text-primary)' : '2px solid transparent',
+                borderBottom: activeTab === tab.id ? '2px solid var(--accent-primary)' : '2px solid transparent',
                 fontWeight: activeTab === tab.id ? 500 : 400,
                 fontSize: 14,
                 cursor: 'pointer',
@@ -798,7 +798,7 @@ export default function Settings() {
                           value={testToEmail}
                           onChange={e => setTestToEmail(e.target.value)}
                           placeholder="recipient@example.com"
-                          style={{ width: '100%', background: '#09090b', border: '1px solid #27272a', borderRadius: 6, padding: '8px 12px', color: '#fff', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+                          style={{ width: '100%', background: 'var(--bg-surface)', border: '1px solid var(--card-border)', borderRadius: 6, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 13.5, outline: 'none', boxSizing: 'border-box' }}
                         />
                       </div>
 
@@ -806,15 +806,15 @@ export default function Settings() {
                       {(showTestCc || testCcEmail) && (
                         <div>
                           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                            <label style={{ fontSize: 12, fontWeight: 600, color: '#60a5fa' }}>Cc (Carbon Copy)</label>
-                            <button type="button" onClick={() => { setTestCcEmail(''); setShowTestCc(false); }} style={{ background: 'none', border: 'none', color: '#71717a', fontSize: 11, cursor: 'pointer' }}>Remove</button>
+                            <label style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--brand)' }}>Cc (Carbon Copy)</label>
+                            <button type="button" onClick={() => { setTestCcEmail(''); setShowTestCc(false); }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 11.5, cursor: 'pointer' }}>Remove</button>
                           </div>
                           <input
                             type="text"
                             value={testCcEmail}
                             onChange={e => setTestCcEmail(e.target.value)}
                             placeholder="colleague@company.com, manager@company.com (comma-separated)"
-                            style={{ width: '100%', background: '#09090b', border: '1px solid #3b82f6', borderRadius: 6, padding: '8px 12px', color: '#fff', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+                            style={{ width: '100%', background: 'var(--bg-surface)', border: '1px solid var(--brand-border)', borderRadius: 6, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 13.5, outline: 'none', boxSizing: 'border-box' }}
                           />
                         </div>
                       )}
@@ -823,39 +823,39 @@ export default function Settings() {
                       {(showTestBcc || testBccEmail) && (
                         <div>
                           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                            <label style={{ fontSize: 12, fontWeight: 600, color: '#60a5fa' }}>Bcc (Blind Carbon Copy)</label>
-                            <button type="button" onClick={() => { setTestBccEmail(''); setShowTestBcc(false); }} style={{ background: 'none', border: 'none', color: '#71717a', fontSize: 11, cursor: 'pointer' }}>Remove</button>
+                            <label style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--brand)' }}>Bcc (Blind Carbon Copy)</label>
+                            <button type="button" onClick={() => { setTestBccEmail(''); setShowTestBcc(false); }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 11.5, cursor: 'pointer' }}>Remove</button>
                           </div>
                           <input
                             type="text"
                             value={testBccEmail}
                             onChange={e => setTestBccEmail(e.target.value)}
                             placeholder="audit@company.com (comma-separated)"
-                            style={{ width: '100%', background: '#09090b', border: '1px solid #3b82f6', borderRadius: 6, padding: '8px 12px', color: '#fff', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+                            style={{ width: '100%', background: 'var(--bg-surface)', border: '1px solid var(--brand-border)', borderRadius: 6, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 13.5, outline: 'none', boxSizing: 'border-box' }}
                           />
                         </div>
                       )}
 
                       {/* Subject */}
                       <div>
-                        <label style={{ fontSize: 12, fontWeight: 600, color: '#d4d4d8', display: 'block', marginBottom: 4 }}>Subject</label>
+                        <label style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Subject</label>
                         <input
                           type="text"
                           required
                           value={testSubject}
                           onChange={e => setTestSubject(e.target.value)}
-                          style={{ width: '100%', background: '#09090b', border: '1px solid #27272a', borderRadius: 6, padding: '8px 12px', color: '#fff', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+                          style={{ width: '100%', background: 'var(--bg-surface)', border: '1px solid var(--card-border)', borderRadius: 6, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 13.5, outline: 'none', boxSizing: 'border-box' }}
                         />
                       </div>
 
                       {/* Body */}
                       <div>
-                        <label style={{ fontSize: 12, fontWeight: 600, color: '#d4d4d8', display: 'block', marginBottom: 4 }}>Message Content</label>
+                        <label style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Message Content</label>
                         <textarea
                           rows={4}
                           value={testBody}
                           onChange={e => setTestBody(e.target.value)}
-                          style={{ width: '100%', background: '#09090b', border: '1px solid #27272a', borderRadius: 6, padding: '8px 12px', color: '#fff', fontSize: 13, outline: 'none', boxSizing: 'border-box', resize: 'vertical' }}
+                          style={{ width: '100%', background: 'var(--bg-surface)', border: '1px solid var(--card-border)', borderRadius: 6, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 13.5, outline: 'none', boxSizing: 'border-box', resize: 'vertical' }}
                         />
                       </div>
 

@@ -675,7 +675,7 @@ export default function AdminTerminal() {
     flexDirection: 'column',
     overflow: 'hidden',
     background: 'var(--main-bg)',
-    fontFamily: "'DM Sans', sans-serif",
+    fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
     color: 'var(--text-primary)',
   }
 
@@ -688,53 +688,53 @@ export default function AdminTerminal() {
 
       {/* Header */}
       <div style={{ background: 'var(--panel-bg)', borderBottom: '1px solid var(--card-border)', padding: '14px 28px', display: 'flex', alignItems: 'center', gap: 14, position: 'sticky', top: 0, zIndex: 50 }}>
-        <div style={{ width: 36, height: 36, borderRadius: 8, background: 'linear-gradient(135deg, #d4d4d8, #d4d4d8)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 16px rgba(212, 212, 216,0.4)' }}>
-          <i className="ti ti-terminal-2" style={{ color: 'var(--text-primary)', fontSize: 18 }} />
+        <div style={{ width: 36, height: 36, borderRadius: 6, background: 'rgba(34, 184, 207, 0.15)', border: '1px solid rgba(34, 184, 207, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <i className="ti ti-terminal-2" style={{ color: 'var(--accent-primary)', fontSize: 18 }} />
         </div>
         <div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>Operational Command Center</div>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: "'DM Mono', monospace" }}>TalentOps · Privileged Access</div>
+          <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)' }}>Operational Command Center</div>
+          <div style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>TalentOps · Privileged Access</div>
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, alignItems: 'center' }}>
-          {loading && <span style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}><i className="ti ti-loader" style={{ animation: 'spin 0.8s linear infinite' }} /> Loading…</span>}
+          {loading && <span style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}><i className="ti ti-loader" style={{ animation: 'spin 0.8s linear infinite' }} /> Loading…</span>}
           <button
             onClick={openReviewPanel}
             title="Open the review queue"
-            style={{ background: 'linear-gradient(135deg, #d4d4d8, #d4d4d8)', border: '1px solid #d4d4d8', color: 'var(--text-primary)', padding: '7px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}
+            style={{ background: 'var(--accent-primary)', border: '1px solid var(--accent-primary)', color: '#0f172a', padding: '8px 14px', borderRadius: 6, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
           >
             <i className="ti ti-clipboard-check" /> Review Panel
             {dataQuality?.needs_review_count != null && (
-              <span style={{ marginLeft: 4, padding: '1px 6px', borderRadius: 999, background: 'var(--brand-bg)', fontSize: 11 }}>
+              <span style={{ marginLeft: 4, padding: '1px 6px', borderRadius: 999, background: '#0f172a', color: '#fff', fontSize: 11, fontWeight: 600 }}>
                 {fmt(dataQuality.needs_review_count)}
               </span>
             )}
           </button>
-          <button onClick={loadAll} style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text-secondary)', padding: '7px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button onClick={loadAll} style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text-primary)', padding: '8px 14px', borderRadius: 6, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
             <i className="ti ti-refresh" /> Refresh
           </button>
-          <button onClick={runCleanup} style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: '#d4d4d8', padding: '7px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button onClick={runCleanup} style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text-secondary)', padding: '8px 14px', borderRadius: 6, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
             <i className="ti ti-trash" /> Shrink Storage
           </button>
-          {cacheMsg && <span style={{ fontSize: 12, color: '#ffffff' }}>{cacheMsg}</span>}
-          <button onClick={doLogout} style={{ background: '#300', border: '1px solid #7f1d1d', color: '#f87171', padding: '7px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+          {cacheMsg && <span style={{ fontSize: 13, color: 'var(--text-primary)' }}>{cacheMsg}</span>}
+          <button onClick={doLogout} style={{ background: '#300', border: '1px solid #7f1d1d', color: '#f87171', padding: '8px 14px', borderRadius: 6, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
             <i className="ti ti-logout" /> Logout
           </button>
         </div>
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 2, padding: '0 28px', background: 'var(--panel-bg)', borderBottom: '1px solid var(--card-border)' }}>
+      <div style={{ display: 'flex', gap: 4, padding: '0 28px', background: 'var(--panel-bg)', borderBottom: '1px solid var(--card-border)' }}>
         {TABS.map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
-            background: 'none', border: 'none', padding: '12px 18px', fontSize: 12.5, fontWeight: 500,
-            color: activeTab === t.id ? 'var(--text-primary)' : 'var(--text-muted)', cursor: 'pointer',
-            borderBottom: activeTab === t.id ? '2px solid var(--text-primary)' : '2px solid transparent',
-            display: 'flex', alignItems: 'center', gap: 7, transition: 'all 0.15s',
+            background: 'none', border: 'none', padding: '12px 18px', fontSize: 13.5, fontWeight: activeTab === t.id ? 600 : 500,
+            color: activeTab === t.id ? 'var(--text-primary)' : 'var(--text-secondary)', cursor: 'pointer',
+            borderBottom: activeTab === t.id ? '2px solid var(--accent-primary)' : '2px solid transparent',
+            display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.15s',
           }}
-          onMouseEnter={e => { if (activeTab !== t.id) e.currentTarget.style.color = 'var(--text-secondary)' }}
-          onMouseLeave={e => { if (activeTab !== t.id) e.currentTarget.style.color = 'var(--text-muted)' }}
+          onMouseEnter={e => { if (activeTab !== t.id) e.currentTarget.style.color = 'var(--text-primary)' }}
+          onMouseLeave={e => { if (activeTab !== t.id) e.currentTarget.style.color = 'var(--text-secondary)' }}
           >
-            <i className={`ti ${t.icon}`} style={{ fontSize: 14 }} />{t.label}
+            <i className={`ti ${t.icon}`} style={{ fontSize: 15 }} />{t.label}
           </button>
         ))}
       </div>

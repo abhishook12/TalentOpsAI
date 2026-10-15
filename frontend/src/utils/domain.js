@@ -180,18 +180,115 @@ export const domainToDisplayName = {
   'bluestone-llc.com': 'Bluestone LLC',
   'motionrecruitment.com': 'Motion Recruitment',
   'signatureconsultants.com': 'Signature Consultants',
+  'entegee.com': 'Entegee',
+  'elitetechnical.com': 'Elite Technical',
+  'refactortalent.com': 'Refactor Talent',
+  'connection.com': 'Connection',
+  'cullertongroup.com': 'Cullerton Group',
+  'gotoagile.com': 'GoToAgile',
+  'hirenetworks.com': 'HireNetworks',
+  'technovion.com': 'Technovion',
 }
+
+const COMMON_COMPANY_SUFFIX_WORDS = [
+  'group', 'technical', 'talent', 'staffing', 'solutions', 'technologies',
+  'consulting', 'recruiting', 'partners', 'media', 'digital', 'services',
+  'capital', 'global', 'labs', 'networks', 'systems', 'associates',
+  'resources', 'personnel', 'search', 'advisors', 'international'
+]
 
 export function inferCompanyNameFromDomain(domain) {
   if (!domain) return null
   const d = String(domain).trim().toLowerCase()
   if (domainToDisplayName[d]) return domainToDisplayName[d]
   
-  const base = d.replace(/\.(com|net|org|io|co|ai|us|ca|tech|info|biz|global|llc)$/, '')
-  const words = base.split(/[-_.]+/)
+  let base = d.replace(/\.(com|net|org|io|co|ai|us|ca|tech|info|biz|global|llc|co\.uk)$/, '')
+  base = base.replace(/^(mail|corp|web|app)\./, '')
+  
+  // Try splitting compound words if no delimiter exists
+  if (!/[-_.]/.test(base) && base.length > 7) {
+    for (const suffix of COMMON_COMPANY_SUFFIX_WORDS) {
+      if (base.endsWith(suffix) && base.length > suffix.length) {
+        const prefix = base.slice(0, base.length - suffix.length)
+        base = `${prefix} ${suffix}`
+        break
+      }
+    }
+  }
+
+  const words = base.split(/[-_.\s]+/)
   const result = words
     .filter(Boolean)
     .map(w => ['sg', 'it', 'llc', 'inc', 'corp', 'hr', 'ai', 'us', 'uk', 'ca'].includes(w.toLowerCase()) ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1))
     .join(' ')
   return result || null
 }
+
+export const PUBLIC_EMAIL_DOMAINS = new Set([
+  'gmail.com', 'googlemail.com', 'yahoo.com', 'ymail.com', 'hotmail.com',
+  'outlook.com', 'live.com', 'msn.com', 'icloud.com', 'me.com', 'aol.com',
+  'protonmail.com', 'proton.me', 'zoho.com', 'mail.com', 'gmx.com',
+  'noemail.talentops', 'unknown.com', 'noemail.com', 'test.com', 'example.com'
+])
+
+/**
+ * Analyzes recipient list in real-time to identify if a single dominant company exists.
+ * Returns { companyName, domain, count, total, percentage, isSoleCompany } or null.
+ */
+export function detectDominantCompany(recipients) {
+  if (!recipients || !Array.isArray(recipients) || recipients.length === 0) return null
+
+  const counts = new Map()
+  let corporateTotal = 0
+
+  for (const r of recipients) {
+    if (!r) continue
+    let companyName = (r.company || r.company_name || '').trim()
+    const rawEmail = (r.email || '').trim().toLowerCase()
+    const domain = rawEmail.includes('@') ? rawEmail.split('@')[1].trim().toLowerCase() : null
+
+    if (domain && PUBLIC_EMAIL_DOMAINS.has(domain)) {
+      continue
+    }
+
+    if (!companyName && domain) {
+      companyName = inferCompanyNameFromDomain(domain)
+    }
+
+    if (companyName && !['Unknown', 'Independent', 'N/A', 'None'].includes(companyName)) {
+      corporateTotal++
+      const existing = counts.get(companyName) || { count: 0, domain, companyName }
+      existing.count += 1
+      if (!existing.domain && domain) existing.domain = domain
+      counts.set(companyName, existing)
+    }
+  }
+
+  if (counts.size === 0 || corporateTotal === 0) return null
+
+  let topCompany = null
+  for (const item of counts.values()) {
+    if (!topCompany || item.count > topCompany.count) {
+      topCompany = item
+    }
+  }
+
+  if (!topCompany) return null
+
+  const percentage = Math.round((topCompany.count / corporateTotal) * 100)
+
+  // Dominant criteria: sole corporate entity OR >= 50% majority OR (>= 3 count and >= 40%)
+  if (counts.size === 1 || percentage >= 50 || (topCompany.count >= 3 && percentage >= 40)) {
+    return {
+      companyName: topCompany.companyName,
+      domain: topCompany.domain,
+      count: topCompany.count,
+      total: corporateTotal,
+      percentage,
+      isSoleCompany: counts.size === 1
+    }
+  }
+
+  return null
+}
+

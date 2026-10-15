@@ -169,10 +169,10 @@ export default function CommandPalette() {
                       transition: 'background 0.1s'
                     }}
                   >
-                    <Icon size={18} style={{ color: action.type === 'ai' ? '#e4e4e7' : (isSelected ? 'var(--brand)' : 'inherit') }} />
-                    <span style={{ fontSize: 15, fontWeight: isSelected ? 600 : 500, flex: 1 }}>{action.title}</span>
+                    <Icon size={18} style={{ color: action.type === 'ai' ? 'var(--accent-primary)' : (isSelected ? 'var(--accent-primary)' : 'inherit') }} />
+                    <span style={{ fontSize: 14.5, fontWeight: isSelected ? 600 : 400, flex: 1 }}>{action.title}</span>
                     {action.type === 'ai' && (
-                      <span style={{ fontSize: '10px', background: 'rgba(161, 161, 170, 0.2)', color: '#d4d4d8', border: '1px solid rgba(161, 161, 170, 0.4)', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                      <span style={{ fontSize: '11px', background: 'rgba(34, 184, 207, 0.15)', color: 'var(--accent-primary)', border: '1px solid rgba(34, 184, 207, 0.3)', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
                         AI ACTION
                       </span>
                     )}

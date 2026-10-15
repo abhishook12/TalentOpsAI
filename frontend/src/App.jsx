@@ -251,7 +251,7 @@ function AppShell() {
         <div className="cc-main">
           <header className="cc-topbar">
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
-              <div style={{ color: 'var(--text-secondary)', fontSize: 12, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', minWidth: 0 }}>
+              <div style={{ color: 'var(--text-primary)', fontSize: 14.5, fontWeight: 600, letterSpacing: '-0.01em', minWidth: 0 }}>
                 {pageName}
               </div>
               <button
@@ -262,12 +262,12 @@ function AppShell() {
                   alignItems: 'center',
                   gap: 6,
                   padding: '3px 10px',
-                  borderRadius: 999,
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  border: '1px solid rgba(255, 255, 255, 0.14)',
-                  color: '#ffffff',
-                  fontSize: 11,
-                  fontWeight: 600,
+                  borderRadius: 6,
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--card-border)',
+                  color: 'var(--text-primary)',
+                  fontSize: 12,
+                  fontWeight: 500,
                   cursor: 'pointer',
                   transition: 'all 0.15s ease'
                 }}
@@ -276,12 +276,12 @@ function AppShell() {
                   width: 6,
                   height: 6,
                   borderRadius: '50%',
-                  background: '#ffffff',
-                  boxShadow: '0 0 6px rgba(255, 255, 255, 0.8)'
+                  background: 'var(--brand)',
+                  boxShadow: '0 0 6px rgba(34, 184, 207, 0.7)'
                 }} />
                 <span>System Online</span>
                 <span style={{ opacity: 0.4 }}>•</span>
-                <span style={{ color: 'var(--text-secondary, #a1a1aa)', fontWeight: 500 }}>Telemetry</span>
+                <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>Telemetry</span>
               </button>
             </div>
             <div className="cc-top-actions">
@@ -290,10 +290,10 @@ function AppShell() {
                 className="cc-icon-button"
                 title="TalentOps Copilot"
                 aria-label="TalentOps Copilot"
-                style={{ color: aiPanelOpen ? '#ffffff' : 'var(--text-secondary, #a1a1aa)' }}
+                style={{ color: aiPanelOpen ? 'var(--brand)' : 'var(--text-secondary)' }}
                 onClick={() => setAiPanelOpen(!aiPanelOpen)}
               >
-                <Bot size={19} />
+                <Bot size={18} />
               </button>
               <button
                 className="cc-icon-button"
@@ -301,7 +301,7 @@ function AppShell() {
                 aria-label="Settings"
                 onClick={() => navigate({ to: '/settings' })}
               >
-                <Settings size={19} />
+                <Settings size={18} />
               </button>
               <NotificationCenter />
               <button
@@ -311,9 +311,9 @@ function AppShell() {
                 onClick={() => navigate({ to: isAdmin ? '/admin' : '/profile' })}
               >
                 {user?.avatar_url ? (
-                  <img src={user.avatar_url} alt="Profile" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }} />
+                  <img src={user.avatar_url} alt="Profile" style={{ width: 26, height: 26, borderRadius: '50%', objectFit: 'cover' }} />
                 ) : (
-                  <UserIcon size={19} />
+                  <UserIcon size={18} />
                 )}
               </button>
               <ThemeSwitcher />
@@ -330,10 +330,10 @@ function AppShell() {
             <footer className="cc-footer">
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.2, color: 'var(--text-primary)' }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 600, lineHeight: 1.2, color: 'var(--text-primary)' }}>
                     TalentOps
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                  <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>
                     Recruiter intelligence workspace
                   </div>
                 </div>
@@ -345,20 +345,20 @@ function AppShell() {
                   alignItems: 'center',
                   gap: '6px',
                   padding: '3px 10px',
-                  borderRadius: '9999px',
-                  fontSize: '11px',
+                  borderRadius: '4px',
+                  fontSize: '12px',
                   fontWeight: 500,
-                  backgroundColor: dbConnected ? 'rgba(255, 255, 255, 0.06)' : 'rgba(239, 68, 68, 0.12)',
-                  color: dbConnected ? '#ffffff' : '#ef4444',
-                  border: dbConnected ? '1px solid rgba(255, 255, 255, 0.16)' : '1px solid rgba(239, 68, 68, 0.35)'
+                  backgroundColor: dbConnected ? 'var(--bg-elevated)' : 'rgba(239, 68, 68, 0.12)',
+                  color: dbConnected ? 'var(--text-primary)' : '#ef4444',
+                  border: dbConnected ? '1px solid var(--card-border)' : '1px solid rgba(239, 68, 68, 0.35)'
                 }}>
                   <span style={{
                     width: 6,
                     height: 6,
                     borderRadius: '50%',
-                    backgroundColor: dbConnected ? '#ffffff' : '#ef4444',
+                    backgroundColor: dbConnected ? '#22c55e' : '#ef4444',
                     display: 'inline-block',
-                    boxShadow: dbConnected ? '0 0 6px rgba(255, 255, 255, 0.7)' : '0 0 6px rgba(239, 68, 68, 0.7)'
+                    boxShadow: dbConnected ? '0 0 6px rgba(34, 197, 94, 0.7)' : '0 0 6px rgba(239, 68, 68, 0.7)'
                   }} />
                   {dbConnected ? 'Database Connected' : 'Database Reconnecting...'}
                 </span>

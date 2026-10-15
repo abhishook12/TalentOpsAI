@@ -113,20 +113,20 @@ const RecruiterRow = memo(function RecruiterRow({ recruiter, isSelected, toggleS
           onChange={(e) => toggleSelection(recruiter, e.target.checked)}
         />
       </td>
-      <td style={{ padding: '10px 12px', fontWeight: 900, color: 'var(--text-primary)' }}>
+      <td style={{ padding: '10px 12px', fontWeight: 600, fontSize: 13.5, color: 'var(--text-primary)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span>{recruiter.recruiter_name || ''}</span>
           <SourceProvenanceBadge source={recruiter.data_source} size="xs" />
         </div>
       </td>
-      <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>
+      <td style={{ padding: '10px 12px', fontSize: 13.5, color: 'var(--text-secondary)' }}>
         <EditableEmail 
           recruiter={recruiter} 
           onUpdate={handleUpdateEmail} 
         />
       </td>
-      <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{recruiter.location || recruiter.state || ''}</td>
-      <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{recruiter.phone || ''}</td>
+      <td style={{ padding: '10px 12px', fontSize: 13.5, color: 'var(--text-secondary)' }}>{recruiter.location || recruiter.state || ''}</td>
+      <td style={{ padding: '10px 12px', fontSize: 13.5, color: 'var(--text-secondary)' }}>{recruiter.phone || ''}</td>
     </tr>
   );
 })
@@ -564,8 +564,8 @@ export default function Directory() {
     <div className="page-enter" style={{ height: 'calc(100vh - 180px)', minHeight: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 950, margin: 0 }}>Directory</h1>
-          <div style={{ marginTop: 6, color: 'var(--text-muted)', fontSize: 13 }}>
+          <h1 style={{ fontSize: 24, fontWeight: 600, margin: 0, color: 'var(--text-primary)' }}>Directory</h1>
+          <div style={{ marginTop: 4, color: 'var(--text-secondary)', fontSize: 13.5 }}>
             Search a company, pick a state, then browse the recruiters in that location.
           </div>
         </div>
@@ -578,8 +578,8 @@ export default function Directory() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '390px 290px 1fr', gap: 12, flex: 1, minHeight: 0, alignItems: 'stretch' }}>
-        <div className="card" style={{ padding: 14, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 10 }}>1. Search Company</div>
+        <div className="card" style={{ padding: 16, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 12 }}>1. Search Company</div>
           <input
             value={companyQuery}
             onChange={(event) => setCompanyQuery(event.target.value)}
@@ -587,9 +587,9 @@ export default function Directory() {
             style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-primary)', caretColor: 'var(--text-primary)' }}
           />
           <div className="custom-scrollbar" style={{ marginTop: 10, flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {companiesLoading ? <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Loading companies...</div> : null}
+            {companiesLoading ? <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Loading companies...</div> : null}
             {!companiesLoading && companyRows.length === 0 ? (
-              <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>No companies match this search.</div>
+              <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>No companies match this search.</div>
             ) : null}
             {companyRows.map((company, index) => {
               const active = selectedCompany?.company_key === company.company_key
@@ -603,8 +603,8 @@ export default function Directory() {
                     textAlign: 'left',
                     padding: '10px 12px',
                     borderRadius: 6,
-                    border: active ? '1px solid rgba(24,95,165,0.35)' : '1px solid var(--card-border)',
-                    background: active ? 'rgba(24,95,165,0.08)' : 'var(--panel-bg)',
+                    border: active ? '1px solid var(--accent-primary)' : '1px solid var(--card-border)',
+                    background: active ? 'rgba(34, 184, 207, 0.12)' : 'var(--panel-bg)',
                     cursor: 'pointer',
                     color: 'var(--text-primary)',
                   }}
@@ -653,7 +653,7 @@ export default function Directory() {
                             </a>
                           )}
                           {company.notes && (
-                            <div title="Has internal notes" style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 6px', background: 'rgba(255, 255, 255, 0.05)', color: '#d4d4d8', borderRadius: 4, fontSize: 10, fontWeight: 600 }}>
+                            <div title="Has internal notes" style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 7px', background: 'rgba(255, 255, 255, 0.06)', color: 'var(--text-secondary)', borderRadius: 4, fontSize: 11.5, fontWeight: 500 }}>
                               <i className="ti ti-file-description" /> Notes
                             </div>
                           )}
@@ -662,7 +662,7 @@ export default function Directory() {
                               const tags = typeof company.tags === 'string' ? JSON.parse(company.tags) : company.tags;
                               if (!Array.isArray(tags)) return null;
                               return tags.slice(0, 3).map((tag, i) => (
-                                <div key={i} style={{ display: 'flex', alignItems: 'center', padding: '2px 6px', background: 'rgba(255,255,255,0.04)', color: 'var(--text-secondary)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4, fontSize: 10, fontWeight: 500, whiteSpace: 'nowrap' }}>
+                                <div key={i} style={{ display: 'flex', alignItems: 'center', padding: '3px 7px', background: 'rgba(255,255,255,0.04)', color: 'var(--text-secondary)', border: '1px solid var(--card-border)', borderRadius: 4, fontSize: 11.5, fontWeight: 500, whiteSpace: 'nowrap' }}>
                                   {tag}
                                 </div>
                               ))
@@ -674,15 +674,15 @@ export default function Directory() {
                       )}
                       </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3, flexShrink: 0 }}>
-                      <div style={{ fontFamily: 'var(--mono)', fontWeight: 800, fontSize: 13 }}>{(company.recruiter_count || 0).toLocaleString()}</div>
+                      <div style={{ fontFamily: 'var(--mono)', fontWeight: 600, fontSize: 13, color: 'var(--text-primary)' }}>{(company.recruiter_count || 0).toLocaleString()}</div>
                       {(() => {
                         const count = company.recruiter_count || 0;
                         if (count >= 500) {
-                          return <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: 'rgba(161, 161, 170,0.15)', color: '#d4d4d8', border: '1px solid rgba(161, 161, 170,0.3)', whiteSpace: 'nowrap' }}>Enterprise</span>;
+                          return <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 6px', borderRadius: 4, background: 'rgba(34, 184, 207, 0.15)', color: '#22B8CF', border: '1px solid rgba(34, 184, 207, 0.3)', whiteSpace: 'nowrap' }}>Enterprise</span>;
                         } else if (count >= 50) {
-                          return <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: 'rgba(212, 212, 216,0.15)', color: '#f4f4f5', border: '1px solid rgba(212, 212, 216,0.3)', whiteSpace: 'nowrap' }}>Mid-Market</span>;
+                          return <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 6px', borderRadius: 4, background: 'rgba(255, 255, 255, 0.08)', color: 'var(--text-primary)', border: '1px solid var(--card-border)', whiteSpace: 'nowrap' }}>Mid-Market</span>;
                         } else {
-                          return <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: 'rgba(255, 255, 255, 0.05)', color: '#d4d4d8', border: '1px solid rgba(255, 255, 255, 0.05)', whiteSpace: 'nowrap' }}>Boutique</span>;
+                          return <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 6px', borderRadius: 4, background: 'rgba(255, 255, 255, 0.04)', color: 'var(--text-secondary)', border: '1px solid var(--card-border)', whiteSpace: 'nowrap' }}>Boutique</span>;
                         }
                       })()}
                     </div>
@@ -694,14 +694,14 @@ export default function Directory() {
           </div>
         </div>
 
-        <div className="card" style={{ padding: 14, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 10 }}>2. Select State</div>
+        <div className="card" style={{ padding: 16, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 12 }}>2. Select State</div>
           {!selectedCompany ? (
-            <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Pick a company first.</div>
+            <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Pick a company first.</div>
           ) : (
             <>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>{selectedCompany.company_name}</div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>{selectedCompany.company_name}</div>
+              <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginBottom: 10 }}>
                 {mappedStates.length} mapped state{mappedStates.length === 1 ? '' : 's'}
                 {unknownStateCount ? ` · ${unknownStateCount} unmapped` : ''}
               </div>
@@ -715,11 +715,11 @@ export default function Directory() {
                 onClick={() => selectState(null)}
                 style={{
                   width: '100%',
-                  padding: 10,
+                  padding: '9px 12px',
                   borderRadius: 6,
                   marginBottom: 8,
-                  border: !selectedState ? '1px solid rgba(24,95,165,0.35)' : '1px solid var(--card-border)',
-                  background: !selectedState ? 'rgba(24,95,165,0.08)' : 'var(--panel-bg)',
+                  border: !selectedState ? '1px solid var(--accent-primary)' : '1px solid var(--card-border)',
+                  background: !selectedState ? 'rgba(34, 184, 207, 0.12)' : 'var(--panel-bg)',
                   color: 'var(--text-primary)',
                   cursor: 'pointer',
                   textAlign: 'left',
@@ -729,12 +729,12 @@ export default function Directory() {
                 }}
               >
                 <span><strong>All states</strong></span>
-                <span style={{ fontFamily: 'var(--mono)', fontWeight: 900 }}>{allStatesCount}</span>
+                <span style={{ fontFamily: 'var(--mono)', fontWeight: 600 }}>{allStatesCount}</span>
               </button>
-              <div className="custom-scrollbar" style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {statesLoading ? <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Loading states...</div> : null}
+              <div className="custom-scrollbar" style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {statesLoading ? <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Loading states...</div> : null}
                 {!statesLoading && filteredStateRows.length === 0 ? (
-                  <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+                  <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>
                     {stateQuery ? 'No states match this filter.' : 'No state breakdown available for this company.'}
                   </div>
                 ) : null}
@@ -748,10 +748,10 @@ export default function Directory() {
                       onClick={() => selectState(row.state)}
                       style={{
                         textAlign: 'left',
-                        padding: 10,
+                        padding: '9px 12px',
                         borderRadius: 6,
-                        border: active ? '1px solid rgba(24,95,165,0.35)' : '1px solid var(--card-border)',
-                        background: active ? 'rgba(24,95,165,0.08)' : 'var(--panel-bg)',
+                        border: active ? '1px solid var(--accent-primary)' : '1px solid var(--card-border)',
+                        background: active ? 'rgba(34, 184, 207, 0.12)' : 'var(--panel-bg)',
                         cursor: 'pointer',
                         display: 'flex',
                         justifyContent: 'space-between',
@@ -759,11 +759,11 @@ export default function Directory() {
                         color: 'var(--text-primary)',
                       }}
                     >
-                      <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13 }}>
                         <strong>{isUnknown ? UNKNOWN_STATE : row.state}</strong>
                         {!isUnknown ? ` - ${stateName(row.state)}` : ''}
                       </span>
-                      <span style={{ fontFamily: 'var(--mono)', fontWeight: 900, flexShrink: 0 }}>{row.count}</span>
+                      <span style={{ fontFamily: 'var(--mono)', fontWeight: 600, fontSize: 13, flexShrink: 0 }}>{row.count}</span>
                     </button>
                   )
                 })}
@@ -772,17 +772,17 @@ export default function Directory() {
           )}
         </div>
 
-        <div className="card" style={{ padding: 14, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="card" style={{ padding: 16, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 900 }}>3. Recruiters</div>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>3. Recruiters</div>
+              <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 2 }}>
                 {selectedCompanyName
                   ? `${selectedCompanyName} · ${activeFilterLabel}`
                   : 'Select a company to load recruiters.'}
               </div>
             </div>
-            <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--text-muted)' }}>{recruitersTotal.toLocaleString()} recruiters</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>{recruitersTotal.toLocaleString()} recruiters</div>
           </div>
 
           <input
@@ -813,7 +813,7 @@ export default function Directory() {
             ) : recruitersLoading ? (
               <div style={{ padding: 16, color: 'var(--text-muted)', fontSize: 12 }}>Loading recruiters...</div>
             ) : recruiters.length === 0 ? (
-              <div style={{ padding: 16, color: 'var(--text-muted)', fontSize: 12 }}>
+              <div style={{ padding: 16, color: 'var(--text-muted)', fontSize: 13 }}>
                 {debouncedRecruiterQuery
                   ? 'No recruiters match this search.'
                   : selectedState
@@ -821,9 +821,9 @@ export default function Directory() {
                     : 'No recruiters found for this company.'}
               </div>
             ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
-                <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--bg-hover)' }}>
-                  <tr style={{ background: 'var(--bg-hover)' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
+                <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--card-bg-elevated)' }}>
+                  <tr style={{ background: 'var(--card-bg-elevated)', color: 'var(--text-secondary)', fontSize: 13, fontWeight: 600 }}>
                     <th style={{ width: 36, padding: '10px 12px', borderBottom: '1px solid var(--card-border)', textAlign: 'left' }}>
                       <input
                         type="checkbox"

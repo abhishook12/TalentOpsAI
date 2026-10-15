@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Sparkles, Clock, History, Mail, User, Plus, Check, X, Building2, ChevronRight } from 'lucide-react';
 import api from '../../services/api';
+import { detectDominantCompany } from '../../utils/domain';
 
 const HISTORY_STORAGE_KEY = 'talentops_recipient_history';
 
@@ -79,6 +80,10 @@ export default function PasteRecipientsView({ onAddRecipients }) {
 
     setStats({ valid: validCount, invalid: invalidCount, duplicates: dupCount, parsed: parsedRecipients });
   }, [text]);
+
+  const detectedDominant = useMemo(() => {
+    return detectDominantCompany(stats.parsed);
+  }, [stats.parsed]);
 
   // 3. Extract the active word/line under the cursor for predictive suggestions
   const getCurrentFragment = useCallback(() => {
@@ -214,6 +219,10 @@ export default function PasteRecipientsView({ onAddRecipients }) {
           const em = p.email.toLowerCase();
           const current = historyMap.get(em) || { email: em, name: p.name, use_count: 0 };
           current.name = p.name || current.name;
+          if (detectedDominant && !p.company) {
+            p.company = detectedDominant.companyName;
+          }
+          current.company = p.company || current.company || (detectedDominant ? detectedDominant.companyName : '');
           current.use_count = (current.use_count || 0) + 1;
           current.last_used = new Date().toISOString();
           historyMap.set(em, current);
@@ -368,8 +377,8 @@ export default function PasteRecipientsView({ onAddRecipients }) {
 
       {/* Footer / Add Action */}
       {text && (
-        <div className="mt-3 p-3 bg-[var(--bg-page)] rounded-lg border border-[var(--border)] flex items-center justify-between">
-          <div className="flex gap-3 text-xs">
+        <div className="mt-3 p-3 bg-[var(--bg-page)] rounded-lg border border-[var(--border)] flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-3 text-xs flex-wrap">
             <span className="text-green-500 font-medium flex items-center gap-1">
               <Check size={12} /> {stats.valid} Valid
             </span>
@@ -383,11 +392,16 @@ export default function PasteRecipientsView({ onAddRecipients }) {
                 {stats.invalid} Invalid
               </span>
             )}
+            {detectedDominant && (
+              <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                <Building2 size={11} /> Auto-naming: {detectedDominant.companyName} ({detectedDominant.count})
+              </span>
+            )}
           </div>
           <button 
             onClick={handleAdd}
             disabled={stats.valid === 0}
-            className="px-4 py-1.5 bg-[var(--brand)] text-[var(--text-inverse)] text-xs font-semibold rounded-md shadow-sm hover:opacity-90 disabled:opacity-50 transition-all cursor-pointer flex items-center gap-1.5"
+            className="px-4 py-1.5 bg-[var(--brand)] text-[var(--text-inverse)] text-xs font-semibold rounded-md shadow-sm hover:opacity-90 disabled:opacity-50 transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
           >
             <Plus size={13} /> Add {stats.valid} Recipients
           </button>

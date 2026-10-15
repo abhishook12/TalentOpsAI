@@ -500,6 +500,9 @@ from .routes import scout_learning
 app.include_router(scout_learning.router)
 from .routes import api_keys
 app.include_router(api_keys.router)
+from .routes import outlook_feedback
+app.include_router(outlook_feedback.router, prefix="/api")
+app.include_router(outlook_feedback.router)
 
 
 
@@ -823,6 +826,28 @@ async def startup_event():
         except Exception as sentinel_err:
             logger.warning("Engine Immunity Sentinel initialization warning: %s", sentinel_err)
 
+        # Permanent Autonomous Campaign Auto-Naming from Dominant Company
+        def _auto_name_past_campaigns():
+            try:
+                from .database import SessionLocal
+                from .services.corporate_intel_enricher import auto_name_unnamed_campaigns
+                with SessionLocal() as db:
+                    renamed = auto_name_unnamed_campaigns(db)
+                    if renamed > 0:
+                        logger.info("[CAMPAIGNS] Auto-named %d previously unnamed campaigns to dominant companies.", renamed)
+            except Exception as e:
+                logger.debug("[CAMPAIGNS] Auto-naming campaigns startup note: %s", e)
+
+        asyncio.create_task(asyncio.to_thread(_auto_name_past_campaigns))
+
+        # Permanent Autonomous Outlook Delivery Feedback & NDR Bounce Watcher Sentinel
+        try:
+            from .services.outlook_feedback_service import outlook_feedback_watcher
+            outlook_feedback_watcher.start_background_loop(interval_seconds=60)
+            logger.info("Outlook Feedback Watcher active (autonomous NDR & bounce detection every 60s).")
+        except Exception as ofb_err:
+            logger.warning("Outlook Feedback Watcher initialization warning: %s", ofb_err)
+
         logger.info("Background tasks initialized successfully.")
 
     asyncio.create_task(_async_background_init())
@@ -883,6 +908,11 @@ async def shutdown_event():
         from .services.sequence_scheduler import sequence_scheduler
         import asyncio
         asyncio.get_event_loop().run_until_complete(sequence_scheduler.stop())
+    except Exception:
+        pass
+    try:
+        from .services.outlook_feedback_service import outlook_feedback_watcher
+        outlook_feedback_watcher.stop()
     except Exception:
         pass
     

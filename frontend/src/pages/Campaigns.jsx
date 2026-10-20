@@ -36,23 +36,39 @@ import { setLastEmail, saveTemplate } from '../lib/emailTemplates';
 class CampaignErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, retryCount: 0 };
+    this._autoRetryTimer = null;
   }
   static getDerivedStateFromError(error) {
     return { hasError: true, error };
   }
   componentDidCatch(error, errorInfo) {
     console.error('Campaign workspace error:', error, errorInfo);
+    // Auto-recover after 400ms for transient errors (lazy-load race conditions, suspense boundary mismatches)
+    // This eliminates the "first click fails, second click works" pattern
+    if (this.state.retryCount < 2) {
+      this._autoRetryTimer = setTimeout(() => {
+        this.setState(prev => ({
+          hasError: false,
+          error: null,
+          retryCount: prev.retryCount + 1
+        }));
+      }, 400);
+    }
+  }
+  componentWillUnmount() {
+    if (this._autoRetryTimer) clearTimeout(this._autoRetryTimer);
   }
   render() {
-    if (this.state.hasError) {
+    if (this.state.hasError && this.state.retryCount >= 2) {
+      // Only show the error UI after 2 failed auto-retries (true persistent error)
       return (
         <div style={{ padding: '40px', textAlign: 'center' }}>
           <AlertCircle style={{ width: 48, height: 48, color: '#ef4444', margin: '0 auto 16px' }} />
           <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: 8 }}>Something went wrong</h2>
           <p style={{ color: '#888', marginBottom: 24 }}>The campaign workspace encountered an error.</p>
           <button
-            onClick={() => { this.setState({ hasError: false, error: null }); this.props.onReset?.(); }}
+            onClick={() => { this.setState({ hasError: false, error: null, retryCount: 0 }); this.props.onReset?.(); }}
             style={{ padding: '10px 24px', background: '#fff', color: '#000', border: '1px solid #333', borderRadius: 8, cursor: 'pointer', fontWeight: 500 }}
           >
             Return to Campaign List
@@ -60,6 +76,7 @@ class CampaignErrorBoundary extends React.Component {
         </div>
       );
     }
+    // During auto-retry (hasError but retryCount < 2), render children again so recovery happens invisibly
     return this.props.children;
   }
 }
@@ -259,8 +276,38 @@ const CampaignRow = memo(function CampaignRow({
 
 export default function Campaigns() {
   // ── View State ──────────────────────────────────────────────────────────────
+  // NOTE: Always start from 'list' on mount — never restore 'workspace' from sessionStorage
+  // This prevents the "first click fails" error caused by lazy-loaded chunks not being
+  // ready when the component cold-mounts directly into workspace view.
   const [view, setView] = useSessionState('camp_view', 'list');
   const [workspaceMode, setWorkspaceMode] = useSessionState('camp_wsMode', 'compose'); // 'compose' | 'sending'
+  // Track if lazy workspace chunks are preloaded (prevents ErrorBoundary catching first-render suspension)
+  const [workspaceReady, setWorkspaceReady] = React.useState(false);
+
+  // Preload all lazy chunks immediately and reset view to list if it was workspace on cold mount
+  React.useEffect(() => {
+    // Kick off lazy chunk preloading so they're cached before user clicks "New Campaign"
+    Promise.all([
+      import('../components/RichTextComposer'),
+      import('../components/campaigns/TemplateLibraryModal'),
+      import('../components/ConnectionWizard'),
+      import('../components/campaigns/PreflightSafetyModal'),
+      import('../components/campaigns/SequenceGeneratorModal'),
+      import('../components/campaigns/DomainHealthModal'),
+    ]).then(() => {
+      setWorkspaceReady(true);
+    }).catch(() => {
+      setWorkspaceReady(true); // Still mark ready; Suspense fallback will handle any remaining issues
+    });
+    // If sessionStorage has workspace view from a previous session, reset to list
+    // so we never cold-start into workspace without proper initialization
+    const currentView = sessionStorage.getItem('camp_view');
+    if (currentView === '"workspace"' || currentView === 'workspace') {
+      sessionStorage.setItem('camp_view', '"list"');
+      setView('list');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── List State ───────────────────────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useSessionState('camp_search', '');
@@ -698,29 +745,51 @@ export default function Campaigns() {
   // Workspace open/close helpers
   // ─────────────────────────────────────────────────────────────────────────────
   const startNewCampaign = useCallback((initialTemplate = null) => {
-    setActiveCampaignId(null);
-    setIsUserEditedName(false);
-    setCampaignName(initialTemplate?.name || 'New Campaign');
-    setSubject(initialTemplate?.subject || '');
-    setBody(initialTemplate?.html_body || initialTemplate?.text_body || initialTemplate?.body || '');
-    setSignatureId(null);
-    setSenderAccountId(null);
-    setFromEmail('');
-    // Auto-populate remembered CC from memory and keep CC tab open
-    try {
-      const rememberedCc = localStorage.getItem('talentops_saved_cc');
-      setCc(rememberedCc !== null ? rememberedCc : DEFAULT_INITIAL_CC);
-    } catch {
-      setCc(DEFAULT_INITIAL_CC);
+    const doStart = () => {
+      setActiveCampaignId(null);
+      setIsUserEditedName(false);
+      setCampaignName(initialTemplate?.name || 'New Campaign');
+      setSubject(initialTemplate?.subject || '');
+      setBody(initialTemplate?.html_body || initialTemplate?.text_body || initialTemplate?.body || '');
+      setSignatureId(null);
+      setSenderAccountId(null);
+      setFromEmail('');
+      // Auto-populate remembered CC from memory and keep CC tab open
+      try {
+        const rememberedCc = localStorage.getItem('talentops_saved_cc');
+        setCc(rememberedCc !== null ? rememberedCc : DEFAULT_INITIAL_CC);
+      } catch {
+        setCc(DEFAULT_INITIAL_CC);
+      }
+      setShowCc(true);
+      setValidatedRecipients({ recipients: [], valid_count: 0 });
+      setPreflightData(null);
+      setChecks({ sender: 'idle', recipients: 'idle', template: (initialTemplate?.subject || initialTemplate?.body) ? 'ok' : 'idle', bridge: 'idle' });
+      setWorkspaceMode('compose');
+      setLastSaved(null);
+      setView('workspace');
+    };
+
+    if (workspaceReady) {
+      doStart();
+    } else {
+      // Chunks still loading — preload then open (rare: user clicked within ms of mount)
+      Promise.all([
+        import('../components/RichTextComposer'),
+        import('../components/campaigns/TemplateLibraryModal'),
+        import('../components/ConnectionWizard'),
+        import('../components/campaigns/PreflightSafetyModal'),
+        import('../components/campaigns/SequenceGeneratorModal'),
+        import('../components/campaigns/DomainHealthModal'),
+      ]).then(() => {
+        setWorkspaceReady(true);
+        doStart();
+      }).catch(() => {
+        setWorkspaceReady(true);
+        doStart();
+      });
     }
-    setShowCc(true);
-    setValidatedRecipients({ recipients: [], valid_count: 0 });
-    setPreflightData(null);
-    setChecks({ sender: 'idle', recipients: 'idle', template: (initialTemplate?.subject || initialTemplate?.body) ? 'ok' : 'idle', bridge: 'idle' });
-    setWorkspaceMode('compose');
-    setLastSaved(null);
-    setView('workspace');
-  }, [setActiveCampaignId, setView, setWorkspaceMode, DEFAULT_INITIAL_CC]);
+  }, [workspaceReady, setActiveCampaignId, setView, setWorkspaceMode, DEFAULT_INITIAL_CC]);
 
   const loadCampaign = useCallback(async (id) => {
     try {

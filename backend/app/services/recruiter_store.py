@@ -117,15 +117,15 @@ def safe_duckdb_connect(memory_limit: Optional[str] = None, threads: Optional[in
 
     con = duckdb.connect(":memory:", read_only=read_only)
     try:
-        con.execute(f"PRAGMA max_memory='{memory_limit}';")
-        con.execute(f"PRAGMA threads={threads};")
-        con.execute("PRAGMA preserve_insertion_order=false;")
+        con.execute(f"SET memory_limit='{memory_limit}';")
+        con.execute(f"SET threads={threads};")
+        con.execute("SET preserve_insertion_order=false;")
         import tempfile
         spill_dir = os.path.join(tempfile.gettempdir(), "duckdb_spill").replace("\\", "/")
         os.makedirs(spill_dir, exist_ok=True)
-        con.execute(f"PRAGMA temp_directory='{spill_dir}';")
+        con.execute(f"SET temp_directory='{spill_dir}';")
     except Exception as pragma_err:
-        logger.debug("safe_duckdb_connect PRAGMA note: %s", pragma_err)
+        logger.debug("safe_duckdb_connect config note: %s", pragma_err)
     return con
 
 
@@ -356,17 +356,17 @@ class RecruiterStore:
         self._conn = duckdb.connect(":memory:")
         
         is_render = bool(os.getenv("RENDER") or os.getenv("RENDER_SERVICE_ID") or os.getenv("IS_PRODUCTION", "false").lower() == "true")
-        max_mem = os.getenv("DUCKDB_MAX_MEMORY", "64MB" if is_render else "256MB")
+        max_mem = os.getenv("DUCKDB_MAX_MEMORY", "64MB" if is_render else "512MB")
         num_threads = int(os.getenv("DUCKDB_THREADS", "1" if is_render else "4"))
 
         try:
-            self._conn.execute(f"PRAGMA max_memory='{max_mem}';")
-            self._conn.execute(f"PRAGMA threads={num_threads};")
-            self._conn.execute("PRAGMA preserve_insertion_order=false;")
+            self._conn.execute(f"SET memory_limit='{max_mem}';")
+            self._conn.execute(f"SET threads={num_threads};")
+            self._conn.execute("SET preserve_insertion_order=false;")
             import tempfile
             spill_dir = os.path.join(tempfile.gettempdir(), "duckdb_spill_main").replace("\\", "/")
             os.makedirs(spill_dir, exist_ok=True)
-            self._conn.execute(f"PRAGMA temp_directory='{spill_dir}';")
+            self._conn.execute(f"SET temp_directory='{spill_dir}';")
         except Exception:
             pass
 

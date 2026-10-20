@@ -1,4 +1,10 @@
 {
+  "name": "talentops-ai",
+  "version": "2.4.0",
+  "scripts": {
+    "start": "python run.py",
+    "dev": "python run.py"
+  },
   "dependencies": {
     "@fontsource/inter": "^5.2.8",
     "@google/generative-ai": "^0.24.1",

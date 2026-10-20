@@ -156,6 +156,7 @@ class CampaignRecruiter(Base):
 class EmailLogStatus(str, Enum):
     queued = "queued"
     sending = "sending"
+    sent = "sent"
     delivered = "delivered"
     failed = "failed"
     retrying = "retrying"

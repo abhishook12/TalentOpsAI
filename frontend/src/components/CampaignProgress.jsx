@@ -193,11 +193,13 @@ export default function CampaignProgress({ campaignId, onStatusChange }) {
         {/* Sent Card */}
         <div className="p-3.5 rounded-xl bg-[#141419] border border-[#24242e] flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-[#8e8e99] uppercase tracking-wider">Delivered</span>
+            <span className="text-[10px] font-bold text-[#8e8e99] uppercase tracking-wider">Sent / Delivered</span>
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
           </div>
           <div className="text-2xl font-black text-emerald-400 mt-2">{data.sent}</div>
-          <div className="text-[10px] text-[#71717a] mt-0.5">Successfully sent</div>
+          <div className="text-[10px] text-[#71717a] mt-0.5">
+            {data.delivered > 0 ? `${data.delivered} verified delivered` : 'Successfully dispatched'}
+          </div>
         </div>
 
         {/* In-Flight / Sending Card */}
@@ -223,11 +225,13 @@ export default function CampaignProgress({ campaignId, onStatusChange }) {
         {/* Failed / Bounced Card */}
         <div className="p-3.5 rounded-xl bg-[#141419] border border-[#24242e] flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-[#8e8e99] uppercase tracking-wider">Failed / Bounced</span>
+            <span className="text-[10px] font-bold text-[#8e8e99] uppercase tracking-wider">Bounced / Failed</span>
             <XCircle className="w-4 h-4 text-rose-400" />
           </div>
-          <div className="text-2xl font-black text-rose-400 mt-2">{data.failed}</div>
-          <div className="text-[10px] text-[#71717a] mt-0.5">Quarantined</div>
+          <div className="text-2xl font-black text-rose-400 mt-2">{data.failed || data.bounced || 0}</div>
+          <div className="text-[10px] text-rose-400/80 mt-0.5">
+            {data.bounced > 0 ? `${data.bounced} NDR bounces detected` : 'Quarantined'}
+          </div>
         </div>
       </div>
     </div>

@@ -122,6 +122,10 @@ def _send_via_local_outlook_com(payload: dict) -> tuple[bool, str]:
                     mail.BCC = "; ".join(bcc_list)
                 mail.Subject = subject
                 mail.HTMLBody = html_body
+                try:
+                    mail.OriginatorDeliveryReportRequested = True
+                except Exception:
+                    pass
 
                 if matching_account:
                     # Use the low-level OLEOBJ invoke to set SendUsingAccount
@@ -836,11 +840,11 @@ async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, s
                         now = datetime.now(timezone.utc)
                         if success:
                             if log:
-                                log.status = EmailLogStatus.delivered.value
-                                log.delivered_at = now
+                                log.status = EmailLogStatus.sent.value
+                                log.sending_at = now
                                 log.error_message = None
                             if cr:
-                                cr.status = CampaignRecruiterStatus.delivered.value
+                                cr.status = CampaignRecruiterStatus.sent.value
                                 cr.last_sent_at = now
                                 cr.sent_count = (cr.sent_count or 0) + 1
                                 # Multi-touch: advance to next sequence step
@@ -883,12 +887,12 @@ async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, s
                         now = datetime.now(timezone.utc)
                         if success:
                             if log:
-                                log.status = EmailLogStatus.delivered.value
-                                log.delivered_at = now
+                                log.status = EmailLogStatus.sent.value
+                                log.sending_at = now
                                 log.outlook_accepted = True
                                 log.error_message = None
                             if cr:
-                                cr.status = CampaignRecruiterStatus.delivered.value
+                                cr.status = CampaignRecruiterStatus.sent.value
                                 cr.last_sent_at = now
                                 cr.sent_count = (cr.sent_count or 0) + 1
                                 _advance_recipient_to_next_step(db, cr, campaign_id)

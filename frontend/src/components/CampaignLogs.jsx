@@ -67,7 +67,8 @@ export default function CampaignLogs({ campaignId }) {
     toast.success(`Exported ${logs.length} delivery records to CSV!`);
   };
 
-  const deliveredCount = logs.filter(l => ['delivered', 'sent'].includes((l.status || '').toLowerCase())).length;
+  const deliveredCount = logs.filter(l => (l.status || '').toLowerCase() === 'delivered').length;
+  const sentCount = logs.filter(l => ['sent', 'delivered'].includes((l.status || '').toLowerCase())).length;
   const failedCount = logs.filter(l => ['failed', 'bounced'].includes((l.status || '').toLowerCase())).length;
   const inFlightCount = logs.filter(l => ['sending', 'retrying', 'queued', 'pending'].includes((l.status || '').toLowerCase())).length;
 
@@ -79,9 +80,9 @@ export default function CampaignLogs({ campaignId }) {
           <div className="flex items-center gap-1 bg-[#1a1a22] p-1 rounded-lg border border-[#282834]">
             {[
               { id: 'all', label: `All (${logs.length})` },
-              { id: 'delivered', label: `Sent (${deliveredCount})`, color: 'text-emerald-400' },
+              { id: 'delivered', label: `Sent / Delivered (${sentCount})`, color: 'text-emerald-400' },
               { id: 'sending', label: `In-Flight (${inFlightCount})`, color: 'text-cyan-400' },
-              { id: 'failed', label: `Failed (${failedCount})`, color: 'text-rose-400' },
+              { id: 'failed', label: `Bounced / Failed (${failedCount})`, color: 'text-rose-400' },
             ].map(tab => (
               <button
                 key={tab.id}
@@ -156,8 +157,10 @@ export default function CampaignLogs({ campaignId }) {
             <tbody className="divide-y divide-[#1e1e26] text-xs">
               {filteredLogs.map((log) => {
                 const s = (log.status || '').toLowerCase();
-                const isDelivered = ['delivered', 'sent'].includes(s);
-                const isFailed = ['failed', 'bounced'].includes(s);
+                const isBounced = s === 'bounced';
+                const isDelivered = s === 'delivered';
+                const isSent = s === 'sent';
+                const isFailed = s === 'failed';
                 const isSending = ['sending', 'retrying'].includes(s);
                 const isQueued = ['queued', 'pending'].includes(s);
 
@@ -168,18 +171,24 @@ export default function CampaignLogs({ campaignId }) {
                     </td>
                     <td className="py-3 px-4">
                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
-                        isDelivered
+                        isBounced
+                          ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 shadow-sm shadow-rose-950/40'
+                          : isDelivered
                           ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25'
+                          : isSent
+                          ? 'bg-blue-500/15 text-blue-400 border-blue-500/25'
                           : isFailed
                           ? 'bg-rose-500/15 text-rose-400 border-rose-500/25'
                           : isSending
                           ? 'bg-cyan-500/15 text-cyan-400 border-cyan-500/25 animate-pulse'
                           : 'bg-amber-500/15 text-amber-400 border-amber-500/25'
                       }`}>
-                        {isDelivered && <CheckCircle2 className="w-3 h-3" />}
-                        {isFailed && <XCircle className="w-3 h-3" />}
-                        {isSending && <Loader2 className="w-3 h-3 animate-spin" />}
-                        {isQueued && <Clock className="w-3 h-3" />}
+                        {isBounced && <XCircle className="w-3 h-3 text-rose-400" />}
+                        {isDelivered && <CheckCircle2 className="w-3 h-3 text-emerald-400" />}
+                        {isSent && <Send className="w-3 h-3 text-blue-400" />}
+                        {isFailed && <AlertCircle className="w-3 h-3 text-rose-400" />}
+                        {isSending && <Loader2 className="w-3 h-3 animate-spin text-cyan-400" />}
+                        {isQueued && <Clock className="w-3 h-3 text-amber-400" />}
                         {log.status || 'Queued'}
                       </span>
                     </td>
@@ -187,16 +196,25 @@ export default function CampaignLogs({ campaignId }) {
                       {log.last_sent ? new Date(log.last_sent).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—'}
                     </td>
                     <td className="py-3 px-4 text-xs">
-                      {log.error ? (
-                        <span className="text-rose-400 block max-w-sm truncate font-mono text-[11px]" title={log.error}>
-                          {log.error} {log.retry_count > 0 && `(Retry ${log.retry_count})`}
-                        </span>
+                      {isBounced || log.error ? (
+                        <div className="flex items-center gap-1.5 text-rose-400 font-mono text-[11px]" title={log.error || 'Undelivered NDR bounce received'}>
+                          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 text-rose-400" />
+                          <span className="truncate max-w-sm">{log.error || '550 Recipient address rejected (NDR bounce)'}</span>
+                          {log.retry_count > 0 && <span className="text-[#71717a] text-[10px] ml-1">(Retry {log.retry_count})</span>}
+                        </div>
                       ) : isDelivered ? (
-                        <span className="text-emerald-400/90 text-[11px] font-medium flex items-center gap-1">
-                          {log.sent_via?.startsWith('api_') ? `Sent via ${log.sent_via.replace('api_', '').toUpperCase()} API` : (log.sent_via === 'direct_api' ? 'Sent via Direct Cloud API' : 'Sent via Outlook Bridge')}
+                        <span className="text-emerald-400/90 text-[11px] font-medium flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                          Confirmed delivered to mailbox
+                        </span>
+                      ) : isSent ? (
+                        <span className="text-blue-400/90 text-[11px] font-medium flex items-center gap-1.5" title="Dispatched to remote mail server — monitoring for bounce NDR (1-2 min settling window)">
+                          <Send className="w-3 h-3 text-blue-400" />
+                          Dispatched — Settling feedback (1-2m)
                         </span>
                       ) : isSending ? (
-                        <span className="text-cyan-400/90 text-[11px] font-medium flex items-center gap-1">
+                        <span className="text-cyan-400/90 text-[11px] font-medium flex items-center gap-1.5">
+                          <Loader2 className="w-3 h-3 animate-spin text-cyan-400" />
                           {log.sent_via?.startsWith('api_') ? `Dispatching via ${log.sent_via.replace('api_', '').toUpperCase()} API...` : (log.sent_via === 'direct_api' ? 'Dispatching via Direct Cloud API...' : 'Transferring to Outlook...')}
                         </span>
                       ) : (

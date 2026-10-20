@@ -2,9 +2,10 @@ import re
 import time
 import logging
 import threading
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Optional, Any
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from ..database import SessionLocal
 from ..models.outlook_feedback import OutlookFeedbackLog
@@ -82,10 +83,9 @@ def parse_outlook_message(msg: Any, folder_name: str) -> List[Dict[str, Any]]:
         lower_subj = subject.lower()
 
         # ── 1. Check for Delivered Confirmation (Psotmaster / Delivered) ──
-        if "psotmaster" in lower_folder or "delivered" in lower_folder or lower_subj.startswith("delivered:"):
+        if any(w in lower_folder for w in ["psotmaster", "postmaster", "delivered"]) or lower_subj.startswith("delivered:"):
             delivered_matches = RE_DELIVERED_TARGET.findall(body)
             if not delivered_matches:
-                # Fallback: find any clean recipient mailto in body
                 mailtos = re.findall(r'<mailto:([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})>', body)
                 delivered_matches = mailtos
 
@@ -105,56 +105,69 @@ def parse_outlook_message(msg: Any, folder_name: str) -> List[Dict[str, Any]]:
                     })
 
         # ── 2. Check for Bounces / NDRs (Undilevered mail / Bounces / Mailer-Daemon) ──
-        if "undilevered" in lower_folder or "undelivered" in lower_folder or "undelivered" in lower_subj or "returned" in lower_subj or "failure" in lower_subj:
-            # Try Pattern 1: <email>: host ... said: 550 ...
-            matches_p1 = RE_BOUNCE_TARGET_1.findall(body)
+        if any(w in lower_folder for w in ["undilevered", "undelivered", "bounce", "failure", "mailer-daemon", "returned"]) or any(w in lower_subj for w in ["undeliver", "undilever", "returned", "failure", "rejected", "delivery status", "non-delivery"]):
             matched_emails = set()
 
-            for email, diag in matches_p1:
-                clean_email = email.strip().lower()
-                if clean_email in matched_emails:
+            # Strategy A: Postfix / Exchange multiline error pattern
+            # <email>: host ... said: 550 ... Recipient address rejected ...
+            for m in re.finditer(r'<([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})>:\s*([\s\S]+?)(?=\n\s*<[a-zA-Z0-9._%+-]+@|\(in reply to|\n\s*\n\s*\n|\Z)', body):
+                email = m.group(1).strip().lower()
+                if email in matched_emails or any(ex in email for ex in ["postmaster", "mailer-daemon", "technovion"]):
                     continue
-                matched_emails.add(clean_email)
+                matched_emails.add(email)
 
-                # Extract SMTP code if present in diagnostic snippet
-                code_match = RE_BOUNCE_CODE.search(diag)
+                raw_block = m.group(2)
+                # Look for "said: ..." or SMTP status line
+                said_match = re.search(r'said:\s*([^\n\r]+(?:\r?\n\s+[^\n\r]+)*)', raw_block, re.I)
+                if said_match:
+                    raw_diag = re.sub(r'\s+', ' ', said_match.group(1)).strip()
+                else:
+                    raw_diag = re.sub(r'\s+', ' ', raw_block[:300]).strip()
+
+                # Clean diagnostic snippet
+                raw_diag = re.sub(r'For more information.*$', '', raw_diag, flags=re.I).strip()
+                raw_diag = re.sub(r'\[[A-Z0-9\.\s]+\]', '', raw_diag).strip()
+
+                code_match = RE_BOUNCE_CODE.search(raw_block)
                 smtp_code = code_match.group(1) if code_match else "550"
                 event_type = "soft_bounce" if smtp_code.startswith("4") else "hard_bounce"
-                clean_diag = diag.strip().replace("\n", " ").replace("\r", " ")[:400]
 
                 events.append({
-                    "entry_id": f"{entry_id}_{clean_email}",
+                    "entry_id": f"{entry_id}_{email}",
                     "folder_name": folder_name,
                     "subject": subject[:490],
                     "sender": sender_combined[:250],
-                    "recipient_email": clean_email,
+                    "recipient_email": email,
                     "event_type": event_type,
                     "smtp_code": smtp_code,
-                    "diagnostic_reason": clean_diag or "Undelivered mail returned to sender",
+                    "diagnostic_reason": raw_diag or "Undelivered mail returned to sender",
                     "received_at": ts
                 })
 
-            # Try Pattern 2 & 3 if Pattern 1 found nothing
+            # Strategy B: RFC 3464 Final-Recipient / standard bounce headers
             if not events:
-                p2_emails = RE_BOUNCE_TARGET_2.findall(body) + RE_BOUNCE_TARGET_3.findall(body)
-                for email in set(p2_emails):
+                p_emails = re.findall(r'Final-Recipient:\s*rfc822;\s*<([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})>', body, re.I)
+                if not p_emails:
+                    p_emails = re.findall(r'<([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})>', body)
+                for email in set(p_emails):
                     clean_email = email.strip().lower()
-                    if clean_email not in matched_emails:
-                        matched_emails.add(clean_email)
-                        code_match = RE_BOUNCE_CODE.search(body)
-                        smtp_code = code_match.group(1) if code_match else "550"
-                        event_type = "soft_bounce" if smtp_code.startswith("4") else "hard_bounce"
-                        events.append({
-                            "entry_id": f"{entry_id}_{clean_email}",
-                            "folder_name": folder_name,
-                            "subject": subject[:490],
-                            "sender": sender_combined[:250],
-                            "recipient_email": clean_email,
-                            "event_type": event_type,
-                            "smtp_code": smtp_code,
-                            "diagnostic_reason": "Permanent delivery failure (NDR)",
-                            "received_at": ts
-                        })
+                    if clean_email in matched_emails or any(ex in clean_email for ex in ["postmaster", "mailer-daemon", "technovion", "example.com"]):
+                        continue
+                    matched_emails.add(clean_email)
+                    code_match = RE_BOUNCE_CODE.search(body)
+                    smtp_code = code_match.group(1) if code_match else "550"
+                    event_type = "soft_bounce" if smtp_code.startswith("4") else "hard_bounce"
+                    events.append({
+                        "entry_id": f"{entry_id}_{clean_email}",
+                        "folder_name": folder_name,
+                        "subject": subject[:490],
+                        "sender": sender_combined[:250],
+                        "recipient_email": clean_email,
+                        "event_type": event_type,
+                        "smtp_code": smtp_code,
+                        "diagnostic_reason": "Recipient address rejected or unavailable (NDR)",
+                        "received_at": ts
+                    })
 
     except Exception as e:
         logger.debug("Error parsing Outlook message: %s", e)
@@ -166,18 +179,17 @@ def ingest_feedback_event(event_dict: Dict[str, Any], db: Session) -> Optional[O
     """
     Ingests a single parsed feedback event into the database and synchronizes:
     - CampaignRecruiter rows (status -> Bounced or Delivered)
+    - EmailLog rows (status -> bounced or delivered)
     - Master Recruiter directory (email_status -> invalid if hard bounce)
-    - Parquet / DuckDB recruiter_store
     - MailIntel DomainReputation
     """
     entry_id = event_dict.get("entry_id")
     if not entry_id:
         return None
 
-    # 1. Deduplication guard: skip already recorded entry_id
+    # 1. Deduplication guard / existing record retrieval
     existing = db.query(OutlookFeedbackLog).filter(OutlookFeedbackLog.entry_id == entry_id).first()
-    if existing:
-        return None
+    log_rec = existing
 
     email = event_dict.get("recipient_email", "").strip().lower()
     event_type = event_dict.get("event_type", "hard_bounce")
@@ -200,7 +212,6 @@ def ingest_feedback_event(event_dict: Dict[str, Any], db: Session) -> Optional[O
             .first()
         )
     if not cr_row:
-        # Try joining by recruiter email directly
         cr_row = (
             db.query(CampaignRecruiter)
             .join(Recruiter, CampaignRecruiter.recruiter_id == Recruiter.recruiter_id)
@@ -212,21 +223,30 @@ def ingest_feedback_event(event_dict: Dict[str, Any], db: Session) -> Optional[O
     if cr_row:
         campaign_id = cr_row.campaign_id
 
-    # 4. Create log record
-    log_rec = OutlookFeedbackLog(
-        entry_id=entry_id,
-        folder_name=event_dict.get("folder_name", ""),
-        subject=event_dict.get("subject", ""),
-        sender=event_dict.get("sender", ""),
-        recipient_email=email,
-        event_type=event_type,
-        smtp_code=smtp_code,
-        diagnostic_reason=reason,
-        campaign_id=campaign_id,
-        recruiter_id=recruiter_id,
-        received_at=received_at
-    )
-    db.add(log_rec)
+    # 4. Create or update log record
+    if not log_rec:
+        log_rec = OutlookFeedbackLog(
+            entry_id=entry_id,
+            folder_name=event_dict.get("folder_name", ""),
+            subject=event_dict.get("subject", ""),
+            sender=event_dict.get("sender", ""),
+            recipient_email=email,
+            event_type=event_type,
+            smtp_code=smtp_code,
+            diagnostic_reason=reason,
+            campaign_id=campaign_id,
+            recruiter_id=recruiter_id,
+            received_at=received_at
+        )
+        db.add(log_rec)
+    else:
+        if reason and (log_rec.diagnostic_reason == "host" or not log_rec.diagnostic_reason or len(reason) > len(log_rec.diagnostic_reason)):
+            log_rec.diagnostic_reason = reason
+            log_rec.smtp_code = smtp_code
+        if campaign_id and not log_rec.campaign_id:
+            log_rec.campaign_id = campaign_id
+        if recruiter_id and not log_rec.recruiter_id:
+            log_rec.recruiter_id = recruiter_id
 
     # 5. Update CampaignRecruiter status
     if cr_row:
@@ -236,6 +256,26 @@ def ingest_feedback_event(event_dict: Dict[str, Any], db: Session) -> Optional[O
             cr_row.last_error = f"[{smtp_code}] {reason}"[:450]
         elif event_type == "delivered" and cr_row.status in ("Sent", "Sending", "Queued"):
             cr_row.status = "Delivered"
+
+    # 5b. Synchronize EmailLog status
+    try:
+        from ..models.campaigns import EmailLog, EmailLogStatus
+        log_query = db.query(EmailLog).filter(EmailLog.recipient_email.ilike(email))
+        if campaign_id:
+            log_query = log_query.filter(EmailLog.campaign_id == campaign_id)
+        matching_logs = log_query.all()
+        for el in matching_logs:
+            if event_type in ("hard_bounce", "soft_bounce"):
+                el.status = EmailLogStatus.bounced.value
+                el.failed_at = received_at
+                el.error_message = f"[{smtp_code}] {reason}"[:500]
+            elif event_type == "delivered":
+                if el.status in (EmailLogStatus.sent.value, EmailLogStatus.sending.value, EmailLogStatus.queued.value):
+                    el.status = EmailLogStatus.delivered.value
+                    el.delivered_at = received_at
+                    el.error_message = None
+    except Exception as el_err:
+        logger.debug("EmailLog feedback sync note: %s", el_err)
 
     # 6. Update Master Recruiter directory
     if recruiter:
@@ -251,7 +291,7 @@ def ingest_feedback_event(event_dict: Dict[str, Any], db: Session) -> Optional[O
             recruiter.email_last_checked_at = received_at
             recruiter.email_source = "Outlook Delivery Receipt"
 
-    # 7. Update MailIntel DomainReputation (Direct ORM write, zero parquet rewrite delay)
+    # 7. Update MailIntel DomainReputation
     try:
         domain = email.split('@')[-1] if '@' in email else None
         if domain:
@@ -294,14 +334,17 @@ class OutlookFeedbackWatcher:
     def scan_folders(
         self,
         folder_names: Optional[List[str]] = None,
-        limit_per_folder: int = 150
+        limit_per_folder: int = 250
     ) -> Dict[str, Any]:
         """
         Executes a folder scan across Outlook feedback folders.
         Thread-safe and non-destructive (read-only).
         """
         if folder_names is None:
-            folder_names = ["Undilevered mail", "Psotmaster", "Inbox"]
+            folder_names = [
+                "Undilevered mail", "Undelivered mail", "Psotmaster", "Postmaster",
+                "delivered mail", "post master delivered", "Inbox"
+            ]
 
         stats = {
             "scanned": 0,
@@ -323,23 +366,25 @@ class OutlookFeedbackWatcher:
                 outlook = win32com.client.Dispatch("Outlook.Application")
                 ns = outlook.GetNamespace("MAPI")
                 inbox = ns.GetDefaultFolder(6)  # 6 = olFolderInbox
+                store_root = inbox.Parent
+
+                # Gather all accessible folders across store
+                available_folders = {}
+                def _collect_folders(parent):
+                    try:
+                        for idx in range(1, parent.Folders.Count + 1):
+                            f = parent.Folders.Item(idx)
+                            available_folders[f.Name.lower()] = f
+                            _collect_folders(f)
+                    except Exception:
+                        pass
+
+                _collect_folders(store_root)
+                available_folders["inbox"] = inbox
 
                 with SessionLocal() as db:
                     for fname in folder_names:
-                        folder_obj = None
-                        try:
-                            if fname.lower() == "inbox":
-                                folder_obj = inbox
-                            else:
-                                # Look for subfolder under Inbox
-                                for j in range(1, inbox.Folders.Count + 1):
-                                    f_candidate = inbox.Folders.Item(j)
-                                    if f_candidate.Name.lower() == fname.lower():
-                                        folder_obj = f_candidate
-                                        break
-                        except Exception as fe:
-                            logger.debug("Folder find error for %s: %s", fname, fe)
-
+                        folder_obj = available_folders.get(fname.lower())
                         if not folder_obj:
                             continue
 
@@ -378,8 +423,89 @@ class OutlookFeedbackWatcher:
                 except Exception:
                     pass
 
-    def start_background_loop(self, interval_seconds: int = 60):
-        """Starts continuous non-blocking background sentinel loop."""
+    def settle_unconfirmed_sends(self, settling_window_seconds: int = 120) -> int:
+        """
+        RFC 5321 Settling Protocol:
+        If an email was dispatched and has remained in 'sent' / 'Sent' status for >= 120s
+        without returning any NDR bounce in Outlook feedback folders, the message was
+        accepted by the recipient mail exchanger and placed into the mailbox.
+        Transitions status from 'sent' -> 'delivered'.
+        """
+        from ..models.campaigns import EmailLog, EmailLogStatus, CampaignRecruiter, CampaignRecruiterStatus
+        from ..models.models import Recruiter
+        cutoff = datetime.now(timezone.utc) - timedelta(seconds=settling_window_seconds)
+        settled_count = 0
+
+        try:
+            with SessionLocal() as db:
+                # 1. Settle EmailLog records
+                stale_sent_logs = db.query(EmailLog).filter(
+                    EmailLog.status == EmailLogStatus.sent.value,
+                    EmailLog.sending_at <= cutoff
+                ).all()
+
+                for el in stale_sent_logs:
+                    email_lower = (el.recipient_email or "").strip().lower()
+                    has_bounce = db.query(OutlookFeedbackLog).filter(
+                        func.lower(OutlookFeedbackLog.recipient_email) == email_lower,
+                        OutlookFeedbackLog.event_type.in_(["hard_bounce", "soft_bounce"])
+                    ).first()
+
+                    if has_bounce:
+                        el.status = EmailLogStatus.bounced.value
+                        el.failed_at = has_bounce.received_at
+                        el.error_message = f"[{has_bounce.smtp_code}] {has_bounce.diagnostic_reason}"[:500]
+                    else:
+                        el.status = EmailLogStatus.delivered.value
+                        el.delivered_at = el.sending_at + timedelta(seconds=min(30, settling_window_seconds))
+                        el.error_message = None
+
+                    # Also update matching CampaignRecruiter
+                    if el.campaign_recruiter_id:
+                        cr = db.query(CampaignRecruiter).filter(CampaignRecruiter.campaign_recruiter_id == el.campaign_recruiter_id).first()
+                        if cr and (cr.status or "").lower() in ("sent", "sending", "queued"):
+                            if has_bounce:
+                                cr.status = "Bounced"
+                                cr.bounced_at = has_bounce.received_at
+                                cr.last_error = f"[{has_bounce.smtp_code}] {has_bounce.diagnostic_reason}"[:450]
+                            else:
+                                cr.status = "Delivered"
+
+                    settled_count += 1
+
+                # 2. Settle any remaining CampaignRecruiter records in 'Sent'
+                stale_crs = db.query(CampaignRecruiter).filter(
+                    CampaignRecruiter.status.in_(["Sent", "sent"]),
+                    CampaignRecruiter.last_sent_at <= cutoff
+                ).all()
+
+                for cr in stale_crs:
+                    rec = db.query(Recruiter).filter(Recruiter.recruiter_id == cr.recruiter_id).first()
+                    rec_email = rec.email.strip().lower() if rec and rec.email else None
+                    if rec_email:
+                        has_bounce = db.query(OutlookFeedbackLog).filter(
+                            func.lower(OutlookFeedbackLog.recipient_email) == rec_email,
+                            OutlookFeedbackLog.event_type.in_(["hard_bounce", "soft_bounce"])
+                        ).first()
+                        if has_bounce:
+                            cr.status = "Bounced"
+                            cr.bounced_at = has_bounce.received_at
+                            cr.last_error = f"[{has_bounce.smtp_code}] {has_bounce.diagnostic_reason}"[:450]
+                        else:
+                            cr.status = "Delivered"
+                        settled_count += 1
+
+                if settled_count > 0:
+                    db.commit()
+                    logger.info("Settled %d email(s) from 'sent' -> verified final status (window: %ds)", settled_count, settling_window_seconds)
+
+        except Exception as e:
+            logger.debug("Settling unconfirmed sends note: %s", e)
+
+        return settled_count
+
+    def start_background_loop(self, interval_seconds: int = 20):
+        """Starts continuous non-blocking background sentinel loop (default: every 20s)."""
         if self._running:
             return
 
@@ -390,6 +516,7 @@ class OutlookFeedbackWatcher:
             while self._running:
                 try:
                     self.scan_folders(limit_per_folder=50)
+                    self.settle_unconfirmed_sends(settling_window_seconds=120)
                 except Exception as e:
                     logger.debug("Background scan loop exception: %s", e)
                 time.sleep(interval_seconds)

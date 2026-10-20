@@ -956,8 +956,10 @@ def get_campaign_progress_rest(campaign_id: int, db: Session = Depends(get_db), 
         .all()
     )
     total = sum(counts.values())
-    sent = sum(counts.get(s, 0) for s in ['Sent', 'sent', 'Delivered', 'delivered', 'Opened', 'opened', 'Replied', 'replied', 'Bounced', 'bounced'])
-    failed = counts.get('Failed', 0) + counts.get('failed', 0)
+    delivered = counts.get('Delivered', 0) + counts.get('delivered', 0)
+    bounced = counts.get('Bounced', 0) + counts.get('bounced', 0)
+    failed = counts.get('Failed', 0) + counts.get('failed', 0) + bounced
+    sent = sum(counts.get(s, 0) for s in ['Sent', 'sent', 'Delivered', 'delivered', 'Opened', 'opened', 'Replied', 'replied'])
     queued = counts.get('Queued', 0) + counts.get('queued', 0)
     sending = counts.get('Sending', 0) + counts.get('sending', 0)
     retrying = counts.get('Retrying', 0) + counts.get('retrying', 0)
@@ -982,12 +984,14 @@ def get_campaign_progress_rest(campaign_id: int, db: Session = Depends(get_db), 
         "status": camp.status,
         "total": total,
         "sent": sent,
+        "delivered": delivered,
+        "bounced": bounced,
         "failed": failed,
         "pending": pending,
         "queued": queued,
         "sending": sending,
         "retrying": retrying,
-        "progress_percent": round((sent / max(1, total)) * 100, 1) if total > 0 else 0,
+        "progress_percent": round(((sent + failed) / max(1, total)) * 100, 1) if total > 0 else 0,
         "logs": logs_data
     }
 
@@ -1164,13 +1168,26 @@ def get_campaign_delivery_logs(
     res = []
     for log in logs:
         cr = log.campaign_recruiter
+        effective_status = (log.status or "").lower()
+        effective_error = log.error_message
+
+        # Reconcile status with CampaignRecruiter priority
+        if cr:
+            cr_status_lower = (cr.status or "").lower()
+            if cr_status_lower in ('bounced', 'failed'):
+                effective_status = cr_status_lower
+                effective_error = cr.last_error or log.error_message
+            elif cr_status_lower in ('delivered', 'sent', 'opened', 'replied'):
+                effective_status = cr_status_lower
+        
+        last_sent_dt = log.sending_at or (cr.last_sent_at if cr else None) or log.queued_at
         res.append({
             "id": log.log_id,
             "email": log.recipient_email,
-            "status": log.status,
+            "status": effective_status,
             "sent_via": log.sent_via or "direct_api",
-            "last_sent": log.sending_at.isoformat() if log.sending_at else None,
-            "error": log.error_message,
+            "last_sent": last_sent_dt.isoformat() if last_sent_dt else None,
+            "error": effective_error,
             "retry_count": cr.retry_count if cr else 0
         })
     return {"items": res}
@@ -1196,24 +1213,27 @@ def get_recent_recipients(
     seen_emails = set()
     
     if user_campaign_ids:
+        from ..models.models import Recruiter, Company
         past_recipients = (
             db.query(
-                CampaignRecruiter.email,
-                CampaignRecruiter.recruiter_name,
-                CampaignRecruiter.company,
-                func.count(CampaignRecruiter.id).label("use_count"),
+                Recruiter.email,
+                Recruiter.recruiter_name,
+                Company.company_name,
+                func.count(CampaignRecruiter.campaign_recruiter_id).label("use_count"),
                 func.max(CampaignRecruiter.created_at).label("last_used")
             )
+            .join(Recruiter, CampaignRecruiter.recruiter_id == Recruiter.recruiter_id)
+            .outerjoin(Company, Recruiter.company_id == Company.company_id)
             .filter(CampaignRecruiter.campaign_id.in_(user_campaign_ids))
-            .group_by(CampaignRecruiter.email, CampaignRecruiter.recruiter_name, CampaignRecruiter.company)
-            .order_by(func.max(CampaignRecruiter.created_at).desc(), func.count(CampaignRecruiter.id).desc())
+            .group_by(Recruiter.email, Recruiter.recruiter_name, Company.company_name)
+            .order_by(func.max(CampaignRecruiter.created_at).desc(), func.count(CampaignRecruiter.campaign_recruiter_id).desc())
         )
         
         if query_str:
             past_recipients = past_recipients.filter(
-                func.lower(CampaignRecruiter.email).like(f"%{query_str}%") |
-                func.lower(CampaignRecruiter.recruiter_name).like(f"%{query_str}%") |
-                func.lower(CampaignRecruiter.company).like(f"%{query_str}%")
+                func.lower(Recruiter.email).like(f"%{query_str}%") |
+                func.lower(Recruiter.recruiter_name).like(f"%{query_str}%") |
+                func.lower(Company.company_name).like(f"%{query_str}%")
             )
             
         for r in past_recipients.limit(limit).all():
@@ -1228,6 +1248,7 @@ def get_recent_recipients(
                     "source": "campaign_history",
                     "last_used": r[4].isoformat() if r[4] else None
                 })
+
     
     # 2. Augment with recruiters matching query if limit not reached
     if len(suggestions) < limit:

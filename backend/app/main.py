@@ -843,10 +843,18 @@ async def startup_event():
         # Permanent Autonomous Outlook Delivery Feedback & NDR Bounce Watcher Sentinel
         try:
             from .services.outlook_feedback_service import outlook_feedback_watcher
-            outlook_feedback_watcher.start_background_loop(interval_seconds=60)
-            logger.info("Outlook Feedback Watcher active (autonomous NDR & bounce detection every 60s).")
+            outlook_feedback_watcher.start_background_loop(interval_seconds=20)
+            logger.info("Outlook Feedback Watcher active (autonomous NDR & bounce detection every 20s with 120s settling).")
         except Exception as ofb_err:
             logger.warning("Outlook Feedback Watcher initialization warning: %s", ofb_err)
+
+        # Permanent Autonomous Database Synchronizer & Intelligent Data Enrichment Sentinel
+        try:
+            from .services.database_synchronizer import database_synchronizer
+            database_synchronizer.start_background_loop(interval_seconds=1800)
+            logger.info("Database Synchronizer active (autonomous database-wide enrichment every 30m).")
+        except Exception as sync_err:
+            logger.warning("Database Synchronizer initialization warning: %s", sync_err)
 
         logger.info("Background tasks initialized successfully.")
 
@@ -913,6 +921,11 @@ async def shutdown_event():
     try:
         from .services.outlook_feedback_service import outlook_feedback_watcher
         outlook_feedback_watcher.stop()
+    except Exception:
+        pass
+    try:
+        from .services.database_synchronizer import database_synchronizer
+        database_synchronizer.stop()
     except Exception:
         pass
     

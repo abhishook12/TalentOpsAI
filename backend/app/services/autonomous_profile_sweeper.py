@@ -667,7 +667,7 @@ class AutonomousProfileSweeper:
         4. Synchronizes affected PostgreSQL recruiter records.
         """
         t0 = time.time()
-        con = safe_duckdb_connect(memory_limit="64MB", threads=1)
+        con = safe_duckdb_connect(memory_limit="512MB", threads=1)
         
         target_file = PARQUET_FILE.replace(os.sep, "/")
         

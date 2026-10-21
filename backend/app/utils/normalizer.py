@@ -1169,11 +1169,13 @@ def build_semantic_graph_document(
         next_ent_idx += 1
         entity_id_map[key] = ent_id
         
+        c_name = canonical_name.strip()[:255]
+        p_ident = (identifier or canonical_name.strip())[:255]
         entities.append({
             "id": ent_id,
             "type": ent_type if ent_type in SEMANTIC_TYPE_REGISTRY else "EXTENSIBLE_TYPED_OBSERVATION",
-            "canonical_name": canonical_name.strip(),
-            "primary_identifier": identifier or canonical_name.strip(),
+            "canonical_name": c_name,
+            "primary_identifier": p_ident,
             "attributes": attrs or {},
             "confidence": 0.95,
         })

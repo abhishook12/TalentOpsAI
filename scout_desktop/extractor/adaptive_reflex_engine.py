@@ -182,9 +182,9 @@ class AdaptiveReflexEngine:
 
             return {
                 "canonical_name": name,
-                "title": title or "Talent Acquisition Specialist",
+                "title": title,
                 "company": company,
-                "confidence": 0.88,
+                "confidence": 0.88 if title else 0.60,
                 "evidence": f"Adaptive Learned Reflex ({rule.get('rule_id', 'unknown')})",
                 "rule_id": rule.get("rule_id"),
                 "is_adaptive_healed": True,
@@ -274,7 +274,13 @@ class AdaptiveReflexEngine:
             discovered_title = known_title
 
         if not discovered_title:
-            discovered_title = "Talent Acquisition Specialist"
+            # Strictly do NOT hallucinate or synthesize rules without a corroborated title
+            return None
+
+        from .patterns import is_valid_person_name
+        if not is_valid_person_name(discovered_name):
+            # Never synthesize rules for UI noise or non-human names
+            return None
 
         # Pass C: Synthesize & Persist Novel Rule
         rule_id = f"reflex_{platform or 'generic'}_{len(self._rules) + 1}_{int(time.time())}"

@@ -133,7 +133,10 @@ UI_ACTIONS = re.compile(
     r"copy link|copy|paste|cut|select all|"
     r"like|love|celebrate|support|insightful|funny|curious|"
     r"reply|repost|send|forward|"
-    r"endorsements|recommendations|interests|activity|highlights)$",
+    r"endorsements|recommendations|interests|activity|highlights|"
+    r"format text|format painter|aloud reader|read aloud|click to run|new new|"
+    r"follow up|fb follow up|access mobile|online application|wall street oasis|"
+    r"tell me what you want to do|select current row|about the job|bout the job|x cut)$",
     re.IGNORECASE,
 )
 
@@ -282,6 +285,11 @@ UI_BADGES_AND_ACTIONS = frozenset({
     "endorse", "endorsements", "recommend", "show all", "see all",
     "more", "more actions", "view profile", "view full profile",
     "apply now", "easy apply", "apply", "save job",
+    "format text", "format painter", "aloud reader", "read aloud", "click to run",
+    "new new", "follow up", "fb follow up", "access mobile", "ask gemini",
+    "online application", "about the job", "bout the job", "x cut", "view image",
+    "select current row", "0 notifications", "insert", "quick apply", "q prospect and enrich",
+    "tell me what you want to do", "wall street oasis",
 })
 
 # Browser Chrome, Bookmarks, and System UI Noise
@@ -880,12 +888,21 @@ def clean_company_name(comp: Optional[str]) -> Optional[str]:
     cleaned = re.sub(r"[·•|].*$", "", cleaned).strip()
     # Strip trailing punctuation, brackets, and OCR garbage suffixes e.g. "-(/p", "/p", "- sud"
     cleaned = re.sub(r"\s*[-–—/\\|]+\s*[a-zA-Z0-9]{1,3}$", "", cleaned).strip()
+    # Strip trailing concatenated action verbs (e.g. "Bayside SolutionsConnect" -> "Bayside Solutions")
+    cleaned = re.sub(r"(?:Connect|Follow|Message|View|Apply|Easy Apply|Save|Endorse)$", "", cleaned, flags=re.IGNORECASE).strip()
     cleaned = re.sub(r"^[\s\-_,·•|:;()\[\]{}]+|[\s\-_,·•|:;()\[\]{}]+$", "", cleaned).strip()
 
     if len(cleaned) < 2:
         return None
     cleaned_lower = cleaned.lower()
-    if cleaned_lower in PLATFORM_NAMES:
+    if cleaned_lower in PLATFORM_NAMES or cleaned_lower in UI_BADGES_AND_ACTIONS or UI_ACTIONS.match(cleaned):
+        return None
+    if cleaned_lower in {
+        "click to run", "about the job", "bout the job", "x cut", "view image",
+        "select current row", "0 notifications", "insert", "gmaii",
+        "q tell me what you want to do", "quick apply", "q prospect and enrich",
+        "wall street oasis", "view my services"
+    }:
         return None
     if cleaned_lower in BROWSER_CHROME_NOISE or cleaned_lower in QUALIFICATION_AND_REQUIREMENT_WORDS:
         return None
@@ -1475,6 +1492,10 @@ def is_valid_person_name(text: Optional[str]) -> bool:
     if len(clean_words) < 2 or len(clean_words) > max_words:
         return False
 
+    # Reject strings where all words are identical (e.g. "New New", "Click Click")
+    if all(w.lower() == clean_words[0].lower() for w in clean_words):
+        return False
+
     # Allow single-letter middle initials in 3- or 4-word names (e.g. "John F. Kennedy", "David A. Sinclair")
     # or trailing surname initial (e.g. "Santhosh R", "Ritik S", "John D")
     for idx, w in enumerate(clean_words):
@@ -1597,6 +1618,8 @@ def is_valid_person_name(text: Optional[str]) -> bool:
         "weekends", "weekday", "weekdays", "bilingual", "multilingual", "transportation",
         "vehicle", "commute", "overtime", "eligibility", "eligible", "requirements",
         "requirement", "qualifications", "qualification",
+        # Office Ribbon & System Action Noise
+        "format", "painter", "aloud", "reader", "oasis",
     }
     if any(w in blacklisted for w in lower_words) or any(w in NON_PERSON_NAME_KEYWORDS for w in lower_words):
         return False
@@ -1744,6 +1767,8 @@ def clean_person_name(text: Optional[str]) -> Optional[str]:
     t = re.sub(r"^(?:Dr|Mr|Ms|Mrs|Prof)\.?\s+", "", t, flags=re.IGNORECASE).strip()
     # Strip trailing badges / dots / icons
     t = re.sub(r"[·•\u00B7\u2022\u2219\u25E6\u2013\u2014|]+.*$", "", t).strip()
+    # Strip platform name suffixes e.g. " - Apollo", " | LinkedIn", " - SimplyHired"
+    t = re.sub(r"\s*[-–—|]\s*(?:Apollo|LinkedIn|ZoomInfo|SimplyHired|ZipRecruiter|Indeed|Glassdoor|Jobright).*$", "", t, flags=re.IGNORECASE).strip()
     # Strip generational / name suffixes e.g. ", Jr.", " Jr.", ", Sr.", " III", " II", " IV"
     t = re.sub(r"(?:,\s*(?:Jr|Sr|III|IV|II)\.?|\s+(?:Jr|Sr|III|IV|II)\.?)$", "", t, flags=re.IGNORECASE).strip()
     # Strip professional post-nominal credentials appended to names with commas.

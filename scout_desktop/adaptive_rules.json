@@ -633,8 +633,8 @@
     "name_sample": "Format Text",
     "title_sample": "Talent Acquisition Specialist",
     "created_at": 1791986651.503374,
-    "hit_count": 20,
-    "last_hit_at": 1792528374.5267637
+    "hit_count": 21,
+    "last_hit_at": 1792591449.0643673
   },
   {
     "rule_id": "reflex_OUTLOOK_50_1791986662",
@@ -646,8 +646,8 @@
     "name_sample": "Format Text",
     "title_sample": "Talent Acquisition Specialist",
     "created_at": 1791986662.7275574,
-    "hit_count": 7,
-    "last_hit_at": 1792509749.3987412
+    "hit_count": 8,
+    "last_hit_at": 1792588125.9933336
   },
   {
     "rule_id": "reflex_OUTLOOK_51_1791988190",
@@ -1610,5 +1610,31 @@
     "created_at": 1792587145.3866186,
     "hit_count": 1,
     "last_hit_at": 1792587145.3866189
+  },
+  {
+    "rule_id": "reflex_LINKEDIN_125_1792587931",
+    "platform": "LINKEDIN",
+    "window_pattern": "Conexus:\\ People\\ \\|\\ LinkedIn",
+    "name_line_idx": 7,
+    "title_line_idx": 9,
+    "company_line_idx": 9,
+    "name_sample": "Ashley Evans",
+    "title_sample": "Marketing Manager",
+    "created_at": 1792587931.8291254,
+    "hit_count": 1,
+    "last_hit_at": 1792587931.8291256
+  },
+  {
+    "rule_id": "reflex_LINKEDIN_126_1792587991",
+    "platform": "LINKEDIN",
+    "window_pattern": "Conexus:\\ People\\ \\|\\ LinkedIn",
+    "name_line_idx": 2,
+    "title_line_idx": 5,
+    "company_line_idx": 5,
+    "name_sample": "Ashley Evans",
+    "title_sample": "Marketing Manager",
+    "created_at": 1792587991.9271333,
+    "hit_count": 1,
+    "last_hit_at": 1792587991.9271338
   }
 ]

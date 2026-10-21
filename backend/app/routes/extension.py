@@ -415,11 +415,13 @@ def ingest_extension_batch(
                 identity_confidence=0.0,
                 quality_score=0,
                 
-                # Deep Profile Progressive Enrichment
-                education=contact.education,
+                # Deep Profile Progressive Enrichment (defensively truncated to prevent DB truncation crashes)
+                education=(contact.education or "")[:255] if contact.education else None,
                 about_summary=contact.about_summary,
-                followers_count=contact.followers_count,
-                connections_count=contact.connections_count,
+                followers_count=(contact.followers_count or "")[:50] if contact.followers_count else None,
+                connections_count=(contact.connections_count or "")[:50] if contact.connections_count else None,
+                previous_company=(contact.previous_company or "")[:255] if getattr(contact, 'previous_company', None) else None,
+                page_type=(contact.page_type or "")[:50] if contact.page_type else None,
                 skills=json.dumps(contact.skills) if contact.skills else None,
                 experience_history=json.dumps(contact.experience_history) if contact.experience_history else None,
                 metadata_json=json.dumps({
@@ -445,7 +447,6 @@ def ingest_extension_batch(
                     contact.specialties, contact.founded, contact.company_type, contact.open_roles,
                     contact.overview, contact.github, contact.twitter, contact.portfolio
                 ]) else None,
-                page_type=contact.page_type,
                 canonical_profile_url=s_canonical_url,
                 field_confidence_json=json.dumps(contact.field_confidence) if contact.field_confidence else None,
                 evidence_json=json.dumps(contact.evidence_checklist) if contact.evidence_checklist else None,

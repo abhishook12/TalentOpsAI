@@ -43,21 +43,24 @@ class SiteConnector(BaseConnector):
     # =========================================================================
 
     def is_running(self) -> bool:
-        """Checks if the local backend server (port 8000) is actively responding."""
+        """Checks if the local backend server (port 8000) or frontend (port 5173) is active."""
+        if "backend.app.main" in sys.modules:
+            return True
+
+        # Non-blocking socket probe
+        import socket
         try:
-            req = urllib.request.Request(f"{self.backend_url}/docs", headers={"User-Agent": "Harness/1.0"})
-            with urllib.request.urlopen(req, timeout=2) as resp:
-                return resp.status == 200
+            with socket.create_connection(("127.0.0.1", 8000), timeout=0.3):
+                return True
         except Exception:
-            # Check if uvicorn process is in process table
-            try:
-                import psutil
-                for p in psutil.process_iter(['name', 'cmdline']):
-                    cmd = " ".join(p.info['cmdline'] or [])
-                    if "uvicorn" in cmd and "8000" in cmd:
-                        return True
-            except Exception:
-                pass
+            pass
+
+        try:
+            with socket.create_connection(("127.0.0.1", 5173), timeout=0.3):
+                return True
+        except Exception:
+            pass
+
         return False
 
     # =========================================================================
@@ -66,23 +69,22 @@ class SiteConnector(BaseConnector):
 
     def get_status(self) -> Dict[str, Any]:
         """Returns TalentOps Web Platform health, staged candidate count, and ports."""
-        backend_active = False
-        frontend_active = False
-        queue_count = 0
+        import socket
 
-        # Check backend
-        try:
-            req = urllib.request.Request(f"{self.backend_url}/docs", headers={"User-Agent": "Harness/1.0"})
-            with urllib.request.urlopen(req, timeout=2) as resp:
-                backend_active = (resp.status == 200)
-        except Exception:
-            backend_active = False
+        # Check backend without self-referential HTTP deadlock
+        if "backend.app.main" in sys.modules:
+            backend_active = True
+        else:
+            try:
+                with socket.create_connection(("127.0.0.1", 8000), timeout=0.3):
+                    backend_active = True
+            except Exception:
+                backend_active = False
 
-        # Check frontend
+        # Check frontend port
         try:
-            req = urllib.request.Request(self.frontend_url, headers={"User-Agent": "Harness/1.0"})
-            with urllib.request.urlopen(req, timeout=2) as resp:
-                frontend_active = (resp.status == 200)
+            with socket.create_connection(("127.0.0.1", 5173), timeout=0.3):
+                frontend_active = True
         except Exception:
             frontend_active = False
 

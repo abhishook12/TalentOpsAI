@@ -2,8 +2,9 @@
 backend/app/routes/harness.py — Multi-Platform Automation Harness API Router
 ============================================================================
 
-Exposes lightweight REST endpoints and a compact visual interface to manage
-locally connected apps (Teams, Outlook, Vitel, TalentOps Web Site) and upcoming integrations.
+Exposes lightweight REST endpoints and an interactive Command Console to manage
+and control locally connected apps (Teams, Outlook, Vitel, TalentOps Web Site)
+and upcoming integrations.
 """
 
 from fastapi import APIRouter, HTTPException, Depends
@@ -17,6 +18,7 @@ import os
 sys.path.insert(0, r"C:\TalentOpsAI")
 
 from harness.hub import harness_hub
+from harness.command_engine import command_engine
 
 router = APIRouter(tags=["Platform Automation Harness"])
 
@@ -36,6 +38,10 @@ class AppActionRequest(BaseModel):
     payload: Optional[Dict[str, Any]] = None
 
 
+class CommandRequest(BaseModel):
+    command: str = Field(..., description="Natural or structured command string, e.g. 'check_inbox' or 'status'")
+
+
 class RegisterUpcomingRequest(BaseModel):
     key: str = Field(..., description="Unique key identifier, e.g. 'whatsapp'")
     name: str = Field(..., description="Display name, e.g. 'WhatsApp Business'")
@@ -48,6 +54,13 @@ class RegisterUpcomingRequest(BaseModel):
 def get_harness_status():
     """Returns the live status matrix of all connected local apps and upcoming integrations."""
     return harness_hub.get_status_matrix()
+
+
+@router.post("/command")
+def execute_harness_command(req: CommandRequest):
+    """Executes an interactive command across the connected platforms via the CommandEngine."""
+    result = command_engine.execute(req.command)
+    return result
 
 
 @router.post("/dispatch")
@@ -85,8 +98,8 @@ def register_upcoming_app(req: RegisterUpcomingRequest):
 @router.get("/ui", response_class=HTMLResponse)
 def get_harness_mini_ui():
     """
-    Renders a compact, sleek, self-contained mini-dashboard for controlling
-    all connected platforms, viewing live process telemetry, and triggering workflows.
+    Renders a compact, sleek, self-contained mini-dashboard with an interactive
+    Command & Task Console for controlling all connected platforms.
     """
     html_content = """<!DOCTYPE html>
 <html lang="en">
@@ -110,7 +123,7 @@ def get_harness_mini_ui():
         }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
         body { background: var(--bg); color: var(--text-main); padding: 24px; display: flex; justify-content: center; }
-        .harness-card { width: 100%; max-width: 840px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden; }
+        .harness-card { width: 100%; max-width: 860px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden; }
         .harness-header { padding: 18px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); }
         .title-group { display: flex; align-items: center; gap: 12px; }
         .logo-pill { background: var(--accent); color: white; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 11px; letter-spacing: 0.5px; }
@@ -131,13 +144,20 @@ def get_harness_mini_ui():
         .app-btn { width: 100%; background: var(--surface-hover); border: 1px solid var(--border); color: var(--text-main); padding: 6px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; font-weight: 500; transition: background 0.15s; }
         .app-btn:hover { background: var(--accent); color: white; border-color: var(--accent); }
 
-        .workflow-section { padding: 0 24px 24px; }
+        .console-section { padding: 0 24px 24px; }
         .section-title { font-size: 13px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
-        .flow-box { background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
-        .flow-desc { font-size: 12px; color: var(--text-muted); margin-bottom: 14px; }
-        .btn-dispatch { background: #2563eb; color: white; border: none; padding: 9px 18px; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.2s; box-shadow: 0 4px 12px var(--accent-glow); }
-        .btn-dispatch:hover { background: #1d4ed8; }
-        .results-pre { margin-top: 12px; background: #080c14; border: 1px solid var(--border); border-radius: 6px; padding: 12px; font-family: monospace; font-size: 11px; color: #a5b4fc; max-height: 140px; overflow-y: auto; display: none; }
+        .console-box { background: #080c14; border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+        .input-row { display: flex; gap: 8px; margin-bottom: 12px; }
+        .cmd-input { flex: 1; background: #131b2e; border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; font-size: 13px; color: var(--text-main); font-family: monospace; outline: none; }
+        .cmd-input:focus { border-color: var(--accent); }
+        .btn-run { background: #2563eb; color: white; border: none; padding: 10px 18px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+        .btn-run:hover { background: #1d4ed8; }
+
+        .chips-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+        .chip { background: #1b2640; border: 1px solid var(--border); color: #cbd5e1; font-size: 11px; padding: 4px 10px; border-radius: 20px; cursor: pointer; transition: all 0.15s; font-family: monospace; }
+        .chip:hover { border-color: var(--accent); color: white; background: rgba(59, 130, 246, 0.2); }
+
+        .results-pre { background: #040711; border: 1px solid #1a2333; border-radius: 6px; padding: 12px; font-family: monospace; font-size: 11px; color: #a5b4fc; max-height: 180px; overflow-y: auto; white-space: pre-wrap; }
     </style>
 </head>
 <body>
@@ -157,12 +177,22 @@ def get_harness_mini_ui():
             <!-- Dynamically populated -->
         </div>
 
-        <div class="workflow-section">
-            <div class="section-title">One-Click Multi-App Flow Dispatcher</div>
-            <div class="flow-box">
-                <div class="flow-desc">Executes correlated candidate outreach simultaneously across <b>Web Site</b> &rarr; <b>Teams Card</b> &rarr; <b>Outlook Draft</b> &rarr; <b>Vitel SMS</b>.</div>
-                <button class="btn-dispatch" onclick="triggerFlow()">⚡ Test Candidate Outreach Flow</button>
-                <pre class="results-pre" id="flowResult"></pre>
+        <div class="console-section">
+            <div class="section-title">Interactive Command & Task Console</div>
+            <div class="console-box">
+                <div class="chips-row">
+                    <span class="chip" onclick="setCmd('status')">📊 status</span>
+                    <span class="chip" onclick="setCmd('check_inbox 5')">📥 check_inbox 5</span>
+                    <span class="chip" onclick="setCmd('check_calls 5')">📞 check_calls 5</span>
+                    <span class="chip" onclick="setCmd('staged_candidates 5')">🎯 staged_candidates</span>
+                    <span class="chip" onclick="setCmd('outreach &quot;Sarah Connor&quot; sarah@tech.com +14155550199 &quot;Cyberdyne&quot;')">⚡ multi-app outreach</span>
+                    <span class="chip" onclick="setCmd('help')">❓ help</span>
+                </div>
+                <div class="input-row">
+                    <input type="text" id="cmdInput" class="cmd-input" placeholder="Type a command (e.g. status, check_inbox, focus teams, outreach...)">
+                    <button class="btn-run" onclick="runCommand()">Run Task</button>
+                </div>
+                <pre class="results-pre" id="consoleOutput">Harness Command Console ready. Type a command or click a chip above.</pre>
             </div>
         </div>
     </div>
@@ -192,7 +222,6 @@ def get_harness_mini_ui():
                 slack: '👥'
             };
 
-            // Connected Apps
             for (const [key, app] of Object.entries(data.apps)) {
                 const isRunning = app.is_running;
                 const box = document.createElement('div');
@@ -209,7 +238,6 @@ def get_harness_mini_ui():
                 grid.appendChild(box);
             }
 
-            // Upcoming Apps
             for (const [key, app] of Object.entries(data.upcoming)) {
                 const box = document.createElement('div');
                 box.className = 'app-box';
@@ -228,34 +256,42 @@ def get_harness_mini_ui():
         }
 
         async function focusApp(appName) {
-            await fetch('/harness/app/' + appName + '/action', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({action: 'bring_to_front'})
-            });
+            setCmd('focus ' + appName);
+            runCommand();
         }
 
-        async function triggerFlow() {
-            const resPre = document.getElementById('flowResult');
-            resPre.style.display = 'block';
-            resPre.innerText = 'Dispatching correlated workflow across all platforms...';
+        function setCmd(cmd) {
+            document.getElementById('cmdInput').value = cmd;
+        }
 
-            const testCandidate = {
-                canonical_name: 'Alex Johnson',
-                title: 'Principal Software Architect',
-                company_name: 'Microsoft',
-                email: 'alex.johnson@microsoft.com',
-                phone: '+14155552671',
-                targets: ['teams', 'outlook', 'vitel']
-            };
+        document.getElementById('cmdInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                runCommand();
+            }
+        });
 
-            const res = await fetch('/harness/dispatch', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(testCandidate)
-            });
-            const data = await res.json();
-            resPre.innerText = JSON.stringify(data, null, 2);
+        async function runCommand() {
+            const input = document.getElementById('cmdInput');
+            const out = document.getElementById('consoleOutput');
+            const cmd = input.value.trim();
+            if (!cmd) return;
+
+            out.innerText = 'Executing: ' + cmd + '...';
+
+            try {
+                const res = await fetch('/harness/command', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({command: cmd})
+                });
+                const data = await res.json();
+                out.innerText = JSON.stringify(data, null, 2);
+                if (cmd === 'status' || cmd.startsWith('register_app')) {
+                    loadStatus();
+                }
+            } catch (err) {
+                out.innerText = 'Error: ' + err.message;
+            }
         }
 
         loadStatus();

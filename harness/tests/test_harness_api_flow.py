@@ -79,7 +79,7 @@ class TestHarnessApiFlow(unittest.TestCase):
         resp = self.client.get("/ui")
         self.assertEqual(resp.status_code, 200)
         self.assertIn("TalentOps Unified Platform Controller", resp.text)
-        self.assertIn("One-Click Multi-App Flow Dispatcher", resp.text)
+        self.assertIn("Interactive Command & Task Console", resp.text)
         print("  [PASS] API /ui: Mini Dashboard Interface served successfully (HTTP 200).")
 
 

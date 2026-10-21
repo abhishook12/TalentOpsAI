@@ -226,6 +226,7 @@ def get_harness_mini_ui():
                 const isRunning = app.is_running;
                 const box = document.createElement('div');
                 box.className = 'app-box';
+                const directLink = key === 'teams' ? '<a href="msteams:/l/chat/0/0" class="app-btn" style="display:block; text-align:center; text-decoration:none; margin-top:6px; background:#1e293b;">⚡ Open via Protocol</a>' : '';
                 box.innerHTML = `
                     <div class="app-top">
                         <span class="app-icon">${icons[key] || '📦'}</span>
@@ -234,6 +235,7 @@ def get_harness_mini_ui():
                     <div class="app-title">${app.display_name}</div>
                     <div class="app-desc">${app.active_account ? 'User: ' + app.active_account : (app.version_type || 'Local Service')}</div>
                     <button class="app-btn" onclick="focusApp('${key}')">Focus Window</button>
+                    ${directLink}
                 `;
                 grid.appendChild(box);
             }
@@ -256,14 +258,26 @@ def get_harness_mini_ui():
         }
 
         async function focusApp(appName) {
+            const out = document.getElementById('consoleOutput');
+            out.innerText = 'Requesting focus / display for ' + appName + '...';
+
             if (appName === 'teams') {
-                // Client-side direct protocol dispatch — launches Teams directly from browser
-                try { window.location.href = 'msteams:'; } catch(e){}
+                try { window.location.href = 'msteams:/l/chat/0/0'; } catch(e){}
             } else if (appName === 'site') {
                 window.open('http://localhost:5173', '_blank');
             }
-            setCmd('focus ' + appName);
-            runCommand();
+
+            try {
+                const res = await fetch('/harness/app/' + appName + '/action', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({action: 'bring_to_front'})
+                });
+                const data = await res.json();
+                out.innerText = JSON.stringify(data, null, 2);
+            } catch (err) {
+                out.innerText = 'Error: ' + err.message;
+            }
         }
 
         function setCmd(cmd) {

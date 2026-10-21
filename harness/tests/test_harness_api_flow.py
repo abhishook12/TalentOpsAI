@@ -82,6 +82,20 @@ class TestHarnessApiFlow(unittest.TestCase):
         self.assertIn("Interactive Command & Task Console", resp.text)
         print("  [PASS] API /ui: Mini Dashboard Interface served successfully (HTTP 200).")
 
+    def test_04_app_bring_to_front_actions(self):
+        """Verifies POST /app/{name}/action bring_to_front endpoint works for Teams and Outlook."""
+        with patch.object(harness_hub.get_connector("teams"), "bring_to_front", return_value=True):
+            resp1 = self.client.post("/app/teams/action", json={"action": "bring_to_front"})
+            self.assertEqual(resp1.status_code, 200)
+            self.assertTrue(resp1.json()["success"])
+
+        with patch.object(harness_hub.get_connector("outlook"), "bring_to_front", return_value=True):
+            resp2 = self.client.post("/app/outlook/action", json={"action": "bring_to_front"})
+            self.assertEqual(resp2.status_code, 200)
+            self.assertTrue(resp2.json()["success"])
+
+        print("  [PASS] API /app/{name}/action: Teams & Outlook bring_to_front endpoints verified.")
+
 
 if __name__ == "__main__":
     unittest.main()

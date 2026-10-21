@@ -182,22 +182,38 @@ class OutlookConnector(BaseConnector):
 
     def bring_to_front(self) -> bool:
         """Restores and brings the main Outlook window to the front."""
-        app, _ = self._get_com_session()
-        if app:
+        app, ns = self._get_com_session()
+        if app and ns:
             try:
-                explorer = app.ActiveExplorer()
-                if explorer:
-                    explorer.Activate()
+                # If running headless without an active Explorer window, create and show Inbox
+                if app.Explorers.Count == 0:
+                    inbox = ns.GetDefaultFolder(6)  # 6 = olFolderInbox
+                    inbox.Display()
+                    logger.info("Created and displayed Outlook window via MAPI Inbox.Display()")
+                    return True
+                else:
+                    exp = app.ActiveExplorer() or app.Explorers.Item(1)
+                    if exp:
+                        exp.Display()
+                        exp.Activate()
+                        logger.info("Activated existing Outlook Explorer window")
+                        return True
+            except Exception as e:
+                logger.debug("COM explorer activate error: %s", e)
+
+        # Fallback via ShellExecute on full binary path
+        outlook_exe = r"C:\Program Files\Microsoft Office\root\Office16\OUTLOOK.EXE"
+        if os.path.exists(outlook_exe):
+            try:
+                import ctypes
+                ret = ctypes.windll.shell32.ShellExecuteW(0, "open", outlook_exe, "", None, 1)
+                if ret > 32:
+                    logger.info("Launched Outlook via ShellExecuteW")
                     return True
             except Exception as e:
-                logger.debug("Explorer activate error: %s", e)
+                logger.debug("ShellExecute outlook error: %s", e)
 
-        try:
-            subprocess.Popen(["outlook.exe"], shell=False)
-            return True
-        except Exception as e:
-            logger.error("Could not launch Outlook: %s", e)
-            return False
+        return False
 
     def execute_action(self, action: str, payload: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Unified action dispatcher."""

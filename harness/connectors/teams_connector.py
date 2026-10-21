@@ -342,6 +342,9 @@ class TeamsConnector(BaseConnector):
 
     def bring_to_front(self) -> bool:
         """Restores and focuses the main Microsoft Teams window."""
+        import ctypes
+        shell32 = ctypes.windll.shell32
+
         # 1. If top-level window exists, restore and bring to foreground
         windows = self.find_teams_windows()
         if windows:
@@ -356,32 +359,37 @@ class TeamsConnector(BaseConnector):
             except Exception as e:
                 logger.debug("Could not set foreground window: %s", e)
 
-        # 2. Native Windows AppExecutionAlias (User-level binary execution)
+        # 2. Native Deep-Link Protocol (Forces UI activation from background system-initiated mode)
+        for target_uri in ["msteams:/l/chat/0/0", "msteams:"]:
+            try:
+                ret = shell32.ShellExecuteW(0, "open", target_uri, "", None, 1)
+                if ret > 32:
+                    logger.info("Activated Teams window via protocol: %s", target_uri)
+                    return True
+            except Exception as e:
+                logger.debug("Protocol launch failed: %s", e)
+
+        # 3. Native Windows AppExecutionAlias
         alias = os.path.expandvars(r"%LOCALAPPDATA%\Microsoft\WindowsApps\ms-teams.exe")
         if os.path.exists(alias):
             try:
-                os.startfile(alias)
-                logger.info("Launched Teams via AppExecutionAlias: %s", alias)
-                return True
+                ret = shell32.ShellExecuteW(0, "open", alias, "", None, 1)
+                if ret > 32:
+                    logger.info("Launched Teams via AppExecutionAlias: %s", alias)
+                    return True
             except Exception as e:
                 logger.debug("Failed to launch alias: %s", e)
 
-        # 3. Native Windows msteams: protocol invocation
-        try:
-            os.startfile("msteams:")
-            logger.info("Triggered Teams via msteams: native protocol")
-            return True
-        except Exception as e:
-            logger.debug("Failed msteams: protocol: %s", e)
-
         # 4. Shell AppsFolder invocation
         try:
-            os.startfile(r"shell:AppsFolder\MSTeams_8wekyb3d8bbwe!MSTeams")
-            logger.info("Triggered Teams via shell:AppsFolder")
-            return True
+            ret = shell32.ShellExecuteW(0, "open", r"shell:AppsFolder\MSTeams_8wekyb3d8bbwe!MSTeams", "", None, 1)
+            if ret > 32:
+                logger.info("Triggered Teams via shell:AppsFolder")
+                return True
         except Exception as e:
             logger.error("Failed to restore Teams window: %s", e)
-            return False
+
+        return False
 
     def get_status(self) -> Dict[str, Any]:
         """Returns standard harness health and status dictionary."""

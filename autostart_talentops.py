@@ -87,5 +87,14 @@ def main():
     except Exception as e:
         logger.debug(f"Browser launch note: {e}")
 
+    # 5. Start-of-Day Antigravity Routine Health & System Check (runs once per day)
+    try:
+        from daily_antigravity_routine import trigger_daily_antigravity_routine_check
+        res = trigger_daily_antigravity_routine_check(source=f"AUTOSTART_{trigger_type}")
+        logger.info(f"Daily Antigravity routine check result: {res.get('status')} (CID: {res.get('conversation_id', 'N/A')})")
+    except Exception as e:
+        logger.error(f"Error triggering daily Antigravity routine check: {e}", exc_info=True)
+
 if __name__ == "__main__":
     main()
+

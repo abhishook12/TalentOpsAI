@@ -178,8 +178,25 @@ def run_supervisor_loop():
                 logger.info(f"PC Wake-from-sleep detected (jump of {elapsed:.1f}s). Performing fast recovery probe...")
                 backend_fails = 0
                 frontend_fails = 0
+                # Start-of-day Antigravity check trigger (asynchronously checks if new day has started)
+                try:
+                    import threading
+                    def _wake_routine_worker():
+                        time.sleep(3.0)  # Allow backend/frontend probe recovery first
+                        try:
+                            if WORKSPACE_DIR not in sys.path:
+                                sys.path.insert(0, WORKSPACE_DIR)
+                            from daily_antigravity_routine import trigger_daily_antigravity_routine_check
+                            trigger_daily_antigravity_routine_check(source="PC_WAKE_SLEEP_DETECTION")
+                        except Exception as err:
+                            logger.error(f"Error in wake-from-sleep Antigravity routine worker: {err}")
+
+                    threading.Thread(target=_wake_routine_worker, daemon=True, name="WakeAntigravityCheck").start()
+                except Exception as ex:
+                    logger.error(f"Failed to spawn wake Antigravity check thread: {ex}")
 
             last_loop_time = current_time
+
 
             # 1. Probe Backend (Port 8000)
             if is_backend_responsive(timeout_sec=3.0):

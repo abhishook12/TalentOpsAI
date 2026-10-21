@@ -1584,5 +1584,31 @@
     "created_at": 1792533388.18285,
     "hit_count": 1,
     "last_hit_at": 1792533388.1828501
+  },
+  {
+    "rule_id": "reflex_LINKEDIN_123_1792585072",
+    "platform": "LINKEDIN",
+    "window_pattern": "Clearwater\\ Analytics:\\ Life\\ \\|\\ LinkedIn",
+    "name_line_idx": 7,
+    "title_line_idx": null,
+    "company_line_idx": null,
+    "name_sample": "For Busirrss",
+    "title_sample": "Talent Acquisition Specialist",
+    "created_at": 1792585072.854787,
+    "hit_count": 1,
+    "last_hit_at": 1792585072.8547878
+  },
+  {
+    "rule_id": "reflex_LINKEDIN_124_1792587145",
+    "platform": "LINKEDIN",
+    "window_pattern": "AgnesCole\\ Consulting:\\ People\\ \\|\\ LinkedIn",
+    "name_line_idx": 4,
+    "title_line_idx": 6,
+    "company_line_idx": null,
+    "name_sample": "Claire Chittock",
+    "title_sample": "Operations Manager I PSM I",
+    "created_at": 1792587145.3866186,
+    "hit_count": 1,
+    "last_hit_at": 1792587145.3866189
   }
 ]

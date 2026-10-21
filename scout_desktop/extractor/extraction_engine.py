@@ -327,6 +327,19 @@ class ScoutExtractionEngine:
                 existing.current_company = company
             if not existing.location and clean_location:
                 existing.location = clean_location
+            # Bidirectional continuity: backfill incoming frame from existing candidate across scrolls
+            if not title and existing.current_title:
+                title = existing.current_title
+                title_conf = max(title_conf, 0.88)
+            if not company and existing.current_company:
+                company = existing.current_company
+                company_conf = max(company_conf, 0.88)
+            if not clean_location and existing.location:
+                clean_location = existing.location
+                loc_conf = max(loc_conf, 0.85)
+            if not canonical_url and existing.canonical_profile_url:
+                canonical_url = existing.canonical_profile_url
+                url_conf = max(url_conf, 0.90)
             is_duplicate = True
             logger.info("Deduplication: Matched existing candidate '%s' (%s), updated last_seen", name, dedup_key)
 

@@ -1353,7 +1353,7 @@ class ScoutDesktopApp:
                 "stackoverflow.com", "kaggle.com", "dice.com", "wellfound.com", "angel.co", "hired.com",
                 "greenhouse.io", "lever.co", "ashbyhq.com", "myworkday.com", "workday.com", "myworkdayjobs.com",
                 "icims.com", "smartrecruiters.com",
-                "indeed.com", "simplyhired.com", "glassdoor.com", "ziprecruiter.com", "jobright.ai",
+                "indeed.com", "simplyhired.com", "glassdoor.com", "ziprecruiter.com",
                 "vacaregroup.com", "talent-acquisition", "staffing", "recruitment",
                 ".pdf", "blob:"
             )
@@ -1361,7 +1361,7 @@ class ScoutDesktopApp:
                 logger.info("Frame rejected by URL hard-block: %s", page_url[:60])
                 return
 
-            is_exempt_type = target_type in ("GOOGLE_CHAT", "TEAMS", "SLACK", "WHATSAPP", "TELEGRAM", "GMAIL", "OUTLOOK", "PDF_RESUME", "JOB_POSTING", "GITHUB", "STACKOVERFLOW", "KAGGLE", "ATS_GREENHOUSE", "ATS_LEVER", "ATS_ASHBY", "ATS_WORKDAY", "ATS_ICIMS", "ATS_SMARTRECRUITERS", "INDEED", "SIMPLYHIRED", "GLASSDOOR", "ZIPRECRUITER", "JOBRIGHT", "HIRED", "RECRUITMENT_AGENCY")
+            is_exempt_type = target_type in ("GOOGLE_CHAT", "TEAMS", "SLACK", "WHATSAPP", "TELEGRAM", "GMAIL", "OUTLOOK", "PDF_RESUME", "JOB_POSTING", "GITHUB", "STACKOVERFLOW", "KAGGLE", "ATS_GREENHOUSE", "ATS_LEVER", "ATS_ASHBY", "ATS_WORKDAY", "ATS_ICIMS", "ATS_SMARTRECRUITERS", "INDEED", "SIMPLYHIRED", "GLASSDOOR", "ZIPRECRUITER", "HIRED", "RECRUITMENT_AGENCY")
             if not is_exempt_type:
                 skip_nav = any(p in url_lower for p in ["/search", "/results", "/feed", "/messaging", "/notifications"])
                 is_profile = any(p in url_lower for p in [
@@ -1611,14 +1611,21 @@ class ScoutDesktopApp:
                         if stitched.security_clearance:
                             staged_contact["metadata_json"]["security_clearance"] = stitched.security_clearance
 
-                    # Fill in previously observed fields from earlier hops if missing
+                    # Fill in previously observed fields from earlier hops/scrolls if missing
                     # Primary sourcing platforms (LinkedIn, ZoomInfo, Apollo, Indeed, SimplyHired) are canonical ground truth.
-                    # Never backfill company or title from stitched chat observations when viewing a primary sourcing platform.
-                    if target_type not in ("LINKEDIN", "ZOOMINFO", "APOLLO", "INDEED", "SIMPLYHIRED"):
+                    # Allow backfilling company/title across scrolls if already observed on this platform,
+                    # or if bridging across non-primary channels.
+                    can_backfill_employment = (
+                        target_type not in ("LINKEDIN", "ZOOMINFO", "APOLLO", "INDEED", "SIMPLYHIRED")
+                        or target_type in (stitched.observed_channels or [])
+                    )
+                    if can_backfill_employment:
                         if not staged_contact.get("company_name") and stitched.current_company:
                             staged_contact["company_name"] = stitched.current_company
                         if not staged_contact.get("title") and stitched.current_title:
                             staged_contact["title"] = stitched.current_title
+                        if not staged_contact.get("location") and stitched.location:
+                            staged_contact["location"] = stitched.location
 
                     # Only backfill email/phone if candidate name is compatible with stitched profile
                     cand_n = (staged_contact.get("recruiter_name") or "").strip().lower()

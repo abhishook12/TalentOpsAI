@@ -331,8 +331,13 @@ QUALIFICATION_AND_REQUIREMENT_WORDS = frozenset({
 CHECKMARK_AND_STATUS_SYMBOLS = frozenset({
     "✓", "✔", "☑", "✅", "√", "✗", "✘", "❌", "❎",
     "★", "☆", "⭐", "►", "▸", "▶", "◄", "◀", "▼", "▲",
-    "•", "·", "●", "○", "■", "□", "▪", "▫",
     "🚗", "✈", "🛡", "🪪", "💼", "📍", "📧", "📞", "📱", "🔗", "🔍", "🔔", "⚙", "👤", "👥", "🎯", "🏆"
+})
+
+# Bullets, dots, and list marker glyphs used for layout separation (NOT checkmarks/noise)
+BULLET_AND_SEPARATOR_SYMBOLS = frozenset({
+    "•", "·", "●", "○", "■", "□", "▪", "▫",
+    "·", "•", "∙", "◦"
 })
 
 # Past Employer Prefixes and References (e.g. 'Ex-Google', 'Former VP at Meta')
@@ -1418,8 +1423,15 @@ def is_valid_person_name(text: Optional[str]) -> bool:
         return False
 
     # Reject truncated strings ending with dots or ellipses e.g. "54 Ri Ht...", "John..."
-    if t.endswith(".") or ".." in t:
+    # BUT allow single-letter abbreviated last initials like "Brandon R.", "Shannon S.", "Sarah T."
+    if ".." in t:
         return False
+    if t.endswith("."):
+        # Allow pattern: "Firstname X." where X is a single uppercase letter (abbreviated last initial)
+        if not re.match(r"^[A-Z\u00C0-\u024F][a-z\u00C0-\u024F]+(?:\s+[A-Za-z\u00C0-\u024F][a-z\u00C0-\u024F-]*)*\s+[A-Z]\.$", t):
+            return False
+        # Strip trailing period for subsequent validation steps
+        t = t[:-1].strip()
 
     t_lower = t.lower()
 
@@ -1771,12 +1783,18 @@ def clean_person_name(text: Optional[str]) -> Optional[str]:
     t = re.sub(r"\s*[-–—|]\s*(?:Apollo|LinkedIn|ZoomInfo|SimplyHired|ZipRecruiter|Indeed|Glassdoor|Jobright).*$", "", t, flags=re.IGNORECASE).strip()
     # Strip generational / name suffixes e.g. ", Jr.", " Jr.", ", Sr.", " III", " II", " IV"
     t = re.sub(r"(?:,\s*(?:Jr|Sr|III|IV|II)\.?|\s+(?:Jr|Sr|III|IV|II)\.?)$", "", t, flags=re.IGNORECASE).strip()
+    # Strip parenthetical qualifiers: maiden names "(Besler)", LinkedIn badges "(LION)", "(MBA)", etc.
+    t = re.sub(r"\s*\([^)]+\)\s*$", "", t).strip()
     # Strip professional post-nominal credentials appended to names with commas.
     # e.g. "Kate Threewitts, SPHR, SHRM-SCP" → "Kate Threewitts"
     # e.g. "Megan Alford, PRC, CIR, CMVR" → "Megan Alford"
+    # e.g. "Jennifer Eversole, CPA, CISSP" → "Jennifer Eversole"
     # Pattern: comma followed by 2-10 uppercase letters/numbers/hyphens (credential abbreviations)
+    t = re.sub(r"(?:,\s*[A-Z][A-Za-z0-9\-\.]{0,9})+\s*$", "", t).strip()
     # Trailing badge strip again after other strips
     t = re.sub(r"\s+\b(?:verified|premium|top\s+voice)\b.*$", "", t, flags=re.IGNORECASE).strip()
+    # Strip trailing period from abbreviated last initial (e.g. "Brandon R." → "Brandon R")
+    t = re.sub(r"\b([A-Z])\.\s*$", r"\1", t).strip()
     t = t.strip(" \t\n\r'\"`•·-–—|")
     post_words = [re.sub(r"[^a-zA-Z]", "", w).lower() for w in t.split()]
     if any(w in NON_PERSON_NAME_KEYWORDS for w in post_words if w):

@@ -220,6 +220,8 @@ class CrossChannelStitcher:
             matched_ids.add(self._phone_index[phone])
         if name and company and (name.lower(), company.lower()) in self._name_company_index:
             matched_ids.add(self._name_company_index[(name.lower(), company.lower())])
+        if name and name.lower() in self._name_index:
+            matched_ids.add(self._name_index[name.lower()])
 
         # Identity Conflict Guard: Reject candidate nodes whose validated name conflicts with incoming name
         if name and matched_ids:

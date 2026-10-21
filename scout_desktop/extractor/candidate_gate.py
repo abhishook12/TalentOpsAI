@@ -623,7 +623,11 @@ def create_candidate_if_valid(
     # 9. Garbage & Confidence Scoring (Rule 12)
     # Platform context bonus: a LinkedIn/ZoomInfo/Apollo window title without a URL is still
     # strong evidence this is a real sourcing platform candidate, not UI noise.
-    is_verified_sourcing_platform = platform in (
+    is_verified_sourcing_platform = (platform or "").lower() in (
+        "linkedin", "zoominfo", "apollo", "indeed", "github",
+        "simplyhired", "jobright", "glassdoor", "ziprecruiter",
+        "greenhouse", "lever", "ashby", "workday", "icims", "smartrecruiters"
+    ) or platform in (
         "LinkedIn", "ZoomInfo", "Apollo", "Indeed", "GitHub",
         "SimplyHired", "Jobright", "Glassdoor", "ZipRecruiter"
     )
@@ -787,6 +791,12 @@ def create_candidate_if_valid(
         is_valid = False
         reasons.append(f"CHAT_RECOMMENDATION: Recruiter shared candidate recommendation detected ({valid_title or valid_company or valid_loc}); held in Review Queue")
         checklist.append("Chat candidate recommendation captured: Routed to Review Queue")
+    elif (has_platform_context or is_verified_sourcing_platform) and cleaned_name and (valid_title or valid_company or valid_loc):
+        decision = "REVIEW_REQUIRED"
+        status = "REVIEW_REQUIRED"
+        is_valid = False
+        reasons.append(f"SOURCING_PLATFORM_CANDIDATE: Candidate observed on {platform} with partial signals ({valid_title or valid_company or valid_loc}); held in Review Queue awaiting profile URL/corroboration")
+        checklist.append(f"Sourcing platform candidate captured: Routed to Review Queue")
     else:
         decision = "REJECTED_OBSERVATION"
         status = "REJECTED"

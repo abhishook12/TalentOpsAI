@@ -448,17 +448,19 @@ class UIATextReader:
         for idx, item in enumerate(structured_nodes):
             is_heading = item.get("heading_level") == 1 or item.get("aria_role") == "heading" or item.get("ctl_type") == 50034
             text = item["text"]
-            if is_heading and is_valid_person_name(text):
-                candidate_name = clean_person_name(text)
+            cand_clean = clean_person_name(text)
+            if is_heading and cand_clean and is_valid_person_name(cand_clean):
+                candidate_name = cand_clean
                 name_node_idx = idx
                 break
 
-        # Strategy B: If no explicit heading tag, check first 5 nodes for valid person name
+        # Strategy B: If no explicit heading tag, check top nodes for valid person name
         if not candidate_name:
-            for idx, item in enumerate(structured_nodes[:6]):
+            for idx, item in enumerate(structured_nodes[:10]):
                 text = item["text"]
-                if is_valid_person_name(text):
-                    candidate_name = clean_person_name(text)
+                cand_clean = clean_person_name(text)
+                if cand_clean and is_valid_person_name(cand_clean):
+                    candidate_name = cand_clean
                     name_node_idx = idx
                     break
 

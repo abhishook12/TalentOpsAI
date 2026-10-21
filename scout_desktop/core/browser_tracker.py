@@ -103,14 +103,35 @@ class BrowserTracker:
                     cond_id = self._uia.CreatePropertyCondition(30011, auto_id)  # 30011 = UIA_AutomationIdPropertyId
                     target = el.FindFirst(TreeScope_Descendants, cond_id)
                     if target:
+                        val = None
                         pat = target.GetCurrentPattern(UIA_ValuePatternId)
                         if pat:
-                            val_pat = pat.QueryInterface(IUIAutomationValuePattern)
-                            val = val_pat.CurrentValue
-                            if val and ("." in val or "://" in val):
-                                if not val.startswith("http://") and not val.startswith("https://"):
-                                    val = f"https://{val}"
-                                return val
+                            try:
+                                val_pat = pat.QueryInterface(IUIAutomationValuePattern)
+                                val = val_pat.CurrentValue
+                            except Exception:
+                                pass
+                        if not val:
+                            try:
+                                # Fallback: LegacyIAccessiblePattern (pattern ID 10018)
+                                leg_pat = target.GetCurrentPattern(10018)
+                                if leg_pat:
+                                    from comtypes.gen.UIAutomationClient import IUIAutomationLegacyIAccessiblePattern
+                                    leg = leg_pat.QueryInterface(IUIAutomationLegacyIAccessiblePattern)
+                                    val = leg.CurrentValue
+                            except Exception:
+                                pass
+                        if not val:
+                            try:
+                                c_name = target.CurrentName
+                                if c_name and ("." in c_name or "://" in c_name) and not c_name.lower().startswith("address and search"):
+                                    val = c_name
+                            except Exception:
+                                pass
+                        if val and ("." in val or "://" in val):
+                            if not val.startswith("http://") and not val.startswith("https://"):
+                                val = f"https://{val}"
+                            return val
                 except Exception:
                     pass
 

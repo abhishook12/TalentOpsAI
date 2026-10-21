@@ -238,7 +238,7 @@ class EntityExtractor:
                         "overview", "about", "life", "jobs", "notifications", "feed",
                         "search", "messaging", "learning", "groups", "events",
                         "my network", "saved", "posts", "articles", "premium",
-                        "recruiter", "sales navigator", "hiring", "talent",
+                        "recruiter", "sales navigator", "hiring", "talent", "people",
                     ]):
                         return []
                     pro_m = re.search(r"\b(she/her|he/him|they/them|she/they|he/they)\b", raw_extracted, re.IGNORECASE)
@@ -275,10 +275,20 @@ class EntityExtractor:
                         target_name = c_name
                         break
 
+        # Fix 4: Detect LinkedIn Company People pages (employee lists, not individual profiles)
+        # Pattern: URL contains "/company/xxx/people" or window title matches "CompanyName: People | LinkedIn"
         if not target_name:
-            # First search header zone
-            search_pool = header_lines if header_lines else clean_lines[:15]
-            for idx, line in enumerate(search_pool[:15]):
+            is_company_people_page = (
+                "/company/" in url_lower and "/people" in url_lower
+            ) or bool(re.search(r"^.+:\s*People\s*[|]", window_title))
+            if is_company_people_page:
+                logger.info("Skipping LinkedIn Company People page (employee list, not individual profile): %s", window_title[:60])
+                return []
+
+        if not target_name:
+            # First search header zone — expanded to 25 lines (Fix 5: was 15)
+            search_pool = header_lines if header_lines else clean_lines[:25]
+            for idx, line in enumerate(search_pool[:25]):
                 cand_clean = clean_person_name(line)
                 if cand_clean:
                     pro_m = re.search(r"\b(she/her|he/him|they/them|she/they|he/they)\b", line, re.IGNORECASE)

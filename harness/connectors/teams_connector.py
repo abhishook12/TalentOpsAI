@@ -22,6 +22,7 @@ import urllib.request
 import subprocess
 import logging
 from typing import Optional, Dict, Any, List, Tuple
+from harness.connectors.base_connector import BaseConnector
 
 logger = logging.getLogger("harness.teams")
 if not logger.handlers:
@@ -31,12 +32,13 @@ if not logger.handlers:
     logger.setLevel(logging.INFO)
 
 
-class TeamsConnector:
+class TeamsConnector(BaseConnector):
     """Master controller for local Microsoft Teams integration."""
 
     TEAMS_URI_SCHEME = "msteams:"
 
     def __init__(self, default_webhook_url: Optional[str] = None):
+        super().__init__(app_name="teams", display_name="Microsoft Teams")
         self.default_webhook_url = default_webhook_url or os.getenv("TEAMS_WEBHOOK_URL", "")
         self._last_known_pid: Optional[int] = None
         self._is_new_teams: bool = True
@@ -362,6 +364,40 @@ class TeamsConnector:
         except Exception as e:
             logger.error("Could not set foreground window: %s", e)
             return False
+
+    def get_status(self) -> Dict[str, Any]:
+        """Returns standard harness health and status dictionary."""
+        proc = self.get_process_status()
+        return {
+            "app_name": self.app_name,
+            "display_name": self.display_name,
+            "is_running": proc["is_running"],
+            "pids": proc["pids"],
+            "version_type": proc["version_type"],
+            "protocol_registered": True,
+            "capabilities": ["open_chat", "start_call", "open_meeting", "send_candidate_card", "send_webhook_message", "bring_to_front"],
+        }
+
+    def execute_action(self, action: str, payload: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Dispatches an action via the unified harness interface."""
+        payload = payload or {}
+        if action == "open_chat":
+            success = self.open_chat(payload.get("recipient_email", ""), payload.get("message"))
+            return {"action": action, "success": success}
+        elif action == "start_call":
+            success = self.start_call(payload.get("recipient_email", ""), payload.get("with_video", False))
+            return {"action": action, "success": success}
+        elif action == "send_card":
+            success = self.send_candidate_card(payload.get("candidate_data", {}), payload.get("webhook_url"))
+            return {"action": action, "success": success}
+        elif action == "send_webhook":
+            success = self.send_webhook_message(payload.get("title", ""), payload.get("text", ""), payload.get("webhook_url"))
+            return {"action": action, "success": success}
+        elif action == "bring_to_front":
+            success = self.bring_to_front()
+            return {"action": action, "success": success}
+        else:
+            return {"action": action, "success": False, "error": f"Unknown action '{action}' for {self.app_name}"}
 
 
 # Singleton instance

@@ -471,6 +471,9 @@ from .routes import scout_updates
 app.include_router(scout_updates.router)
 from .routes import mcp
 app.include_router(mcp.router)
+from .routes import harness
+app.include_router(harness.router, prefix="/harness", tags=["Platform Automation Harness"])
+app.include_router(harness.router, prefix="/api/harness", tags=["Platform Automation Harness"])
 
 @app.get("/download/scout/windows", tags=["Scout Auto-Update & Fleet"])
 @app.get("/api/download/scout/windows", tags=["Scout Auto-Update & Fleet"])

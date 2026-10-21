@@ -256,6 +256,12 @@ def get_harness_mini_ui():
         }
 
         async function focusApp(appName) {
+            if (appName === 'teams') {
+                // Client-side direct protocol dispatch — launches Teams directly from browser
+                try { window.location.href = 'msteams:'; } catch(e){}
+            } else if (appName === 'site') {
+                window.open('http://localhost:5173', '_blank');
+            }
             setCmd('focus ' + appName);
             runCommand();
         }

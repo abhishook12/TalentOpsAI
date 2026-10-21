@@ -342,27 +342,45 @@ class TeamsConnector(BaseConnector):
 
     def bring_to_front(self) -> bool:
         """Restores and focuses the main Microsoft Teams window."""
+        # 1. If top-level window exists, restore and bring to foreground
         windows = self.find_teams_windows()
-        if not windows:
-            # If no open window, launch via shell to bring forward
-            logger.info("Teams window not active on desktop. Triggering app launch...")
+        if windows:
             try:
-                subprocess.Popen(["explorer.exe", "shell:AppsFolder\\MSTeams_8wekyb3d8bbwe!MSTeams"], shell=False)
+                import win32gui
+                import win32con
+                hwnd = windows[0]["hwnd"]
+                win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+                win32gui.SetForegroundWindow(hwnd)
+                logger.info("Focused Teams window HWND: %s", hwnd)
                 return True
             except Exception as e:
-                logger.error("Failed to restore Teams window: %s", e)
-                return False
+                logger.debug("Could not set foreground window: %s", e)
 
+        # 2. Native Windows AppExecutionAlias (User-level binary execution)
+        alias = os.path.expandvars(r"%LOCALAPPDATA%\Microsoft\WindowsApps\ms-teams.exe")
+        if os.path.exists(alias):
+            try:
+                os.startfile(alias)
+                logger.info("Launched Teams via AppExecutionAlias: %s", alias)
+                return True
+            except Exception as e:
+                logger.debug("Failed to launch alias: %s", e)
+
+        # 3. Native Windows msteams: protocol invocation
         try:
-            import win32gui
-            import win32con
-            hwnd = windows[0]["hwnd"]
-            win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
-            win32gui.SetForegroundWindow(hwnd)
-            logger.info("Focused Teams window HWND: %s", hwnd)
+            os.startfile("msteams:")
+            logger.info("Triggered Teams via msteams: native protocol")
             return True
         except Exception as e:
-            logger.error("Could not set foreground window: %s", e)
+            logger.debug("Failed msteams: protocol: %s", e)
+
+        # 4. Shell AppsFolder invocation
+        try:
+            os.startfile(r"shell:AppsFolder\MSTeams_8wekyb3d8bbwe!MSTeams")
+            logger.info("Triggered Teams via shell:AppsFolder")
+            return True
+        except Exception as e:
+            logger.error("Failed to restore Teams window: %s", e)
             return False
 
     def get_status(self) -> Dict[str, Any]:

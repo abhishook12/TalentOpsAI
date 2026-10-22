@@ -180,14 +180,120 @@ class OutlookConnector(BaseConnector):
 
         return results
 
+    def find_outlook_windows(self) -> List[Dict[str, Any]]:
+        """Finds all top-level Microsoft Outlook windows on the user's interactive Default desktop."""
+        windows = []
+        try:
+            import ctypes
+            import win32gui
+
+            user32 = ctypes.windll.user32
+            hdesk = user32.OpenDesktopW("Default", 0, False, 0x01FF)
+            if hdesk:
+                user32.SetThreadDesktop(hdesk)
+
+            WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
+
+            def enum_cb(hwnd, _):
+                if user32.IsWindowVisible(hwnd):
+                    length = user32.GetWindowTextLengthW(hwnd)
+                    if length > 0:
+                        buf = ctypes.create_unicode_buffer(length + 1)
+                        user32.GetWindowTextW(hwnd, buf, length + 1)
+                        title = buf.value
+                        t = title.lower()
+                        if ("outlook" in t or "inbox" in t) and "progress" not in t and "social" not in t:
+                            rect = win32gui.GetWindowRect(hwnd)
+                            w = rect[2] - rect[0]
+                            h = rect[3] - rect[1]
+                            if w > 100 and h > 100:
+                                windows.append({
+                                    "hwnd": hwnd,
+                                    "title": title,
+                                    "visible": True,
+                                    "rect": rect,
+                                    "width": w,
+                                    "height": h,
+                                })
+                return True
+
+            if hdesk:
+                user32.EnumDesktopWindows(hdesk, WNDENUMPROC(enum_cb), 0)
+        except Exception as e:
+            logger.debug("find_outlook_windows error: %s", e)
+
+        return windows
+
     def bring_to_front(self) -> bool:
-        """Restores and brings the main Outlook window to the front."""
+        """Restores and brings the main Outlook window to the front directly on the user's interactive desktop."""
+        import ctypes
+        from ctypes import wintypes
+        import win32gui
+        import win32con
+
+        user32 = ctypes.windll.user32
+        kernel32 = ctypes.windll.kernel32
+        hdesk = user32.OpenDesktopW("Default", 0, False, 0x01FF)
+        if hdesk:
+            user32.SetThreadDesktop(hdesk)
+
+        # 1. If top-level window already exists on Default desktop, restore and activate it
+        windows = self.find_outlook_windows()
+        if windows:
+            try:
+                hwnd = windows[0]["hwnd"]
+                win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+                win32gui.SetForegroundWindow(hwnd)
+                logger.info("Focused Outlook window HWND: %s ('%s')", hwnd, windows[0]["title"])
+                return True
+            except Exception as e:
+                logger.debug("Could not set foreground window: %s", e)
+
+        # 2. Launch directly targeting WinSta0\\Default desktop via CreateProcessW
+        outlook_exe = r"C:\Program Files\Microsoft Office\root\Office16\OUTLOOK.EXE"
+        if os.path.exists(outlook_exe):
+            try:
+                class STARTUPINFOW(ctypes.Structure):
+                    _fields_ = [
+                        ('cb', wintypes.DWORD), ('lpReserved', wintypes.LPWSTR),
+                        ('lpDesktop', wintypes.LPWSTR), ('lpTitle', wintypes.LPWSTR),
+                        ('dwX', wintypes.DWORD), ('dwY', wintypes.DWORD),
+                        ('dwXSize', wintypes.DWORD), ('dwYSize', wintypes.DWORD),
+                        ('dwXCountChars', wintypes.DWORD), ('dwYCountChars', wintypes.DWORD),
+                        ('dwFillAttribute', wintypes.DWORD), ('dwFlags', wintypes.DWORD),
+                        ('wShowWindow', wintypes.WORD), ('cbReserved2', wintypes.WORD),
+                        ('lpReserved2', ctypes.POINTER(wintypes.BYTE)),
+                        ('hStdInput', wintypes.HANDLE), ('hStdOutput', wintypes.HANDLE),
+                        ('hStdError', wintypes.HANDLE)
+                    ]
+                class PROCESS_INFORMATION(ctypes.Structure):
+                    _fields_ = [
+                        ('hProcess', wintypes.HANDLE), ('hThread', wintypes.HANDLE),
+                        ('dwProcessId', wintypes.DWORD), ('dwThreadId', wintypes.DWORD)
+                    ]
+                si = STARTUPINFOW()
+                si.cb = ctypes.sizeof(STARTUPINFOW)
+                si.lpDesktop = "WinSta0\\Default"
+                si.dwFlags = 1
+                si.wShowWindow = 1
+                pi = PROCESS_INFORMATION()
+
+                res = kernel32.CreateProcessW(
+                    outlook_exe, None, None, None, False, 0, None, None,
+                    ctypes.byref(si), ctypes.byref(pi)
+                )
+                if res:
+                    logger.info("Launched Outlook targeting WinSta0\\Default (PID %d)", pi.dwProcessId)
+                    return True
+            except Exception as e:
+                logger.debug("CreateProcess targeting Default failed: %s", e)
+
+        # 3. COM Display Fallback
         app, ns = self._get_com_session()
         if app and ns:
             try:
-                # If running headless without an active Explorer window, create and show Inbox
                 if app.Explorers.Count == 0:
-                    inbox = ns.GetDefaultFolder(6)  # 6 = olFolderInbox
+                    inbox = ns.GetDefaultFolder(6)
                     inbox.Display()
                     logger.info("Created and displayed Outlook window via MAPI Inbox.Display()")
                     return True
@@ -196,22 +302,9 @@ class OutlookConnector(BaseConnector):
                     if exp:
                         exp.Display()
                         exp.Activate()
-                        logger.info("Activated existing Outlook Explorer window")
                         return True
             except Exception as e:
-                logger.debug("COM explorer activate error: %s", e)
-
-        # Fallback via ShellExecute on full binary path
-        outlook_exe = r"C:\Program Files\Microsoft Office\root\Office16\OUTLOOK.EXE"
-        if os.path.exists(outlook_exe):
-            try:
-                import ctypes
-                ret = ctypes.windll.shell32.ShellExecuteW(0, "open", outlook_exe, "", None, 1)
-                if ret > 32:
-                    logger.info("Launched Outlook via ShellExecuteW")
-                    return True
-            except Exception as e:
-                logger.debug("ShellExecute outlook error: %s", e)
+                logger.debug("COM fallback error: %s", e)
 
         return False
 

@@ -295,99 +295,136 @@ class TeamsConnector(BaseConnector):
 
     def find_teams_windows(self) -> List[Dict[str, Any]]:
         """
-        Finds all top-level Microsoft Teams windows currently available in Windows.
+        Finds all top-level Microsoft Teams windows on the user's interactive Default desktop.
         Returns list of window details: HWND, Title, Visible, Rect.
         """
         windows = []
         try:
+            import ctypes
+            from ctypes import wintypes
             import win32gui
             import win32process
 
-            status = self.get_process_status()
-            target_pids = set(status["pids"])
+            user32 = ctypes.windll.user32
+            hdesk = user32.OpenDesktopW("Default", 0, False, 0x01FF)
+            if hdesk:
+                user32.SetThreadDesktop(hdesk)
 
-            def enum_cb(hwnd, extra):
-                if not win32gui.IsWindow(hwnd):
-                    return True
-                try:
-                    _, pid = win32process.GetWindowThreadProcessId(hwnd)
-                    if pid in target_pids:
-                        title = win32gui.GetWindowText(hwnd)
-                        cls = win32gui.GetClassName(hwnd)
-                        is_vis = win32gui.IsWindowVisible(hwnd)
-                        rect = win32gui.GetWindowRect(hwnd)
-                        # Filter out invisible utility tooltips/offscreen helper windows
-                        w = rect[2] - rect[0]
-                        h = rect[3] - rect[1]
-                        if w > 100 and h > 100:
-                            windows.append({
-                                "hwnd": hwnd,
-                                "pid": pid,
-                                "title": title,
-                                "class_name": cls,
-                                "visible": is_vis,
-                                "rect": rect,
-                                "width": w,
-                                "height": h,
-                            })
-                except Exception:
-                    pass
+            status = self.get_process_status()
+            target_pids = set(status.get("pids", []))
+
+            WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
+
+            def enum_cb(hwnd, _):
+                if user32.IsWindowVisible(hwnd):
+                    try:
+                        _, pid = win32process.GetWindowThreadProcessId(hwnd)
+                        length = user32.GetWindowTextLengthW(hwnd)
+                        if length > 0:
+                            buf = ctypes.create_unicode_buffer(length + 1)
+                            user32.GetWindowTextW(hwnd, buf, length + 1)
+                            title = buf.value
+                            t = title.lower()
+                            if ("teams" in t or pid in target_pids) and "notification" not in t:
+                                rect = win32gui.GetWindowRect(hwnd)
+                                w = rect[2] - rect[0]
+                                h = rect[3] - rect[1]
+                                if w > 100 and h > 100:
+                                    windows.append({
+                                        "hwnd": hwnd,
+                                        "pid": pid,
+                                        "title": title,
+                                        "visible": True,
+                                        "rect": rect,
+                                        "width": w,
+                                        "height": h,
+                                    })
+                    except Exception:
+                        pass
                 return True
 
-            win32gui.EnumWindows(enum_cb, None)
+            if hdesk:
+                user32.EnumDesktopWindows(hdesk, WNDENUMPROC(enum_cb), 0)
+            else:
+                win32gui.EnumWindows(enum_cb, None)
         except Exception as e:
             logger.debug("find_teams_windows error: %s", e)
 
         return windows
 
     def bring_to_front(self) -> bool:
-        """Restores and focuses the main Microsoft Teams window."""
+        """Restores and focuses the main Microsoft Teams window directly on the user's interactive desktop."""
         import ctypes
-        shell32 = ctypes.windll.shell32
+        from ctypes import wintypes
+        import win32gui
+        import win32con
 
-        # 1. If top-level window exists, restore and bring to foreground
+        user32 = ctypes.windll.user32
+        kernel32 = ctypes.windll.kernel32
+        hdesk = user32.OpenDesktopW("Default", 0, False, 0x01FF)
+        if hdesk:
+            user32.SetThreadDesktop(hdesk)
+
+        # 1. If top-level window exists on Default desktop, restore and bring to foreground
         windows = self.find_teams_windows()
         if windows:
             try:
-                import win32gui
-                import win32con
                 hwnd = windows[0]["hwnd"]
                 win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
                 win32gui.SetForegroundWindow(hwnd)
-                logger.info("Focused Teams window HWND: %s", hwnd)
+                logger.info("Focused Teams window HWND: %s ('%s')", hwnd, windows[0]["title"])
                 return True
             except Exception as e:
                 logger.debug("Could not set foreground window: %s", e)
 
-        # 2. Native Deep-Link Protocol (Forces UI activation from background system-initiated mode)
-        for target_uri in ["msteams:/l/chat/0/0", "msteams:"]:
-            try:
-                ret = shell32.ShellExecuteW(0, "open", target_uri, "", None, 1)
-                if ret > 32:
-                    logger.info("Activated Teams window via protocol: %s", target_uri)
-                    return True
-            except Exception as e:
-                logger.debug("Protocol launch failed: %s", e)
-
-        # 3. Native Windows AppExecutionAlias
+        # 2. Launch directly targeting WinSta0\\Default via CreateProcessW
         alias = os.path.expandvars(r"%LOCALAPPDATA%\Microsoft\WindowsApps\ms-teams.exe")
         if os.path.exists(alias):
             try:
-                ret = shell32.ShellExecuteW(0, "open", alias, "", None, 1)
-                if ret > 32:
-                    logger.info("Launched Teams via AppExecutionAlias: %s", alias)
+                class STARTUPINFOW(ctypes.Structure):
+                    _fields_ = [
+                        ('cb', wintypes.DWORD), ('lpReserved', wintypes.LPWSTR),
+                        ('lpDesktop', wintypes.LPWSTR), ('lpTitle', wintypes.LPWSTR),
+                        ('dwX', wintypes.DWORD), ('dwY', wintypes.DWORD),
+                        ('dwXSize', wintypes.DWORD), ('dwYSize', wintypes.DWORD),
+                        ('dwXCountChars', wintypes.DWORD), ('dwYCountChars', wintypes.DWORD),
+                        ('dwFillAttribute', wintypes.DWORD), ('dwFlags', wintypes.DWORD),
+                        ('wShowWindow', wintypes.WORD), ('cbReserved2', wintypes.WORD),
+                        ('lpReserved2', ctypes.POINTER(wintypes.BYTE)),
+                        ('hStdInput', wintypes.HANDLE), ('hStdOutput', wintypes.HANDLE),
+                        ('hStdError', wintypes.HANDLE)
+                    ]
+                class PROCESS_INFORMATION(ctypes.Structure):
+                    _fields_ = [
+                        ('hProcess', wintypes.HANDLE), ('hThread', wintypes.HANDLE),
+                        ('dwProcessId', wintypes.DWORD), ('dwThreadId', wintypes.DWORD)
+                    ]
+                si = STARTUPINFOW()
+                si.cb = ctypes.sizeof(STARTUPINFOW)
+                si.lpDesktop = "WinSta0\\Default"
+                si.dwFlags = 1
+                si.wShowWindow = 1
+                pi = PROCESS_INFORMATION()
+
+                res = kernel32.CreateProcessW(
+                    alias, "ms-teams.exe msteams:/l/chat/0/0",
+                    None, None, False, 0, None, None,
+                    ctypes.byref(si), ctypes.byref(pi)
+                )
+                if res:
+                    logger.info("Launched Teams targeting WinSta0\\Default (PID %d)", pi.dwProcessId)
                     return True
             except Exception as e:
-                logger.debug("Failed to launch alias: %s", e)
+                logger.debug("CreateProcess targeting Default failed: %s", e)
 
-        # 4. Shell AppsFolder invocation
+        # 3. Fallback: ShellExecuteW
         try:
-            ret = shell32.ShellExecuteW(0, "open", r"shell:AppsFolder\MSTeams_8wekyb3d8bbwe!MSTeams", "", None, 1)
+            ret = ctypes.windll.shell32.ShellExecuteW(0, "open", "msteams:/l/chat/0/0", "", None, 1)
             if ret > 32:
-                logger.info("Triggered Teams via shell:AppsFolder")
+                logger.info("Activated Teams via ShellExecuteW protocol")
                 return True
         except Exception as e:
-            logger.error("Failed to restore Teams window: %s", e)
+            logger.debug("ShellExecute fallback failed: %s", e)
 
         return False
 

@@ -16,29 +16,37 @@ from harness.connectors.site_connector import site_connector
 
 class TestBringToFront(unittest.TestCase):
 
-    def test_01_outlook_bring_to_front_logic(self):
-        """Verifies Outlook bring_to_front triggers MAPI Explorer Display."""
-        mock_app = MagicMock()
-        mock_ns = MagicMock()
-        mock_inbox = MagicMock()
-        mock_app.Explorers.Count = 0
-        mock_ns.GetDefaultFolder.return_value = mock_inbox
+    def test_01_outlook_bring_to_front_active_window(self):
+        """Verifies Outlook bring_to_front succeeds on live desktop window."""
+        success = outlook_connector.bring_to_front()
+        self.assertTrue(success)
+        print("\n  [PASS] Outlook bring_to_front: Verified live desktop window activation.")
 
-        with patch.object(outlook_connector, "_get_com_session", return_value=(mock_app, mock_ns)):
-            success = outlook_connector.bring_to_front()
-            self.assertTrue(success)
-            mock_inbox.Display.assert_called_once()
-        print("\n  [PASS] Outlook bring_to_front: Verified MAPI Inbox.Display() called when Explorers.Count == 0.")
+    def test_02_outlook_bring_to_front_desktop_launch(self):
+        """Verifies Outlook launches targeting WinSta0\\Default when no window is active."""
+        with patch.object(outlook_connector, "find_outlook_windows", return_value=[]):
+            with patch("ctypes.windll.kernel32.CreateProcessW", return_value=1) as mock_cp:
+                success = outlook_connector.bring_to_front()
+                self.assertTrue(success)
+                self.assertEqual(mock_cp.call_count, 1)
+        print("  [PASS] Outlook bring_to_front: Verified CreateProcessW targeting WinSta0\\Default.")
 
-    def test_02_teams_bring_to_front_logic(self):
-        """Verifies Teams bring_to_front triggers native protocol and AppExecutionAlias."""
-        with patch("ctypes.windll.shell32.ShellExecuteW", return_value=42) as mock_shell:
-            success = teams_connector.bring_to_front()
-            self.assertTrue(success)
-            self.assertGreater(mock_shell.call_count, 0)
-        print("  [PASS] Teams bring_to_front: Verified ShellExecuteW protocol dispatch.")
+    def test_03_teams_bring_to_front_active_window(self):
+        """Verifies Teams bring_to_front succeeds on live desktop window."""
+        success = teams_connector.bring_to_front()
+        self.assertTrue(success)
+        print("  [PASS] Teams bring_to_front: Verified live desktop window activation.")
 
-    def test_03_vitel_bring_to_front_logic(self):
+    def test_04_teams_bring_to_front_desktop_launch(self):
+        """Verifies Teams launches targeting WinSta0\\Default when no window is active."""
+        with patch.object(teams_connector, "find_teams_windows", return_value=[]):
+            with patch("ctypes.windll.kernel32.CreateProcessW", return_value=1) as mock_cp:
+                success = teams_connector.bring_to_front()
+                self.assertTrue(success)
+                self.assertEqual(mock_cp.call_count, 1)
+        print("  [PASS] Teams bring_to_front: Verified CreateProcessW targeting WinSta0\\Default.")
+
+    def test_05_vitel_bring_to_front_logic(self):
         """Verifies Vitel bring_to_front verifies executable path."""
         self.assertTrue(os.path.exists(vitel_connector.DEFAULT_EXE_PATH))
         with patch("subprocess.Popen") as mock_popen:

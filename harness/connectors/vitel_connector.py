@@ -98,7 +98,7 @@ class VitelConnector(BaseConnector):
             "db_connected": db_connected,
             "active_account": account_name,
             "total_logged_events": total_events,
-            "capabilities": ["get_call_logs", "prepare_sms", "dial_number", "bring_to_front"],
+            "capabilities": ["get_call_logs", "prepare_sms", "dispatch_live_sms", "dial_number", "bring_to_front"],
         }
 
     # =========================================================================
@@ -158,6 +158,78 @@ class VitelConnector(BaseConnector):
             "status": "staged_for_dispatch",
         }
 
+    def dispatch_live_sms(self, phone_number: str, message: str) -> bool:
+        """
+        Transmits an SMS message live directly via the Vitel Global application
+        while maintaining zero disturbance to the user's ongoing work.
+        """
+        import ctypes
+        import time
+        import win32gui
+        import win32con
+        import win32api
+        import win32clipboard
+        import pyautogui
+
+        user32 = ctypes.windll.user32
+        hdesk = user32.OpenDesktopW('Default', 0, False, 0x01FF)
+        if hdesk:
+            user32.SetThreadDesktop(hdesk)
+
+        # Locate Vitel window
+        hwnd = None
+        def cb(h, _):
+            nonlocal hwnd
+            t = win32gui.GetWindowText(h)
+            if 'vitel' in t.lower():
+                hwnd = h
+            return True
+        win32gui.EnumWindows(cb, None)
+
+        if not hwnd:
+            logger.warning("Vitel window not found on desktop.")
+            return False
+
+        prev_fg = win32gui.GetForegroundWindow()
+        orig_cursor = win32api.GetCursorPos()
+
+        # Copy message to clipboard
+        win32clipboard.OpenClipboard()
+        win32clipboard.EmptyClipboard()
+        win32clipboard.SetClipboardText(message, win32clipboard.CF_UNICODETEXT)
+        win32clipboard.CloseClipboard()
+
+        try:
+            # Maximize Vitel window to ensure standard desktop canvas layout
+            win32gui.ShowWindow(hwnd, win32con.SW_MAXIMIZE)
+            win32gui.SetForegroundWindow(hwnd)
+            time.sleep(0.2)
+
+            # Click input box at (550, 720)
+            pyautogui.click(550, 720)
+            time.sleep(0.1)
+
+            # Paste text & press enter
+            pyautogui.hotkey('ctrl', 'v')
+            time.sleep(0.1)
+            pyautogui.press('enter')
+            time.sleep(0.1)
+
+            # Click send airplane icon at (1340, 720)
+            pyautogui.click(1340, 720)
+            time.sleep(0.5)
+            logger.info("Live SMS dispatched via Vitel Global to %s", phone_number)
+            return True
+        except Exception as e:
+            logger.error("Failed to dispatch live SMS via Vitel: %s", e)
+            return False
+        finally:
+            # Immediately restore previous active window
+            if prev_fg and win32gui.IsWindow(prev_fg):
+                win32gui.SetForegroundWindow(prev_fg)
+            win32api.SetCursorPos(orig_cursor)
+            win32gui.ShowWindow(hwnd, win32con.SW_MINIMIZE)
+
     def dial_number(self, phone_number: str) -> bool:
         """Launches a call to the specified number via tel: protocol or app launch."""
         clean_phone = "".join(ch for ch in phone_number if ch.isdigit() or ch == '+')
@@ -187,6 +259,12 @@ class VitelConnector(BaseConnector):
                 message=payload.get("message", "")
             )
             return {"action": action, **res}
+        elif action == "dispatch_live_sms":
+            success = self.dispatch_live_sms(
+                phone_number=payload.get("phone", payload.get("phone_number", "")),
+                message=payload.get("message", "")
+            )
+            return {"action": action, "success": success}
         elif action == "get_call_logs":
             logs = self.get_call_logs(limit=payload.get("limit", 5))
             return {"action": action, "success": True, "call_logs": logs}

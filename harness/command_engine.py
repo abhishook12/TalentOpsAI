@@ -138,6 +138,46 @@ class CommandEngine:
             target = parts[1].strip() if len(parts) > 1 else ""
             return "focus", {"app": target}
 
+        # Check Replies
+        if raw_lower in ["check replies", "check_replies", "replies", "check vitel replies"]:
+            return "check_replies", {}
+
+        # Sequence Status
+        if raw_lower.startswith("sequence status") or raw_lower.startswith("sequence_status"):
+            parts = raw.split(maxsplit=2)
+            phone = parts[2].strip() if len(parts) > 2 else ""
+            return "sequence_status", {"phone": phone}
+
+        # ---------------------------------------------------------------------
+        # Natural Language Regex Parsing for SMS & Repeat Sequences
+        # ---------------------------------------------------------------------
+
+        # Natural sequence / follow-up requests:
+        # e.g.: "repeat message to 14156450879 the message is Hey..." or "start sequence for +1415..."
+        seq_match = re.search(
+            r"(?:start\s+sequence|repeat\s+(?:message|mssg)|auto\s*followup)\s+(?:for\s+|to\s+|with\s+)?([+\d\-–\(\)\s]{7,20})\s*(?:the\s+(?:message|mssg)\s+(?:is|:|-)?|:|message:)?\s*(.*)",
+            raw,
+            re.IGNORECASE
+        )
+        if seq_match:
+            phone = re.sub(r"[^\d+]", "", seq_match.group(1))
+            msg = seq_match.group(2).strip()
+            msg = re.sub(r"^[-–:]\s*", "", msg)
+            return "sequence", {"phone": phone, "message": msg}
+
+        # Natural SMS requests:
+        # e.g.: "send a mssg to that number -14156450879 the mssg is -Hey please reply..."
+        sms_match = re.search(
+            r"(?:send\s+(?:an?\s+)?(?:sms|text|message|mssg)|text|message)\s+(?:to\s+(?:that\s+number\s+)?|for\s+)?([+\d\-–\(\)\s]{7,20})\s*(?:the\s+(?:message|mssg)\s+(?:is|:|-)?|:|message:)?\s*(.*)",
+            raw,
+            re.IGNORECASE
+        )
+        if sms_match:
+            phone = re.sub(r"[^\d+]", "", sms_match.group(1))
+            msg = sms_match.group(2).strip()
+            msg = re.sub(r"^[-–:]\s*", "", msg)
+            return "sms", {"phone": phone, "message": msg}
+
         # Parse CLI tokens for structured commands
         try:
             tokens = shlex.split(raw)
@@ -175,6 +215,13 @@ class CommandEngine:
                 "message": " ".join(args[1:]) if len(args) >= 2 else "",
             }
             return "sms", params
+
+        if cmd in ["sequence", "followup", "auto_followup"]:
+            params = {
+                "phone": args[0] if len(args) >= 1 else "",
+                "message": " ".join(args[1:]) if len(args) >= 2 else "",
+            }
+            return "sequence", params
 
         if cmd == "chat":
             params = {
@@ -253,11 +300,52 @@ class CommandEngine:
         vitel = self.hub.get_connector("vitel")
         if not vitel:
             raise RuntimeError("Vitel connector is not registered.")
-        
+
+        raw_phone = str(params.get("phone", ""))
+        phone = re.sub(r"[^\d+]", "", raw_phone)
+        msg = params.get("message", "").strip()
+        msg = re.sub(r"^[-–:]\s*", "", msg)
+
         return vitel.prepare_sms(
-            phone_number=params.get("phone", ""),
-            message=params.get("message", "")
+            phone_number=phone,
+            message=msg
         )
+
+    def _handle_sequence(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """Enrolls a candidate phone into autonomous repeat follow-up sequence."""
+        from harness.sequence_engine import sequence_engine
+        raw_phone = str(params.get("phone", ""))
+        phone = re.sub(r"[^\d+]", "", raw_phone)
+        msg = params.get("message", "").strip()
+        msg = re.sub(r"^[-–:]\s*", "", msg)
+        name = params.get("name", "")
+        interval_hours = int(params.get("interval_hours", 24))
+        max_touches = int(params.get("max_touches", 4))
+
+        return sequence_engine.enroll_and_dispatch(
+            phone=phone,
+            message=msg,
+            name=name,
+            interval_hours=interval_hours,
+            max_touches=max_touches
+        )
+
+    def _handle_check_replies(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """Checks Vitel local database for candidate replies and auto-halts sequences."""
+        from harness.sequence_engine import sequence_engine
+        replies = sequence_engine.check_vitel_replies()
+        return {"action": "check_replies", "detected_replies": replies, "count": len(replies)}
+
+    def _handle_sequence_status(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """Retrieves active sequence tracking state."""
+        from harness.sequence_engine import sequence_engine
+        phone = params.get("phone")
+        if phone:
+            clean = re.sub(r"[^\d+]", "", phone)
+            status = sequence_engine.get_contact_status(clean)
+            return {"action": "sequence_status", "phone": clean, "record": status}
+        else:
+            return {"action": "sequence_status", "active_sequences": sequence_engine.list_sequences()}
 
     def _handle_chat(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """Opens a direct 1-on-1 Teams chat with prefilled message."""
@@ -343,6 +431,9 @@ class CommandEngine:
             "check_calls [limit]": "Read recent call and messaging history from Vitel local database.",
             "staged_candidates [limit]": "Read recently staged candidates from TalentOps Web Platform.",
             "focus <teams|outlook|vitel|site>": "Bring application window to the front.",
+            "sequence <phone> <message>": "Enroll contact into autonomous repeat sequence until reply via Vitel.",
+            "sequence_status [phone]": "View sequence tracking and scheduled follow-up dates.",
+            "check_replies": "Poll Vitel for candidate replies and auto-halt active sequences.",
             "register_app <key> <name> <category> [description]": "Dynamically register an upcoming app.",
         }
 

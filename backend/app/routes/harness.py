@@ -185,6 +185,8 @@ def get_harness_mini_ui():
                     <span class="chip" onclick="setCmd('check_inbox 5')">📥 check_inbox 5</span>
                     <span class="chip" onclick="setCmd('check_calls 5')">📞 check_calls 5</span>
                     <span class="chip" onclick="setCmd('staged_candidates 5')">🎯 staged_candidates</span>
+                    <span class="chip" onclick="setCmd('repeat message to -14156450879 the mssg is -Hey please reply , you one reply  means so much to me')">🔁 vitel sequence</span>
+                    <span class="chip" onclick="setCmd('check_replies')">📬 check_replies</span>
                     <span class="chip" onclick="setCmd('outreach &quot;Sarah Connor&quot; sarah@tech.com +14155550199 &quot;Cyberdyne&quot;')">⚡ multi-app outreach</span>
                     <span class="chip" onclick="setCmd('help')">❓ help</span>
                 </div>

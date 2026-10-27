@@ -76,7 +76,7 @@ export default function SqlConsole() {
       </div>
 
       {error && (
-        <div style={{ marginTop: 12, background: '#300', border: '1px solid #7f1d1d', color: '#f87171', padding: '10px 14px', borderRadius: 8, fontSize: 12, fontFamily: "'DM Mono', monospace" }}>
+        <div style={{ marginTop: 12, background: '#300', border: '1px solid #7f1d1d', color: '#e41937', padding: '10px 14px', borderRadius: 8, fontSize: 12, fontFamily: "'DM Mono', monospace" }}>
           ✗ {error}
         </div>
       )}

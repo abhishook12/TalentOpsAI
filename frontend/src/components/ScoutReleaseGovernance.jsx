@@ -285,7 +285,7 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
               borderRadius: 8, padding: '8px 14px', textAlign: 'right'
             }}>
               <div style={{ fontSize: 10, color: 'var(--text-muted, #a1a1aa)' }}>ROLLOUT PROGRESS</div>
-              <div style={{ fontSize: 16, fontWeight: 800, color: currentProduction.is_paused ? '#ef4444' : 'var(--text-primary, #e4e4e7)' }}>
+              <div style={{ fontSize: 16, fontWeight: 800, color: currentProduction.is_paused ? '#e41937' : 'var(--text-primary, #e4e4e7)' }}>
                 {currentProduction.is_paused ? 'PAUSED' : `${currentProduction.rollout_percentage || 100}% FLEET`}
               </div>
             </div>
@@ -321,7 +321,7 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
                 disabled={rollingBack}
                 style={{
                   padding: '8px 14px', background: 'rgba(239, 68, 68, 0.15)',
-                  border: '1px solid #ef4444', color: '#fca5a5', borderRadius: 8,
+                  border: '1px solid #e41937', color: '#fca5a5', borderRadius: 8,
                   fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6
                 }}
               >
@@ -362,11 +362,11 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
                 <span style={{ color: '#fafafa', fontWeight: 700, fontSize: 14 }}>
                   Broadcasting Update Notification to v{broadcastStatus.broadcast.target_version}
                 </span>
-                <span style={{ color: '#94a3b8', fontSize: 12 }}>
+                <span style={{ color: '#d4d4d8', fontSize: 12 }}>
                   ({broadcastStatus.broadcast.cohort === 'ALL_ACTIVE' ? 'All Active Nodes' : 'Outdated Nodes Only'})
                 </span>
               </div>
-              <div style={{ color: '#94a3b8', fontSize: 12, marginTop: 3 }}>
+              <div style={{ color: '#d4d4d8', fontSize: 12, marginTop: 3 }}>
                 Targeting {broadcastStatus.broadcast.targeted_count} devices • Delivered to {broadcastStatus.broadcast.delivered_count} ({broadcastStatus.broadcast.delivery_percentage}%) • Updated {broadcastStatus.broadcast.updated_count} ({broadcastStatus.broadcast.adoption_percentage}%)
               </div>
             </div>
@@ -387,7 +387,7 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
               onClick={handleCancelBroadcast}
               style={{
                 padding: '6px 12px', background: 'rgba(239, 68, 68, 0.2)',
-                border: '1px solid #ef4444', color: '#fca5a5', borderRadius: 6,
+                border: '1px solid #e41937', color: '#fca5a5', borderRadius: 6,
                 fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
               }}
             >
@@ -574,7 +574,7 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
                       <span style={{
                         padding: '2px 8px', borderRadius: 4, fontSize: 10, fontWeight: 700,
                         background: isCircuit ? 'rgba(239, 68, 68, 0.15)' : (rel.is_paused ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.08)'),
-                        color: isCircuit ? '#ef4444' : (rel.is_paused ? '#d4d4d8' : '#ffffff'),
+                        color: isCircuit ? '#e41937' : (rel.is_paused ? '#d4d4d8' : '#ffffff'),
                       }}>
                         {rel.status}
                       </span>
@@ -612,7 +612,7 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
 
                     <td style={{ padding: '12px 14px' }}>
                       <span style={{
-                        color: (rel.failure_rate || 0) > 5 ? '#ef4444' : 'var(--text-muted, #a1a1aa)',
+                        color: (rel.failure_rate || 0) > 5 ? '#e41937' : 'var(--text-muted, #a1a1aa)',
                         fontWeight: (rel.failure_rate || 0) > 5 ? 700 : 400
                       }}>
                         {rel.failure_rate || 0}%
@@ -858,10 +858,10 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
                 type="checkbox"
                 checked={broadcastForm.mandatory}
                 onChange={(e) => setBroadcastForm({ ...broadcastForm, mandatory: e.target.checked })}
-                style={{ width: 16, height: 16, accentColor: '#ef4444', cursor: 'pointer' }}
+                style={{ width: 16, height: 16, accentColor: '#e41937', cursor: 'pointer' }}
               />
               <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#ef4444' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#e41937' }}>
                   Enforce as Mandatory Update
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>

@@ -172,7 +172,7 @@ export default function CommandPalette() {
                     <Icon size={18} style={{ color: action.type === 'ai' ? 'var(--accent-primary)' : (isSelected ? 'var(--accent-primary)' : 'inherit') }} />
                     <span style={{ fontSize: 14.5, fontWeight: isSelected ? 600 : 400, flex: 1 }}>{action.title}</span>
                     {action.type === 'ai' && (
-                      <span style={{ fontSize: '11px', background: 'rgba(34, 184, 207, 0.15)', color: 'var(--accent-primary)', border: '1px solid rgba(34, 184, 207, 0.3)', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                      <span style={{ fontSize: '11px', background: 'rgba(228, 25, 55, 0.15)', color: 'var(--accent-primary)', border: '1px solid rgba(228, 25, 55, 0.3)', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
                         AI ACTION
                       </span>
                     )}

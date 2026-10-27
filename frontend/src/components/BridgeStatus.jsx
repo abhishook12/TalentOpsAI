@@ -36,7 +36,7 @@ export default function BridgeStatus({ onStatusChange, compact = false }) {
   if (loading && !status) {
     return (
       <div className="flex items-center gap-2 text-xs text-[#8e8e99] py-2 px-3 bg-[#141419] border border-[#22222a] rounded-lg">
-        <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-400" />
+        <Loader2 className="w-3.5 h-3.5 animate-spin text-[#fe063f]" />
         Checking Outlook Bridge connection...
       </div>
     );
@@ -49,11 +49,11 @@ export default function BridgeStatus({ onStatusChange, compact = false }) {
       <>
         <div className={`flex items-center justify-between px-3.5 py-2 rounded-lg border text-xs ${
           isHealthy
-            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-            : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+            ? 'bg-white/10 border-white/20 text-white'
+            : 'bg-white/5 border-white/15 text-[#e41937]'
         }`}>
           <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${isHealthy ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
+            <div className={`w-2 h-2 rounded-full ${isHealthy ? 'bg-white text-black animate-pulse' : 'bg-[#e41937]'}`} />
             <span className="font-bold">{isHealthy ? 'Bridge Online & Healthy' : 'Bridge Offline'}</span>
             <span className="text-[#8e8e99] text-[11px] hidden sm:inline">
               — {isHealthy ? 'Local COM dispatch active' : 'Launch local bridge to send emails'}
@@ -62,7 +62,7 @@ export default function BridgeStatus({ onStatusChange, compact = false }) {
           {!isHealthy && (
             <button
               onClick={() => setIsModalOpen(true)}
-              className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-[11px] font-semibold rounded transition cursor-pointer"
+              className="px-2.5 py-1 bg-white/10 hover:bg-white/15 text-zinc-300 text-[11px] font-semibold rounded transition cursor-pointer"
             >
               Connect Outlook
             </button>

@@ -64,7 +64,7 @@ class CampaignErrorBoundary extends React.Component {
       // Only show the error UI after 2 failed auto-retries (true persistent error)
       return (
         <div style={{ padding: '40px', textAlign: 'center' }}>
-          <AlertCircle style={{ width: 48, height: 48, color: '#ef4444', margin: '0 auto 16px' }} />
+          <AlertCircle style={{ width: 48, height: 48, color: '#e41937', margin: '0 auto 16px' }} />
           <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: 8 }}>Something went wrong</h2>
           <p style={{ color: '#888', marginBottom: 24 }}>The campaign workspace encountered an error.</p>
           <button
@@ -118,12 +118,12 @@ const CampaignRow = memo(function CampaignRow({
           <button 
             type="button" 
             onClick={() => onOpen(c.campaign_id)}
-            className="font-bold text-left text-[var(--text-primary)] hover:text-cyan-400 transition-colors cursor-pointer text-sm"
+            className="font-bold text-left text-[var(--text-primary)] hover:text-[#fe063f] transition-colors cursor-pointer text-sm"
           >
             {c.name}
           </button>
           {c.dominant_company && c.dominant_company !== c.name && (
-            <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-[#e41937]/10 text-[#fe063f] border border-[#e41937]/50/20">
               {c.dominant_company}
             </span>
           )}
@@ -187,7 +187,7 @@ const CampaignRow = memo(function CampaignRow({
           <button
             type="button"
             onClick={() => onResend(c.campaign_id)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold bg-[rgba(34,184,207,0.14)] text-[#22B8CF] border border-[rgba(34,184,207,0.35)] hover:bg-[rgba(34,184,207,0.22)] transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold bg-[rgba(228, 25, 55, 0.14)] text-[#e41937] border border-[rgba(228, 25, 55, 0.35)] hover:bg-[rgba(228, 25, 55, 0.22)] transition-colors cursor-pointer"
             title="Reopen last email and reuse all recipients in the composer ready to send again"
           >
             <RotateCcw size={12} />
@@ -237,7 +237,7 @@ const CampaignRow = memo(function CampaignRow({
                   onClick={() => { setShowMenu(false); onReuseTemplate(c.campaign_id); }}
                   className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--text-primary)] hover:bg-white/[0.06] rounded-lg transition-colors text-left"
                 >
-                  <FileText size={13} className="text-cyan-400" />
+                  <FileText size={13} className="text-[#fe063f]" />
                   <span>Reuse Template (New Batch)</span>
                 </button>
                 <button
@@ -245,14 +245,14 @@ const CampaignRow = memo(function CampaignRow({
                   onClick={() => { setShowMenu(false); onDuplicate(c.campaign_id); }}
                   className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--text-primary)] hover:bg-white/[0.06] rounded-lg transition-colors text-left"
                 >
-                  <Copy size={13} className="text-blue-400" />
+                  <Copy size={13} className="text-[#fe063f]" />
                   <span>Duplicate Campaign</span>
                 </button>
                 <div className="my-1 border-t border-white/5" />
                 <button
                   type="button"
                   onClick={() => { setShowMenu(false); onArchive(c.campaign_id); }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-yellow-400/90 hover:bg-yellow-500/10 rounded-lg transition-colors text-left"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-zinc-300 hover:bg-white/5 rounded-lg transition-colors text-left"
                 >
                   <Archive size={13} />
                   <span>Archive</span>
@@ -1157,10 +1157,10 @@ export default function Campaigns() {
             <p style={{ color: 'var(--text-secondary)', marginTop: 4, fontSize: 14 }}>Outbound email campaigns & delivery monitoring.</p>
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={() => setShowDomainHealth(true)} className="flex items-center gap-2 px-3 py-2 text-sm font-bold border border-[var(--border)] rounded-lg bg-[var(--bg-surface)] text-emerald-400 hover:bg-[var(--bg-hover)] transition-colors">
+            <button onClick={() => setShowDomainHealth(true)} className="flex items-center gap-2 px-3 py-2 text-sm font-bold border border-[var(--border)] rounded-lg bg-[var(--bg-surface)] text-white hover:bg-[var(--bg-hover)] transition-colors">
               <Activity size={14} /> Domain Health
             </button>
-            <button onClick={() => setShowSequenceGenerator(true)} className="flex items-center gap-2 px-3 py-2 text-sm font-bold border border-[var(--border)] rounded-lg bg-[var(--bg-surface)] text-cyan-400 hover:bg-[var(--bg-hover)] transition-colors">
+            <button onClick={() => setShowSequenceGenerator(true)} className="flex items-center gap-2 px-3 py-2 text-sm font-bold border border-[var(--border)] rounded-lg bg-[var(--bg-surface)] text-[#fe063f] hover:bg-[var(--bg-hover)] transition-colors">
               <Zap size={14} /> Sequence
             </button>
             <button onClick={() => setShowTemplateLibrary(true)} className="flex items-center gap-2 px-3 py-2 text-sm font-bold border border-[var(--border)] rounded-lg bg-[var(--bg-surface)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors">
@@ -1177,7 +1177,7 @@ export default function Campaigns() {
           {[
             { label: 'ACTIVE', value: kpis.active, color: 'var(--text-primary)' },
             { label: 'SENT', value: kpis.sent, color: '#ffffff' },
-            { label: 'FAILED', value: kpis.failures, color: kpis.failures > 0 ? '#f87171' : 'var(--text-muted)' },
+            { label: 'FAILED', value: kpis.failures, color: kpis.failures > 0 ? '#e41937' : 'var(--text-muted)' },
           ].map(k => (
             <div key={k.label} style={{ background: 'var(--bg-surface)', border: '1px solid var(--card-border)', borderRadius: 6, padding: '16px 20px' }}>
               <div style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>{k.label}</div>
@@ -1189,7 +1189,7 @@ export default function Campaigns() {
         {/* ── Prominent Campaign Search Bar ── */}
         <div className="bg-[var(--bg-surface)] border border-[var(--card-border)] rounded-xl p-4 shadow-sm flex flex-col gap-3">
           <div className="relative flex items-center">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-cyan-400 shrink-0" size={18} />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#fe063f] shrink-0" size={18} />
             <input
               ref={searchInputRef}
               type="text"
@@ -1199,12 +1199,12 @@ export default function Campaigns() {
                 setSearchQuery(e.target.value);
                 setPage(1);
               }}
-              className="w-full bg-[var(--bg-hover)] border border-[var(--border)] focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 rounded-xl pr-28 py-3 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none transition-all shadow-inner"
+              className="w-full bg-[var(--bg-hover)] border border-[var(--border)] focus:border-[#e41937]/50/50 focus:ring-2 focus:ring-[#e41937]/20 rounded-xl pr-28 py-3 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none transition-all shadow-inner"
               style={{ paddingLeft: 44 }}
             />
             {searchQuery && (
               <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                <span className="text-[11px] font-bold text-cyan-400 bg-cyan-500/10 px-2.5 py-1 rounded-full border border-cyan-500/20">
+                <span className="text-[11px] font-bold text-[#fe063f] bg-[#e41937]/10 px-2.5 py-1 rounded-full border border-[#e41937]/50/20">
                   {rawCampaigns.length} found
                 </span>
                 <button
@@ -1225,7 +1225,7 @@ export default function Campaigns() {
           {/* Quick Search Chips */}
           <div className="flex items-center gap-2 flex-wrap text-xs text-[var(--text-muted)]">
             <span className="font-bold text-[10px] uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1 shrink-0">
-              <Sparkles size={11} className="text-cyan-400" /> Quick Search:
+              <Sparkles size={11} className="text-[#fe063f]" /> Quick Search:
             </span>
             {['Entegee', 'Elite Technical', 'Refactor Talent', 'Akkodis', 'Drafts'].map((chip) => {
               const isActive = searchQuery.toLowerCase() === chip.toLowerCase() || (chip === 'Drafts' && statusFilter === 'draft' && !searchQuery);
@@ -1245,7 +1245,7 @@ export default function Campaigns() {
                   }}
                   className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
                     isActive
-                      ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+                      ? 'bg-[#e41937]/20 text-[#fe063f] border-[#e41937]/50/40'
                       : 'bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-white border-[var(--border)] hover:border-white/20'
                   }`}
                 >
@@ -1303,7 +1303,7 @@ export default function Campaigns() {
                 style={{ background: 'var(--bg-hover)', borderBottom: '1px solid var(--card-border)', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 16 }}>
                 <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>{selectedIds.size} selected</span>
                 <button onClick={() => handleBulkAction('duplicate')} className="flex items-center gap-1 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]"><Copy size={13} /> Duplicate</button>
-                <button onClick={() => handleBulkAction('archive')} className="flex items-center gap-1 text-xs font-medium text-[var(--text-secondary)] hover:text-yellow-400"><Archive size={13} /> Archive</button>
+                <button onClick={() => handleBulkAction('archive')} className="flex items-center gap-1 text-xs font-medium text-[var(--text-secondary)] hover:text-zinc-300"><Archive size={13} /> Archive</button>
                 <button onClick={() => handleBulkAction('delete')} className="flex items-center gap-1 text-xs font-medium text-red-400 hover:text-red-300"><Trash2 size={13} /> Delete</button>
                 <button onClick={() => setSelectedIds(new Set())} className="ml-auto text-[var(--text-muted)] hover:text-[var(--text-primary)]"><X size={14} /></button>
               </motion.div>
@@ -1312,10 +1312,10 @@ export default function Campaigns() {
 
           {/* Table */}
           {campaignsError && (
-            <div style={{ padding: '16px 20px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, color: '#ef4444', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 16px' }}>
+            <div style={{ padding: '16px 20px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, color: '#e41937', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 16px' }}>
               <AlertCircle style={{ width: 16, height: 16, flexShrink: 0 }} />
               <span>Failed to load campaigns. Please try again.</span>
-              <button onClick={() => refetch()} style={{ marginLeft: 'auto', background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontSize: 12 }}>Retry</button>
+              <button onClick={() => refetch()} style={{ marginLeft: 'auto', background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.3)', color: '#e41937', borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontSize: 12 }}>Retry</button>
             </div>
           )}
           {loading && !queryData ? (
@@ -1418,7 +1418,7 @@ export default function Campaigns() {
               setCampaignName(e.target.value);
               setIsUserEditedName(true);
             }}
-            className="bg-transparent text-base font-semibold text-[var(--text-primary)] border-none focus:outline-none focus:ring-1 focus:ring-cyan-500/50 rounded px-1.5 py-0.5"
+            className="bg-transparent text-base font-semibold text-[var(--text-primary)] border-none focus:outline-none focus:ring-1 focus:ring-[#e41937]/50 rounded px-1.5 py-0.5"
             style={{ minWidth: 160, maxWidth: 280 }}
             placeholder="Campaign Name"
           />
@@ -1433,9 +1433,9 @@ export default function Campaigns() {
               }}
               className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-all border cursor-pointer shrink-0"
               style={{
-                background: campaignName === dominantCompany.companyName ? 'rgba(34, 184, 207, 0.14)' : 'var(--bg-elevated)',
-                borderColor: campaignName === dominantCompany.companyName ? 'rgba(34, 184, 207, 0.35)' : 'var(--card-border)',
-                color: campaignName === dominantCompany.companyName ? '#22B8CF' : 'var(--text-secondary)',
+                background: campaignName === dominantCompany.companyName ? 'rgba(228, 25, 55, 0.14)' : 'var(--bg-elevated)',
+                borderColor: campaignName === dominantCompany.companyName ? 'rgba(228, 25, 55, 0.35)' : 'var(--card-border)',
+                color: campaignName === dominantCompany.companyName ? '#e41937' : 'var(--text-secondary)',
               }}
               title={`Dominant Company: ${dominantCompany.count} of ${dominantCompany.total} recipients (${dominantCompany.percentage}%) from ${dominantCompany.companyName}. Click to re-apply.`}
             >
@@ -1451,17 +1451,17 @@ export default function Campaigns() {
           {isSaving ? (
             <><Loader2 size={12} className="animate-spin" /> Saving</>
           ) : lastSaved ? (
-            <><CheckCircle2 size={12} style={{ color: '#22c55e' }} /> Saved {lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</>
+            <><CheckCircle2 size={12} style={{ color: '#ffffff' }} /> Saved {lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</>
           ) : (
             <><Clock size={12} /> Unsaved</>
           )}
         </div>
 
         <div className="ml-auto flex items-center gap-2">
-          <button onClick={() => setShowDomainHealth(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-[var(--card-border)] rounded bg-[var(--bg-elevated)] text-emerald-400 hover:bg-[#323232] transition-colors">
+          <button onClick={() => setShowDomainHealth(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-[var(--card-border)] rounded bg-[var(--bg-elevated)] text-white hover:bg-[#323232] transition-colors">
             <Activity size={13} /> Domain Health
           </button>
-          <button onClick={() => setShowSequenceGenerator(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-[var(--card-border)] rounded bg-[var(--bg-elevated)] text-[#22B8CF] hover:bg-[#323232] transition-colors">
+          <button onClick={() => setShowSequenceGenerator(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-[var(--card-border)] rounded bg-[var(--bg-elevated)] text-[#e41937] hover:bg-[#323232] transition-colors">
             <Zap size={13} /> Sequence
           </button>
           <button onClick={() => setShowTemplateLibrary(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-[var(--card-border)] rounded bg-[var(--bg-elevated)] text-[var(--text-primary)] hover:bg-[#323232] transition-colors">
@@ -1484,9 +1484,9 @@ export default function Campaigns() {
               fontWeight: 600,
               cursor: (isSending || !localIsReady) ? 'not-allowed' : 'pointer',
               background: localIsReady ? 'var(--brand)' : 'var(--bg-elevated)',
-              color: localIsReady ? '#0f172a' : 'var(--text-muted)',
+              color: localIsReady ? '#000000' : 'var(--text-muted)',
               border: localIsReady ? '1px solid transparent' : '1px solid var(--card-border)',
-              boxShadow: localIsReady ? '0 1px 3px rgba(34, 184, 207, 0.35)' : 'none',
+              boxShadow: localIsReady ? '0 1px 3px rgba(228, 25, 55, 0.35)' : 'none',
               transition: 'all 0.15s ease',
               marginLeft: 6,
             }}
@@ -1520,7 +1520,7 @@ export default function Campaigns() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                     <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>From (Sending Account)</label>
                     {selectedAccount && (
-                      <span style={{ fontSize: 12, fontWeight: 500, color: selectedAccount.is_shadow_alias ? '#f87171' : '#4ade80', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span style={{ fontSize: 12, fontWeight: 500, color: selectedAccount.is_shadow_alias ? '#e41937' : '#ffffff', display: 'flex', alignItems: 'center', gap: 4 }}>
                         {selectedAccount.is_shadow_alias ? (
                           <>
                             <AlertCircle size={13} /> Personal Alias Detected
@@ -1571,8 +1571,8 @@ export default function Campaigns() {
                   {/* Shadow Alias Warning Alert */}
                   {selectedAccount?.is_shadow_alias && (
                     <div style={{ marginTop: 8, padding: '10px 12px', borderRadius: 6, background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.25)', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                      <AlertCircle size={15} style={{ color: '#ef4444', shrink: 0, marginTop: 1 }} />
-                      <div style={{ fontSize: 12.5, color: '#f87171', lineHeight: 1.45 }}>
+                      <AlertCircle size={15} style={{ color: '#e41937', shrink: 0, marginTop: 1 }} />
+                      <div style={{ fontSize: 12.5, color: '#e41937', lineHeight: 1.45 }}>
                         <strong>Bot-looking sender address detected:</strong> Microsoft assigns shadow addresses like <code style={{ background: 'rgba(0,0,0,0.3)', padding: '1px 4px', borderRadius: 3 }}>{selectedAccount.email_address}</code> when a Microsoft account was registered using a Gmail/third-party email.
                         <div style={{ marginTop: 4, color: 'var(--text-secondary)' }}>
                           👉 <strong>Fix:</strong> Switch to your connected <strong>Google (Gmail)</strong> account above to send directly with your clean official email address.
@@ -1584,7 +1584,7 @@ export default function Campaigns() {
                   {/* Official Sender Confirmation Pill */}
                   {selectedAccount && !selectedAccount.is_shadow_alias && (
                     <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--text-muted)' }}>
-                      <CheckCircle2 size={14} style={{ color: '#22c55e' }} />
+                      <CheckCircle2 size={14} style={{ color: '#ffffff' }} />
                       <span>Recipients will see: <strong style={{ color: 'var(--text-primary)' }}>{selectedAccount.display_name ? `${selectedAccount.display_name} <${selectedAccount.email_address}>` : selectedAccount.email_address}</strong></span>
                     </div>
                   )}
@@ -1612,9 +1612,9 @@ export default function Campaigns() {
                           gap: 4,
                           padding: '3px 8px',
                           borderRadius: 6,
-                          background: (showCc || cc) ? 'rgba(59, 130, 246, 0.15)' : 'var(--bg-hover)',
-                          color: (showCc || cc) ? '#60a5fa' : 'var(--text-muted)',
-                          border: (showCc || cc) ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid var(--border)',
+                          background: (showCc || cc) ? 'rgba(228, 25, 55, 0.15)' : 'var(--bg-hover)',
+                          color: (showCc || cc) ? '#e41937' : 'var(--text-muted)',
+                          border: (showCc || cc) ? '1px solid rgba(228, 25, 55, 0.3)' : '1px solid var(--border)',
                           cursor: 'pointer',
                           transition: 'all 0.15s ease'
                         }}
@@ -1632,9 +1632,9 @@ export default function Campaigns() {
                           gap: 4,
                           padding: '3px 8px',
                           borderRadius: 6,
-                          background: (showBcc || bcc) ? 'rgba(59, 130, 246, 0.15)' : 'var(--bg-hover)',
-                          color: (showBcc || bcc) ? '#60a5fa' : 'var(--text-muted)',
-                          border: (showBcc || bcc) ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid var(--border)',
+                          background: (showBcc || bcc) ? 'rgba(228, 25, 55, 0.15)' : 'var(--bg-hover)',
+                          color: (showBcc || bcc) ? '#e41937' : 'var(--text-muted)',
+                          border: (showBcc || bcc) ? '1px solid rgba(228, 25, 55, 0.3)' : '1px solid var(--border)',
                           cursor: 'pointer',
                           transition: 'all 0.15s ease'
                         }}
@@ -1669,7 +1669,7 @@ export default function Campaigns() {
                   {(showCc || cc) && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, background: 'var(--bg-surface)', border: '1px solid var(--card-border)', borderRadius: 6, padding: '7px 10px', marginBottom: 8 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 11, fontWeight: 800, color: '#60a5fa', textTransform: 'uppercase', letterSpacing: '0.05em', width: 28 }}>
+                        <span style={{ fontSize: 11, fontWeight: 800, color: '#e41937', textTransform: 'uppercase', letterSpacing: '0.05em', width: 28 }}>
                           Cc
                         </span>
                         <input
@@ -1719,9 +1719,9 @@ export default function Campaigns() {
                                   fontSize: 11,
                                   padding: '2px 8px',
                                   borderRadius: 4,
-                                  background: isIncluded ? 'rgba(59, 130, 246, 0.2)' : 'var(--bg-hover)',
-                                  border: isIncluded ? '1px solid rgba(59, 130, 246, 0.45)' : '1px solid var(--border)',
-                                  color: isIncluded ? '#60a5fa' : 'var(--text-secondary)',
+                                  background: isIncluded ? 'rgba(228, 25, 55, 0.2)' : 'var(--bg-hover)',
+                                  border: isIncluded ? '1px solid rgba(228, 25, 55, 0.45)' : '1px solid var(--border)',
+                                  color: isIncluded ? '#e41937' : 'var(--text-secondary)',
                                   cursor: 'pointer',
                                   display: 'inline-flex',
                                   alignItems: 'center',
@@ -1743,7 +1743,7 @@ export default function Campaigns() {
                   {/* BCC Input Row */}
                   {(showBcc || bcc) && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-surface)', border: '1px solid var(--card-border)', borderRadius: 6, padding: '6px 10px', marginBottom: 8 }}>
-                      <span style={{ fontSize: 11, fontWeight: 800, color: '#60a5fa', textTransform: 'uppercase', letterSpacing: '0.05em', width: 28 }}>
+                      <span style={{ fontSize: 11, fontWeight: 800, color: '#e41937', textTransform: 'uppercase', letterSpacing: '0.05em', width: 28 }}>
                         Bcc
                       </span>
                       <input
@@ -1851,7 +1851,7 @@ export default function Campaigns() {
                   <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--card-border)', borderRadius: 6, padding: '10px 14px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: deliverability.suggestions?.length > 0 ? 6 : 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <ShieldCheck size={14} color={deliverability.badge_color === 'green' ? '#ffffff' : deliverability.badge_color === 'yellow' ? '#d4d4d8' : '#ef4444'} />
+                        <ShieldCheck size={14} color={deliverability.badge_color === 'green' ? '#ffffff' : deliverability.badge_color === 'yellow' ? '#d4d4d8' : '#e41937'} />
                         <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>Deliverability & Spam Guard</span>
                       </div>
                       <span style={{
@@ -1860,7 +1860,7 @@ export default function Campaigns() {
                         padding: '2px 8px',
                         borderRadius: 4,
                         background: deliverability.badge_color === 'green' ? 'rgba(255, 255, 255, 0.08)' : deliverability.badge_color === 'yellow' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(239,68,68,0.12)',
-                        color: deliverability.badge_color === 'green' ? '#ffffff' : deliverability.badge_color === 'yellow' ? '#d4d4d8' : '#ef4444'
+                        color: deliverability.badge_color === 'green' ? '#ffffff' : deliverability.badge_color === 'yellow' ? '#d4d4d8' : '#e41937'
                       }}>
                         {deliverability.rating} ({deliverability.deliverability_score}/100)
                       </span>
@@ -1932,12 +1932,12 @@ export default function Campaigns() {
               {/* ── Readiness + Send footer ── */}
               <div style={{ padding: '12px 20px', borderTop: '1px solid var(--card-border)', background: 'var(--bg-surface)', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {sendError && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-base)', border: '1px solid #f87171', padding: '10px 14px', borderRadius: 6 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-base)', border: '1px solid #e41937', padding: '10px 14px', borderRadius: 6 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <AlertCircle size={16} color="#f87171" />
-                      <span style={{ fontSize: 13, color: '#f87171', fontWeight: 600 }}>{sendError}</span>
+                      <AlertCircle size={16} color="#e41937" />
+                      <span style={{ fontSize: 13, color: '#e41937', fontWeight: 600 }}>{sendError}</span>
                     </div>
-                    <button onClick={() => setShowConnectionWizard(true)} style={{ fontSize: 12, fontWeight: 700, background: '#f87171', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: 4, cursor: 'pointer' }}>Fix Connection</button>
+                    <button onClick={() => setShowConnectionWizard(true)} style={{ fontSize: 12, fontWeight: 700, background: '#e41937', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: 4, cursor: 'pointer' }}>Fix Connection</button>
                   </div>
                 )}
                 
@@ -1976,7 +1976,7 @@ export default function Campaigns() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Recipients</span>
                   {validatedRecipients.recipients.length > 0 && (
-                    <span style={{ fontSize: 12, fontWeight: 500, padding: '2px 8px', background: 'var(--bg-elevated)', border: '1px solid var(--card-border)', borderRadius: 4, color: '#4ade80' }}>
+                    <span style={{ fontSize: 12, fontWeight: 500, padding: '2px 8px', background: 'var(--bg-elevated)', border: '1px solid var(--card-border)', borderRadius: 4, color: '#ffffff' }}>
                       {validatedRecipients.valid_count} valid
                     </span>
                   )}
@@ -1994,7 +1994,7 @@ export default function Campaigns() {
                     fontWeight: 600,
                     cursor: (isSending || !localIsReady) ? 'not-allowed' : 'pointer',
                     background: localIsReady ? 'var(--brand)' : 'var(--bg-elevated)',
-                    color: localIsReady ? '#0f172a' : 'var(--text-muted)',
+                    color: localIsReady ? '#000000' : 'var(--text-muted)',
                     border: localIsReady ? '1px solid transparent' : '1px solid var(--card-border)',
                     transition: 'all 0.15s ease',
                   }}
@@ -2009,8 +2009,8 @@ export default function Campaigns() {
                 <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--card-border)', background: 'var(--bg-surface)', display: 'flex', gap: 16, flexShrink: 0 }}>
                   {[
                     { label: 'Total', value: validatedRecipients.recipients.length, color: 'var(--text-primary)' },
-                    { label: 'Valid', value: validatedRecipients.valid_count, color: '#4ade80' },
-                    { label: 'Invalid', value: validatedRecipients.recipients.filter(r => r.status !== 'valid').length, color: '#f87171' },
+                    { label: 'Valid', value: validatedRecipients.valid_count, color: '#ffffff' },
+                    { label: 'Invalid', value: validatedRecipients.recipients.filter(r => r.status !== 'valid').length, color: '#e41937' },
                   ].map(item => (
                     <div key={item.label} style={{ textAlign: 'center' }}>
                       <div style={{ fontSize: 18, fontWeight: 600, color: item.color, lineHeight: 1.1 }}>{item.value}</div>
@@ -2056,7 +2056,7 @@ export default function Campaigns() {
           // ──────────────────────────────────────────────────────────────────────
           // SENDING MODE: full-width live progress & real-time delivery logs feed
           // ──────────────────────────────────────────────────────────────────────
-          <div style={{ flex: 1, overflowY: 'auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }} className="custom-scrollbar bg-[#0b0b0e]">
+          <div style={{ flex: 1, overflowY: 'auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }} className="custom-scrollbar bg-[#000000]">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
                 <h2 style={{ fontWeight: 900, fontSize: 22, margin: 0, letterSpacing: '-0.02em', color: '#ffffff' }}>
@@ -2070,7 +2070,7 @@ export default function Campaigns() {
                 <button
                   type="button"
                   onClick={() => setWorkspaceMode('compose')}
-                  className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold border border-cyan-500/30 rounded-lg text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 transition-all cursor-pointer shadow-sm"
+                  className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold border border-[#e41937]/50/30 rounded-lg text-[#fe063f] bg-[#e41937]/10 hover:bg-[#e41937]/20 transition-all cursor-pointer shadow-sm"
                   title="Edit or review email template and recipients in composer"
                 >
                   <RotateCcw size={14} /> Reopen in Composer
@@ -2092,7 +2092,7 @@ export default function Campaigns() {
                 <div className="flex flex-col gap-2.5">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-bold text-white tracking-tight m-0 flex items-center gap-2">
-                      <Mail size={15} className="text-cyan-400" />
+                      <Mail size={15} className="text-[#fe063f]" />
                       Recipient Delivery Ledger
                     </h3>
                     <span className="text-[11px] text-[#71717a]">Streaming every 1.5s via Outlook Bridge</span>
@@ -2101,8 +2101,8 @@ export default function Campaigns() {
                 </div>
               </div>
             ) : (
-              <div className="p-16 text-center text-[#71717a] border border-[#24242e] rounded-xl bg-[#111116]">
-                <Loader2 className="w-8 h-8 animate-spin text-cyan-400 mx-auto mb-3" />
+              <div className="p-16 text-center text-[#71717a] border border-[#27272a] rounded-xl bg-[#121212]">
+                <Loader2 className="w-8 h-8 animate-spin text-[#fe063f] mx-auto mb-3" />
                 <div className="text-sm font-bold text-white">Initializing Campaign Queue...</div>
                 <p className="text-xs text-[#71717a] mt-1">Fetching campaign identifiers and starting worker pool.</p>
               </div>
@@ -2179,7 +2179,7 @@ function StatusBadge({ status }) {
     cancelled: { bg: 'rgba(107,114,128,0.15)', text: '#9ca3af', dot: '#6b7280', border: '1px solid rgba(107,114,128,0.3)' },
     archived: { bg: 'rgba(107,114,128,0.15)', text: '#9ca3af', dot: '#6b7280', border: '1px solid rgba(107,114,128,0.3)' },
     draft: { bg: 'transparent', text: 'var(--text-muted)', dot: '#6b7280', border: '1px solid var(--card-border)' },
-    failed: { bg: 'rgba(239,68,68,0.1)', text: '#f87171', dot: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' },
+    failed: { bg: 'rgba(239,68,68,0.1)', text: '#e41937', dot: '#e41937', border: '1px solid rgba(239,68,68,0.3)' },
   };
   const s = map[(status || '').toLowerCase()] || map.draft;
   return (

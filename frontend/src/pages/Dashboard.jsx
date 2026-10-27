@@ -1,3 +1,4 @@
+import { Globe } from 'lucide-react'
 import { useMemo, useState, useCallback, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
@@ -245,7 +246,7 @@ export default function Dashboard() {
           onClick={() => navigate({ to: '/admin/web-harvest' })}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <span style={{ fontSize: 22 }}>🌐</span>
+            <Globe size={22} className="text-white/80" />
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
@@ -253,10 +254,10 @@ export default function Dashboard() {
                 </span>
                 <span style={{
                   fontSize: 11.5, fontWeight: 500,
-                  background: 'rgba(34, 184, 207, 0.14)',
-                  color: '#22B8CF',
+                  background: 'rgba(228, 25, 55, 0.14)',
+                  color: '#e41937',
                   padding: '2px 8px', borderRadius: 4,
-                  border: '1px solid rgba(34, 184, 207, 0.35)'
+                  border: '1px solid rgba(228, 25, 55, 0.35)'
                 }}>
                   ● 24/7 Background Engine Active
                 </span>

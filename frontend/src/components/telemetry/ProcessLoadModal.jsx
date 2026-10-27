@@ -241,12 +241,12 @@ export default function ProcessLoadModal({ isOpen, onClose, dbRecordCount }) {
                 <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary, #f4f4f5)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <HardDrive size={15} color="#ffffff" /> Disk & Parquet Storage
                 </span>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: diskPercent > 85 ? '#ef4444' : '#ffffff' }}>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: diskPercent > 85 ? '#e41937' : '#ffffff' }}>
                   {diskPercent}%
                 </span>
               </div>
               <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.06)', borderRadius: '999px', overflow: 'hidden' }}>
-                <div style={{ width: `${diskPercent}%`, height: '100%', background: diskPercent > 85 ? '#ef4444' : '#ffffff', borderRadius: '999px', transition: 'width 0.4s ease' }} />
+                <div style={{ width: `${diskPercent}%`, height: '100%', background: diskPercent > 85 ? '#e41937' : '#ffffff', borderRadius: '999px', transition: 'width 0.4s ease' }} />
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-muted, #71717a)', marginTop: '8px' }}>
                 <span>Free: {health?.components?.disk?.free_gb ? `${health.components.disk.free_gb} GB` : 'Optimal'}</span>

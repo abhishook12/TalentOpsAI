@@ -340,12 +340,12 @@ export default function RecipientValidator({ onValidated, initialRecipients = []
                     <td className="py-2 px-4 text-xs text-[var(--text-secondary)]">{rec.name || '-'}</td>
                     <td className="py-2 px-4 text-xs text-[var(--text-secondary)]">
                       {rec.company_name ? (
-                        <span className="bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/20">{rec.company_name}</span>
+                        <span className="bg-[#e41937]/10 text-[#fe063f] px-1.5 py-0.5 rounded border border-[#e41937]/50/20">{rec.company_name}</span>
                       ) : '-'}
                     </td>
                     <td className="py-2 px-4">
                       {rec.status === 'valid' ? (
-                        <span className="text-xs text-green-400 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Valid</span>
+                        <span className="text-xs text-white flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Valid</span>
                       ) : rec.status === 'duplicate' ? (
                         <span className="text-xs text-[var(--text-muted)]">Duplicate</span>
                       ) : (

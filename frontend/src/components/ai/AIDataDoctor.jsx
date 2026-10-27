@@ -192,7 +192,7 @@ export default function AIDataDoctor() {
           <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>
             Stale / Missing Emails
           </div>
-          <div style={{ fontSize: '20px', fontWeight: 900, color: '#ef4444', marginTop: '4px' }}>
+          <div style={{ fontSize: '20px', fontWeight: 900, color: '#e41937', marginTop: '4px' }}>
             {summary?.stale_emails?.toLocaleString() || '0'}
           </div>
         </div>
@@ -240,12 +240,12 @@ export default function AIDataDoctor() {
           onClick={() => handlePreviewAction('QUARANTINE_STALE')}
           style={{
             background: 'rgba(239, 68, 68, 0.1)',
-            border: '1px solid rgba(239, 68, 68, 0.3)',
+            border: '1px solid rgba(228, 25, 55, 0.35)',
             borderRadius: '6px',
             padding: '8px 14px',
             fontSize: '12px',
             fontWeight: 700,
-            color: '#ef4444',
+            color: '#e41937',
             cursor: 'pointer'
           }}
         >
@@ -345,7 +345,7 @@ export default function AIDataDoctor() {
                   <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
                     {item.name}
                   </div>
-                  <div style={{ color: '#ef4444' }}>
+                  <div style={{ color: '#e41937' }}>
                     <span style={{ fontSize: '10px', textTransform: 'uppercase', opacity: 0.7, display: 'block' }}>Before:</span>
                     {item.before.status} (Trust: {item.before.trust_score})
                   </div>

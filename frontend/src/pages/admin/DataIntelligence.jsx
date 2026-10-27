@@ -40,10 +40,10 @@ export default function DataIntelligence({ setToast }) {
     { label: 'Total Recruiters', value: stats?.total_recruiters, color: 'var(--brand)' },
     { label: 'Profiles Processed', value: stats?.total_processed, color: '#d4d4d8' },
     { label: 'Profiles Enriched', value: stats?.profiles_enriched, color: '#ffffff' },
-    { label: 'Duplicates Merged', value: stats?.duplicates_merged, color: '#ff4444' },
+    { label: 'Duplicates Merged', value: stats?.duplicates_merged, color: '#e41937' },
     { label: 'Domains Mapped', value: stats?.domains_mapped, color: '#ffffff' },
     { label: 'Logos Assigned', value: stats?.logos_assigned, color: '#e4e4e7' },
-    { label: 'Needs Review', value: stats?.records_needing_review, color: '#ef4444' },
+    { label: 'Needs Review', value: stats?.records_needing_review, color: '#e41937' },
     { label: 'Avg Completeness', value: stats?.average_completeness != null ? `${stats.average_completeness}%` : null, color: 'var(--text-main)' },
   ]
 

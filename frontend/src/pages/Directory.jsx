@@ -604,7 +604,7 @@ export default function Directory() {
                     padding: '10px 12px',
                     borderRadius: 6,
                     border: active ? '1px solid var(--accent-primary)' : '1px solid var(--card-border)',
-                    background: active ? 'rgba(34, 184, 207, 0.12)' : 'var(--panel-bg)',
+                    background: active ? 'rgba(228, 25, 55, 0.12)' : 'var(--panel-bg)',
                     cursor: 'pointer',
                     color: 'var(--text-primary)',
                   }}
@@ -678,7 +678,7 @@ export default function Directory() {
                       {(() => {
                         const count = company.recruiter_count || 0;
                         if (count >= 500) {
-                          return <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 6px', borderRadius: 4, background: 'rgba(34, 184, 207, 0.15)', color: '#22B8CF', border: '1px solid rgba(34, 184, 207, 0.3)', whiteSpace: 'nowrap' }}>Enterprise</span>;
+                          return <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 6px', borderRadius: 4, background: 'rgba(228, 25, 55, 0.15)', color: '#e41937', border: '1px solid rgba(228, 25, 55, 0.3)', whiteSpace: 'nowrap' }}>Enterprise</span>;
                         } else if (count >= 50) {
                           return <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 6px', borderRadius: 4, background: 'rgba(255, 255, 255, 0.08)', color: 'var(--text-primary)', border: '1px solid var(--card-border)', whiteSpace: 'nowrap' }}>Mid-Market</span>;
                         } else {
@@ -719,7 +719,7 @@ export default function Directory() {
                   borderRadius: 6,
                   marginBottom: 8,
                   border: !selectedState ? '1px solid var(--accent-primary)' : '1px solid var(--card-border)',
-                  background: !selectedState ? 'rgba(34, 184, 207, 0.12)' : 'var(--panel-bg)',
+                  background: !selectedState ? 'rgba(228, 25, 55, 0.12)' : 'var(--panel-bg)',
                   color: 'var(--text-primary)',
                   cursor: 'pointer',
                   textAlign: 'left',
@@ -751,7 +751,7 @@ export default function Directory() {
                         padding: '9px 12px',
                         borderRadius: 6,
                         border: active ? '1px solid var(--accent-primary)' : '1px solid var(--card-border)',
-                        background: active ? 'rgba(34, 184, 207, 0.12)' : 'var(--panel-bg)',
+                        background: active ? 'rgba(228, 25, 55, 0.12)' : 'var(--panel-bg)',
                         cursor: 'pointer',
                         display: 'flex',
                         justifyContent: 'space-between',

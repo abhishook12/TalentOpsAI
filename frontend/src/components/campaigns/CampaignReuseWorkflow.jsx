@@ -102,7 +102,7 @@ export default function CampaignReuseWorkflow({ importedEmail, onClose, onComple
                     <div className="flex items-center gap-3 text-sm">
                       <span className="text-red-400 line-through bg-red-400/10 px-2 py-1 rounded">{s.original}</span>
                       <ArrowRight size={14} className="text-[var(--text-muted)]" />
-                      <span className="text-green-400 bg-green-400/10 px-2 py-1 rounded">{s.replacement}</span>
+                      <span className="text-white bg-white/10 px-2 py-1 rounded">{s.replacement}</span>
                     </div>
                     <button 
                       onClick={() => applyCleanup(s)}
@@ -121,7 +121,7 @@ export default function CampaignReuseWorkflow({ importedEmail, onClose, onComple
               {/* Variables Found */}
               <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl p-5">
                 <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-4 uppercase tracking-wider flex items-center gap-2">
-                  <Check size={16} className="text-green-400"/> Variables Detected
+                  <Check size={16} className="text-white"/> Variables Detected
                 </h3>
                 {variables.length === 0 ? (
                   <p className="text-sm text-[var(--text-muted)] italic">No {"{{Variables}}"} found in the email.</p>
@@ -129,7 +129,7 @@ export default function CampaignReuseWorkflow({ importedEmail, onClose, onComple
                   <ul className="space-y-2">
                     {variables.map(v => (
                       <li key={v} className="flex items-center gap-2 text-sm text-[var(--text-primary)]">
-                        <Check size={14} className="text-green-500" /> {v}
+                        <Check size={14} className="text-white" /> {v}
                       </li>
                     ))}
                   </ul>

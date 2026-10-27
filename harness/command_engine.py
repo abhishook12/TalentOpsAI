@@ -142,6 +142,31 @@ class CommandEngine:
         if raw_lower in ["check replies", "check_replies", "replies", "check vitel replies"]:
             return "check_replies", {}
 
+        # Batch dispatch
+        batch_match = re.search(
+            r"(?:batch\s+(?:send|dispatch|sms)|send\s+(?:to\s+)?all|blast)\s*(?:(\d+)\s*(?:chats?|contacts?|people)?)?",
+            raw_lower
+        )
+        if batch_match:
+            count = int(batch_match.group(1)) if batch_match.group(1) else 20
+            # Extract the message from the rest of the raw input
+            msg_match = re.search(
+                r"(?:message|msg|mssg|text)\s*(?:is|:|-|=)?\s*(.+)",
+                raw, re.IGNORECASE
+            )
+            msg = msg_match.group(1).strip() if msg_match else ""
+            return "batch_dispatch", {"count": count, "message": msg}
+
+        # Navigate to contact
+        if raw_lower.startswith("navigate ") or raw_lower.startswith("go to ") or raw_lower.startswith("find contact "):
+            phone_match = re.search(r"([+\d\-–\(\)\s]{7,20})", raw)
+            phone = re.sub(r"[^\d+]", "", phone_match.group(1)) if phone_match else ""
+            return "navigate_contact", {"phone": phone}
+
+        # Screenshot / capture Vitel
+        if any(k in raw_lower for k in ["screenshot vitel", "capture vitel", "snap vitel"]):
+            return "capture_vitel", {}
+
         # Sequence Status
         if raw_lower.startswith("sequence status") or raw_lower.startswith("sequence_status"):
             parts = raw.split(maxsplit=2)
@@ -296,7 +321,7 @@ class CommandEngine:
         }
 
     def _handle_sms(self, params: Dict[str, Any]) -> Dict[str, Any]:
-        """Stages an SMS outreach via Vitel connector."""
+        """Stages or dispatches an SMS outreach via Vitel connector."""
         vitel = self.hub.get_connector("vitel")
         if not vitel:
             raise RuntimeError("Vitel connector is not registered.")
@@ -305,6 +330,12 @@ class CommandEngine:
         phone = re.sub(r"[^\d+]", "", raw_phone)
         msg = params.get("message", "").strip()
         msg = re.sub(r"^[-–:]\s*", "", msg)
+
+        # If --send / --live flag present, dispatch immediately via live UI
+        send_now = params.get("send_now", False) or params.get("live", False)
+        if send_now:
+            success = vitel.dispatch_live_sms(phone_number=phone, message=msg)
+            return {"action": "dispatch_live_sms", "success": success, "phone": phone, "message": msg}
 
         return vitel.prepare_sms(
             phone_number=phone,
@@ -389,6 +420,52 @@ class CommandEngine:
         logs = vitel.get_call_logs(limit=params.get("limit", 5))
         return {"count": len(logs), "call_logs": logs}
 
+    def _handle_batch_dispatch(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """Dispatches the same message to N visible Vitel chats in bulk."""
+        vitel = self.hub.get_connector("vitel")
+        if not vitel:
+            raise RuntimeError("Vitel connector is not registered.")
+
+        message = params.get("message", "").strip()
+        if not message:
+            return {"action": "batch_dispatch", "success": False, "error": "No message provided. Usage: batch send 10 chats message is <your message>"}
+
+        count = int(params.get("count", 20))
+        delay = float(params.get("delay", 1.5))
+        start_row = int(params.get("start_row", 0))
+
+        result = vitel.batch_dispatch_to_visible_chats(
+            message=message,
+            count=count,
+            inter_message_delay=delay,
+            start_row=start_row,
+        )
+        return {"action": "batch_dispatch", **result}
+
+    def _handle_navigate_contact(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """Navigates to a specific contact in Vitel by phone number."""
+        vitel = self.hub.get_connector("vitel")
+        if not vitel:
+            raise RuntimeError("Vitel connector is not registered.")
+
+        phone = params.get("phone", "")
+        if phone:
+            success = vitel.navigate_to_contact_by_search(phone)
+            return {"action": "navigate_contact", "method": "search", "phone": phone, "success": success}
+        else:
+            row = int(params.get("row_index", 0))
+            success = vitel.navigate_to_contact_by_index(row)
+            return {"action": "navigate_contact", "method": "row_index", "row": row, "success": success}
+
+    def _handle_capture_vitel(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """Captures a screenshot of the current Vitel window."""
+        vitel = self.hub.get_connector("vitel")
+        if not vitel:
+            raise RuntimeError("Vitel connector is not registered.")
+
+        path = vitel.capture_screenshot(save_path=params.get("save_path"))
+        return {"action": "capture_vitel", "success": path is not None, "screenshot_path": path}
+
     def _handle_staged_candidates(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """Reads recently staged candidate observations from the TalentOps Web Platform."""
         site = self.hub.get_connector("site")
@@ -424,7 +501,9 @@ class CommandEngine:
             "status": "Check health & running state of all connected apps and upcoming plugins.",
             "outreach <name> <email> <phone> <company>": "Run unified multi-app outreach across Teams, Outlook, and Vitel.",
             "email <to> <subject> <body> [--send]": "Draft or send an email directly via Microsoft Outlook COM.",
-            "sms <phone> <message>": "Format and stage an SMS outreach message in Vitel Global.",
+            "sms <phone> <message> [--send]": "Format/stage an SMS or dispatch live via Vitel Global (--send for immediate delivery).",
+            "batch send <N> chats message is <text>": "Dispatch the same message to N visible Vitel chats in bulk with per-contact verification.",
+            "navigate <phone>": "Find and select a specific contact in Vitel by phone number search.",
             "chat <email> [message]": "Open a direct 1-on-1 Teams chat with prefilled message.",
             "call <target> [--video]": "Trigger a call via Teams (email) or Vitel (phone number).",
             "check_inbox [limit]": "Read recent incoming emails and candidate replies from Outlook Inbox.",
@@ -434,6 +513,7 @@ class CommandEngine:
             "sequence <phone> <message>": "Enroll contact into autonomous repeat sequence until reply via Vitel.",
             "sequence_status [phone]": "View sequence tracking and scheduled follow-up dates.",
             "check_replies": "Poll Vitel for candidate replies and auto-halt active sequences.",
+            "screenshot vitel": "Capture a screenshot of the current Vitel window for visual verification.",
             "register_app <key> <name> <category> [description]": "Dynamically register an upcoming app.",
         }
 

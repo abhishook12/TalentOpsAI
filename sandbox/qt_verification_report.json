@@ -1,0 +1,37 @@
+{
+  "timestamp": 1793033904.2154632,
+  "total_sent": 22,
+  "checks": [
+    {
+      "check_num": 1,
+      "name": "First 2 Chats Dispatch",
+      "passed": true,
+      "total_ms": 122.64,
+      "avg_ms": 61.32,
+      "screenshots": [
+        "01_chat1_delivered.png",
+        "02_chat2_delivered.png"
+      ]
+    },
+    {
+      "check_num": 2,
+      "name": "Top 20 Chats Dispatch",
+      "passed": true,
+      "total_ms": 164.77,
+      "avg_ms": 8.24,
+      "screenshots": [
+        "03_chat10_midpoint.png",
+        "04_chat20_final_completed.png"
+      ]
+    },
+    {
+      "check_num": 3,
+      "name": "Forensic Payload & Zero-Disturbance Audit",
+      "passed": true,
+      "mouse_drift_px": 0,
+      "focus_preserved": true,
+      "emojis_intact": true,
+      "total_verified": 20
+    }
+  ]
+}

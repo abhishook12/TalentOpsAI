@@ -130,7 +130,7 @@ export default function OperationsConsole() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Power size={18} color="#ef4444" />
+              <Power size={18} color="#e41937" />
               <h4 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#fafafa' }}>
                 Fleet Operations & Remote Kill Switches
               </h4>
@@ -163,7 +163,7 @@ export default function OperationsConsole() {
                   padding: '1px 6px',
                   borderRadius: 4,
                   background: killSwitches.capture_engine_enabled ? 'rgba(255, 255, 255, 0.08)' : 'rgba(239,68,68,0.2)',
-                  color: killSwitches.capture_engine_enabled ? '#ffffff' : '#ef4444',
+                  color: killSwitches.capture_engine_enabled ? '#ffffff' : '#e41937',
                   fontWeight: 800,
                 }}>
                   {killSwitches.capture_engine_enabled ? 'ENABLED' : 'PAUSED'}
@@ -180,7 +180,7 @@ export default function OperationsConsole() {
                 padding: '6px 14px',
                 borderRadius: 6,
                 border: 'none',
-                background: killSwitches.capture_engine_enabled ? '#dc2626' : '#ffffff',
+                background: killSwitches.capture_engine_enabled ? '#e41937' : '#ffffff',
                 color: '#fff',
                 fontSize: 11,
                 fontWeight: 700,
@@ -209,7 +209,7 @@ export default function OperationsConsole() {
                   padding: '1px 6px',
                   borderRadius: 4,
                   background: killSwitches.sync_enabled ? 'rgba(255, 255, 255, 0.08)' : 'rgba(239,68,68,0.2)',
-                  color: killSwitches.sync_enabled ? '#ffffff' : '#ef4444',
+                  color: killSwitches.sync_enabled ? '#ffffff' : '#e41937',
                   fontWeight: 800,
                 }}>
                   {killSwitches.sync_enabled ? 'ENABLED' : 'PAUSED'}
@@ -226,7 +226,7 @@ export default function OperationsConsole() {
                 padding: '6px 14px',
                 borderRadius: 6,
                 border: 'none',
-                background: killSwitches.sync_enabled ? '#dc2626' : '#ffffff',
+                background: killSwitches.sync_enabled ? '#e41937' : '#ffffff',
                 color: '#fff',
                 fontSize: 11,
                 fontWeight: 700,
@@ -255,7 +255,7 @@ export default function OperationsConsole() {
                   padding: '1px 6px',
                   borderRadius: 4,
                   background: killSwitches.ai_signals_enabled ? 'rgba(255, 255, 255, 0.08)' : 'rgba(239,68,68,0.2)',
-                  color: killSwitches.ai_signals_enabled ? '#ffffff' : '#ef4444',
+                  color: killSwitches.ai_signals_enabled ? '#ffffff' : '#e41937',
                   fontWeight: 800,
                 }}>
                   {killSwitches.ai_signals_enabled ? 'ENABLED' : 'PAUSED'}
@@ -272,7 +272,7 @@ export default function OperationsConsole() {
                 padding: '6px 14px',
                 borderRadius: 6,
                 border: 'none',
-                background: killSwitches.ai_signals_enabled ? '#dc2626' : '#ffffff',
+                background: killSwitches.ai_signals_enabled ? '#e41937' : '#ffffff',
                 color: '#fff',
                 fontSize: 11,
                 fontWeight: 700,

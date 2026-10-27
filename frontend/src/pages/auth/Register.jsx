@@ -32,7 +32,7 @@ export default function Register() {
   }
 
   const strength = getPasswordStrength()
-  const strengthColors = ['#ef4444', '#ef4444', '#d4d4d8', '#ffffff', '#ffffff']
+  const strengthColors = ['#e41937', '#e41937', '#d4d4d8', '#ffffff', '#ffffff']
   const strengthLabels = ['Weak', 'Weak', 'Fair', 'Good', 'Strong']
 
   const handleSubmit = async (e) => {

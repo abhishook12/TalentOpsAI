@@ -41,6 +41,91 @@ def is_supervisor_running() -> bool:
     except OSError:
         return True
 
+def is_process_running(proc_name: str) -> bool:
+    """Checks if a process is active by executable image name."""
+    try:
+        import psutil
+        proc_lower = proc_name.lower()
+        for proc in psutil.process_iter(["name"]):
+            try:
+                name = proc.info.get("name")
+                if name and name.lower() == proc_lower:
+                    return True
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                pass
+    except Exception as e:
+        logger.warning(f"psutil check failed for {proc_name}: {e}")
+        try:
+            res = subprocess.run(
+                ["tasklist", "/fi", f"IMAGENAME eq {proc_name}"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            return proc_name.lower() in res.stdout.lower()
+        except Exception:
+            pass
+    return False
+
+def ensure_application_running(app_name: str, exe_path: str, proc_name: str) -> bool:
+    """
+    Ensures that a desktop application (such as Vitel Global or Outlook) is running.
+    If not already running, launches it safely via Windows Shell / detached process.
+    If already running, logs status and does not spawn duplicate instances.
+    """
+    if is_process_running(proc_name):
+        logger.info(f"{app_name} ({proc_name}) is already running. No launch needed.")
+        return True
+
+    if not os.path.exists(exe_path):
+        logger.error(f"{app_name} executable not found at {exe_path}")
+        return False
+
+    logger.info(f"Launching {app_name} from {exe_path}...")
+    try:
+        if hasattr(os, "startfile"):
+            os.startfile(exe_path)
+        else:
+            creation_flags = 0
+            if sys.platform == "win32":
+                creation_flags = subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS
+            with open(os.devnull, "wb") as devnull:
+                subprocess.Popen(
+                    [exe_path],
+                    creationflags=creation_flags,
+                    stdin=devnull,
+                    stdout=devnull,
+                    stderr=devnull,
+                    close_fds=True,
+                )
+        logger.info(f"{app_name} launched successfully.")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to launch {app_name}: {e}")
+        return False
+
+def ensure_daily_work_apps():
+    """
+    Ensures daily essential work applications are running:
+    1. Vitel Global (Softphone / Dialing / SMS)
+    2. Microsoft Outlook (Email / Calendar)
+    """
+    apps = [
+        {
+            "name": "Vitel Global",
+            "exe": r"C:\Users\User\AppData\Local\com.vitelglobal.vitelgloabalapp.winx\Vitelglobal.exe",
+            "proc": "Vitelglobal.exe",
+        },
+        {
+            "name": "Microsoft Outlook",
+            "exe": r"C:\Program Files\Microsoft Office\root\Office16\OUTLOOK.EXE",
+            "proc": "OUTLOOK.EXE",
+        },
+    ]
+
+    for app in apps:
+        ensure_application_running(app["name"], app["exe"], app["proc"])
+
 def main():
     trigger_type = sys.argv[1] if len(sys.argv) > 1 else "MANUAL_OR_SCHEDULED"
     logger.info(f"Autostart triggered (Source: {trigger_type})")
@@ -61,6 +146,8 @@ def main():
             cwd=WORKSPACE_DIR,
             creationflags=creation_flags,
             stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
         time.sleep(2)
     else:
@@ -94,6 +181,12 @@ def main():
         logger.info(f"Daily Antigravity routine check result: {res.get('status')} (CID: {res.get('conversation_id', 'N/A')})")
     except Exception as e:
         logger.error(f"Error triggering daily Antigravity routine check: {e}", exc_info=True)
+
+    # 6. Ensure Daily Work Applications (Vitel Global & Outlook) are active
+    try:
+        ensure_daily_work_apps()
+    except Exception as e:
+        logger.error(f"Error ensuring daily work applications: {e}", exc_info=True)
 
 if __name__ == "__main__":
     main()

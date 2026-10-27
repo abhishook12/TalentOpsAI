@@ -133,7 +133,7 @@ export default function DragDropRecipientBuilder({ recipients, onChange, onValid
               <button 
                 onClick={() => onValidate(recipients.map(r => r.email).join(','))}
                 disabled={recipients.length === 0}
-                className="text-xs font-semibold px-2.5 py-1 rounded bg-[rgba(34,184,207,0.14)] text-[#22B8CF] border border-[rgba(34,184,207,0.35)] hover:bg-[rgba(34,184,207,0.22)] disabled:opacity-40 transition-colors"
+                className="text-xs font-semibold px-2.5 py-1 rounded bg-[rgba(228, 25, 55, 0.14)] text-[#e41937] border border-[rgba(228, 25, 55, 0.35)] hover:bg-[rgba(228, 25, 55, 0.22)] disabled:opacity-40 transition-colors"
               >
                 Validate All
               </button>
@@ -148,7 +148,7 @@ export default function DragDropRecipientBuilder({ recipients, onChange, onValid
             </div>
             <div className="flex flex-col">
               <span className="text-[var(--text-muted)]">Will Send</span>
-              <span className="font-semibold text-green-500">{validCount}</span>
+              <span className="font-semibold text-white">{validCount}</span>
             </div>
             {noEmailCount > 0 && (
               <div className="flex flex-col">
@@ -229,11 +229,11 @@ export default function DragDropRecipientBuilder({ recipients, onChange, onValid
                     <div className="flex items-center justify-between p-3 bg-[var(--bg-page)] border border-[var(--border)] rounded-lg shadow-sm group hover:border-[var(--brand)] transition-colors h-full">
                       <div className="flex items-center gap-3 min-w-0">
                         {recipient.status === 'valid' && hasRealEmail(recipient) ? (
-                          <CheckCircle2 size={16} className="text-green-500 shrink-0" />
+                          <CheckCircle2 size={16} className="text-white shrink-0" />
                         ) : recipient.status === 'valid' && !hasRealEmail(recipient) ? (
                           <AlertCircle size={16} className="text-orange-400 shrink-0" title="No verified email — will be skipped" />
                         ) : (
-                          <AlertCircle size={16} className="text-yellow-500 shrink-0" />
+                          <AlertCircle size={16} className="text-[#e41937] shrink-0" />
                         )}
                         <div className="min-w-0">
                           <p className="text-sm font-medium text-[var(--text-primary)] truncate">

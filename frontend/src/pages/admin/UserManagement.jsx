@@ -269,12 +269,12 @@ export default function UserManagement() {
             <span style={{ fontSize: 13, fontWeight: 600, color: '#f4f4f5' }}>{selectedUsers.length} selected</span>
             <button onClick={() => executeBulkAction('status', 'Active')} style={{ background: 'transparent', border: 'none', color: '#ffffff', cursor: 'pointer', fontWeight: 600 }}>Activate</button>
             <button onClick={() => executeBulkAction('status', 'Inactive')} style={{ background: 'transparent', border: 'none', color: '#d4d4d8', cursor: 'pointer', fontWeight: 600 }}>Deactivate</button>
-            <button onClick={() => executeBulkAction('delete')} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: 600 }}>Delete</button>
+            <button onClick={() => executeBulkAction('delete')} style={{ background: 'transparent', border: 'none', color: '#e41937', cursor: 'pointer', fontWeight: 600 }}>Delete</button>
           </div>
         )}
       </div>
 
-      {error && <div style={{ color: '#ef4444', padding: 12, background: 'rgba(239, 68, 68, 0.1)', borderRadius: 8, marginBottom: 20 }}>{error}</div>}
+      {error && <div style={{ color: '#e41937', padding: 12, background: 'rgba(239, 68, 68, 0.1)', borderRadius: 8, marginBottom: 20 }}>{error}</div>}
 
       <div style={{ display: 'flex', gap: 24 }}>
         {/* Main Table */}
@@ -342,7 +342,7 @@ export default function UserManagement() {
                       <span style={{ 
                         padding: '4px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600,
                         background: user.status === 'Active' ? 'rgba(255, 255, 255, 0.08)' : user.status === 'Inactive' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(239, 68, 68, 0.1)',
-                        color: user.status === 'Active' ? '#ffffff' : user.status === 'Inactive' ? '#d4d4d8' : '#ef4444'
+                        color: user.status === 'Active' ? '#ffffff' : user.status === 'Inactive' ? '#d4d4d8' : '#e41937'
                       }}>
                         {user.status || 'Unknown'}
                       </span>
@@ -350,7 +350,7 @@ export default function UserManagement() {
                     <td style={{ padding: '16px' }} onClick={(e) => e.stopPropagation()}>
                       <div style={{ display: 'flex', gap: 8 }}>
                         <button onClick={() => forceLogout(user.id)} style={{ padding: '6px 10px', background: 'var(--brand-bg)', border: 'none', borderRadius: 4, color: 'var(--text-primary)', cursor: 'pointer', fontSize: 12 }}>Logout</button>
-                        <button onClick={() => deleteUser(user.id)} style={{ padding: '6px 10px', background: 'rgba(239, 68, 68, 0.1)', border: 'none', borderRadius: 4, color: '#ef4444', cursor: 'pointer', fontSize: 12 }}>Delete</button>
+                        <button onClick={() => deleteUser(user.id)} style={{ padding: '6px 10px', background: 'rgba(239, 68, 68, 0.1)', border: 'none', borderRadius: 4, color: '#e41937', cursor: 'pointer', fontSize: 12 }}>Delete</button>
                       </div>
                     </td>
                   </tr>
@@ -432,7 +432,7 @@ export default function UserManagement() {
                       style={{
                         padding: '5px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600,
                         background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.25)',
-                        color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
+                        color: '#e41937', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
                       }}
                       title="Remove user photo"
                     >
@@ -487,7 +487,7 @@ export default function UserManagement() {
                 <h4 style={{ margin: '0 0 12px', fontSize: 12, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: 0.5 }}>Recent Logins</h4>
                 {userHistory.length > 0 ? userHistory.slice(0, 5).map(hist => (
                   <div key={hist.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--card-border)', fontSize: 12 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: hist.status === 'success' ? '#ffffff' : '#ef4444' }} />
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: hist.status === 'success' ? '#ffffff' : '#e41937' }} />
                     <div style={{ flex: 1 }}>
                       <div>{hist.ip_address} ({hist.os})</div>
                       <div style={{ color: 'var(--text-muted)', fontSize: 11 }}>{new Date(hist.timestamp).toLocaleString()}</div>

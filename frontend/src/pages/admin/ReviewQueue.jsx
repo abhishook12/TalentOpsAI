@@ -91,7 +91,7 @@ export default function ReviewQueue({ setToast }) {
               <div style={{ display: 'flex', gap: '1rem' }}>
                 <button 
                   className="btn-secondary" 
-                  style={{ color: '#ff4444', borderColor: 'rgba(255, 68, 68, 0.2)' }}
+                  style={{ color: '#e41937', borderColor: 'rgba(255, 68, 68, 0.2)' }}
                   onClick={() => handleAction(item.recruiter_id, 'reject')}
                 >
                   Reject

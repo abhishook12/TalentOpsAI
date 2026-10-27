@@ -306,11 +306,11 @@ export default function FleetUpdateCenter() {
                 <span style={{ color: '#fafafa', fontWeight: 700, fontSize: 14 }}>
                   Broadcasting Update Notification to v{broadcastStatus.broadcast.target_version}
                 </span>
-                <span style={{ color: '#94a3b8', fontSize: 12 }}>
+                <span style={{ color: '#d4d4d8', fontSize: 12 }}>
                   ({broadcastStatus.broadcast.cohort === 'ALL_ACTIVE' ? 'All Active Nodes' : 'Outdated Nodes Only'})
                 </span>
               </div>
-              <div style={{ color: '#94a3b8', fontSize: 12, marginTop: 3 }}>
+              <div style={{ color: '#d4d4d8', fontSize: 12, marginTop: 3 }}>
                 Targeting {broadcastStatus.broadcast.targeted_count} devices • Delivered to {broadcastStatus.broadcast.delivered_count} ({broadcastStatus.broadcast.delivery_percentage}%) • Updated {broadcastStatus.broadcast.updated_count} ({broadcastStatus.broadcast.adoption_percentage}%)
               </div>
             </div>
@@ -330,7 +330,7 @@ export default function FleetUpdateCenter() {
               onClick={handleCancelBroadcast}
               style={{
                 padding: '6px 12px', background: 'rgba(239, 68, 68, 0.2)',
-                border: '1px solid #ef4444', color: '#fca5a5', borderRadius: 6,
+                border: '1px solid #e41937', color: '#fca5a5', borderRadius: 6,
                 fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
               }}
             >
@@ -346,7 +346,7 @@ export default function FleetUpdateCenter() {
         <div 
           style={{
             background: 'linear-gradient(90deg, rgba(239, 68, 68, 0.2) 0%, rgba(185, 28, 28, 0.1) 100%)',
-            border: '1px solid #ef4444',
+            border: '1px solid #e41937',
             borderRadius: 10,
             padding: '14px 18px',
             display: 'flex',
@@ -356,9 +356,9 @@ export default function FleetUpdateCenter() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <AlertOctagon size={24} color="#ef4444" />
+            <AlertOctagon size={24} color="#e41937" />
             <div>
-              <div style={{ fontSize: 13, fontWeight: 800, color: '#f87171' }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#e41937' }}>
                 AUTOMATIC CIRCUIT BREAKER TRIPPED — ROLLOUT AUTO-PAUSED
               </div>
 
@@ -373,7 +373,7 @@ export default function FleetUpdateCenter() {
             disabled={rolloutMutation.isPending}
             style={{
               padding: '6px 14px',
-              background: '#ef4444',
+              background: '#e41937',
               color: '#fff',
               border: 'none',
               borderRadius: 6,
@@ -416,7 +416,7 @@ export default function FleetUpdateCenter() {
 
         <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px' }}>
           <div style={{ fontSize: 11, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 2 }}>🔴 UPDATE FAILED / ROLLBACK</div>
-          <div style={{ fontSize: 20, fontWeight: 800, color: '#ef4444' }}><AnimatedNumber value={health.failed} /></div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: '#e41937' }}><AnimatedNumber value={health.failed} /></div>
           <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 2 }}>Crash/verification failed</div>
         </div>
 
@@ -443,7 +443,7 @@ export default function FleetUpdateCenter() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {versionDist.map((item) => {
               const isBelow = item.is_below_minimum
-              const barColor = isBelow ? '#ef4444' : (item.percentage > 50 ? '#ffffff' : '#d4d4d8')
+              const barColor = isBelow ? '#e41937' : (item.percentage > 50 ? '#ffffff' : '#d4d4d8')
 
               return (
                 <div key={item.version} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -453,7 +453,7 @@ export default function FleetUpdateCenter() {
                         v{item.version}
                       </span>
                       {isBelow && (
-                        <span style={{ fontSize: 10, background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', padding: '1px 6px', borderRadius: 4, fontWeight: 700 }}>
+                        <span style={{ fontSize: 10, background: 'rgba(239, 68, 68, 0.15)', color: '#e41937', padding: '1px 6px', borderRadius: 4, fontWeight: 700 }}>
                           &lt; minimum
                         </span>
                       )}
@@ -527,7 +527,7 @@ export default function FleetUpdateCenter() {
                 {releases.map((rel) => {
                   const isTripped = rel.status === 'CIRCUIT_TRIPPED'
                   const isPaused = rel.is_paused || isTripped
-                  const statusColor = isTripped ? '#ef4444' : (isPaused ? '#d4d4d8' : (rel.channel === 'stable' ? '#ffffff' : '#e4e4e7'))
+                  const statusColor = isTripped ? '#e41937' : (isPaused ? '#d4d4d8' : (rel.channel === 'stable' ? '#ffffff' : '#e4e4e7'))
 
                   return (
                     <tr key={rel.id || rel.version} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
@@ -548,7 +548,7 @@ export default function FleetUpdateCenter() {
                         {rel.adoption_percentage}%
                       </td>
                       <td style={{ padding: '10px 6px' }}>
-                        <span style={{ color: rel.failure_rate > 3.0 ? '#ef4444' : '#ffffff', fontWeight: 700 }}>
+                        <span style={{ color: rel.failure_rate > 3.0 ? '#e41937' : '#ffffff', fontWeight: 700 }}>
                           {rel.failure_rate}%
                         </span>
                       </td>
@@ -658,13 +658,13 @@ export default function FleetUpdateCenter() {
           <div
             style={{
               background: '#0B1120',
-              border: '1px solid #1E293B',
+              border: '1px solid #121212',
               borderRadius: 14,
               width: '100%',
               maxWidth: 480,
               padding: 24,
               boxShadow: '0 20px 40px rgba(0, 0, 0, 0.6)',
-              color: '#F8FAFC',
+              color: '#000000',
               display: 'flex',
               flexDirection: 'column',
               gap: 16,
@@ -673,17 +673,17 @@ export default function FleetUpdateCenter() {
             {/* Modal Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ background: '#161618', border: '1px solid #1E293B', borderRadius: 8, padding: 6, display: 'flex' }}>
+                <div style={{ background: '#161618', border: '1px solid #121212', borderRadius: 8, padding: 6, display: 'flex' }}>
                   <Key size={18} color="#ffffff" />
                 </div>
                 <div>
                   <div style={{ fontSize: 15, fontWeight: 800 }}>Enroll Scout Desktop Device</div>
-                  <div style={{ fontSize: 11, color: '#94A3B8' }}>Fleet pairing for Windows edge nodes</div>
+                  <div style={{ fontSize: 11, color: '#d4d4d8' }}>Fleet pairing for Windows edge nodes</div>
                 </div>
               </div>
               <button
                 onClick={() => setShowAddDeviceModal(false)}
-                style={{ background: 'transparent', border: 'none', color: '#64748B', cursor: 'pointer', padding: 4 }}
+                style={{ background: 'transparent', border: 'none', color: '#a1a1aa', cursor: 'pointer', padding: 4 }}
               >
                 <X size={18} />
               </button>
@@ -694,7 +694,7 @@ export default function FleetUpdateCenter() {
               <div style={{ background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.2)', borderRadius: 10, padding: 20, textAlign: 'center' }}>
                 <CheckCircle size={36} color="#ffffff" style={{ margin: '0 auto 10px' }} />
                 <div style={{ fontSize: 15, fontWeight: 800, color: '#e4e4e7' }}>Device Successfully Connected!</div>
-                <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 4 }}>
+                <div style={{ fontSize: 12, color: '#d4d4d8', marginTop: 4 }}>
                   {claimedDevice.device_id || 'WIN-DEVICE'} has been claimed and linked to your workspace as <b>Installation #483</b>.
                 </div>
                 <button
@@ -716,7 +716,7 @@ export default function FleetUpdateCenter() {
               </div>
             ) : (
               <>
-                <div style={{ fontSize: 12, color: '#94A3B8', lineHeight: 1.5 }}>
+                <div style={{ fontSize: 12, color: '#d4d4d8', lineHeight: 1.5 }}>
                   Launch <b>TalentOps Scout Desktop</b> on your workstation. Under <b>CLAIM CODE</b>, enter this short-lived pairing code:
                 </div>
 
@@ -724,7 +724,7 @@ export default function FleetUpdateCenter() {
                 <div
                   style={{
                     background: '#09090b',
-                    border: '1px solid #1E293B',
+                    border: '1px solid #121212',
                     borderRadius: 10,
                     padding: '16px 20px',
                     display: 'flex',
@@ -742,9 +742,9 @@ export default function FleetUpdateCenter() {
                       display: 'flex',
                       alignItems: 'center',
                       gap: 6,
-                      background: copied ? 'rgba(255, 255, 255, 0.1)' : '#1E293B',
-                      color: copied ? '#ffffff' : '#F8FAFC',
-                      border: copied ? '1px solid rgba(255, 255, 255, 0.25)' : '1px solid #334155',
+                      background: copied ? 'rgba(255, 255, 255, 0.1)' : '#121212',
+                      color: copied ? '#ffffff' : '#000000',
+                      border: copied ? '1px solid rgba(255, 255, 255, 0.25)' : '1px solid #27272a',
                       borderRadius: 6,
                       padding: '8px 14px',
                       fontSize: 11,
@@ -758,10 +758,10 @@ export default function FleetUpdateCenter() {
                 </div>
 
                 {/* Expiry & instructions */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: '#64748B' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: '#a1a1aa' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                     <Clock size={13} color="#d4d4d8" />
-                    <span>Expires in <b style={{ color: '#F8FAFC' }}>{formatTimer(remainingSeconds)}</b></span>
+                    <span>Expires in <b style={{ color: '#000000' }}>{formatTimer(remainingSeconds)}</b></span>
                   </div>
                   <div>Single-use only</div>
                 </div>
@@ -769,15 +769,15 @@ export default function FleetUpdateCenter() {
                 {/* Polling live radar */}
                 <div
                   style={{
-                    background: '#0F172A',
-                    border: '1px dashed #1E293B',
+                    background: '#000000',
+                    border: '1px dashed #121212',
                     borderRadius: 8,
                     padding: '10px 14px',
                     display: 'flex',
                     alignItems: 'center',
                     gap: 10,
                     fontSize: 11,
-                    color: '#94A3B8',
+                    color: '#d4d4d8',
                   }}
                 >
                   <RefreshCw size={13} style={{ animation: 'spin 2s linear infinite' }} color="#ffffff" />
@@ -810,13 +810,13 @@ export default function FleetUpdateCenter() {
           <div
             style={{
               background: '#0B1120',
-              border: '1px solid #1E293B',
+              border: '1px solid #121212',
               borderRadius: 14,
               width: '100%',
               maxWidth: 520,
               padding: 24,
               boxShadow: '0 20px 40px rgba(0, 0, 0, 0.6)',
-              color: '#F8FAFC',
+              color: '#000000',
               display: 'flex',
               flexDirection: 'column',
               gap: 16,
@@ -825,17 +825,17 @@ export default function FleetUpdateCenter() {
             {/* Modal Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ background: '#161618', border: '1px solid #1E293B', borderRadius: 8, padding: 6, display: 'flex' }}>
+                <div style={{ background: '#161618', border: '1px solid #121212', borderRadius: 8, padding: 6, display: 'flex' }}>
                   <Radio size={18} color="#ffffff" />
                 </div>
                 <div>
                   <div style={{ fontSize: 15, fontWeight: 800 }}>Dispatch Fleet Update Broadcast</div>
-                  <div style={{ fontSize: 11, color: '#94A3B8' }}>Notify connected Scout Desktop nodes to update</div>
+                  <div style={{ fontSize: 11, color: '#d4d4d8' }}>Notify connected Scout Desktop nodes to update</div>
                 </div>
               </div>
               <button
                 onClick={() => setShowBroadcastModal(false)}
-                style={{ background: 'transparent', border: 'none', color: '#64748B', cursor: 'pointer', padding: 4 }}
+                style={{ background: 'transparent', border: 'none', color: '#a1a1aa', cursor: 'pointer', padding: 4 }}
               >
                 <X size={18} />
               </button>
@@ -844,26 +844,26 @@ export default function FleetUpdateCenter() {
             {/* Modal Body Form */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
-                <label style={{ fontSize: 11, color: '#94A3B8', fontWeight: 700, textTransform: 'uppercase' }}>Target Version</label>
+                <label style={{ fontSize: 11, color: '#d4d4d8', fontWeight: 700, textTransform: 'uppercase' }}>Target Version</label>
                 <input
                   type="text"
                   value={broadcastForm.target_version}
                   onChange={(e) => setBroadcastForm(prev => ({ ...prev, target_version: e.target.value }))}
                   style={{
-                    width: '100%', padding: '8px 12px', background: '#09090b', border: '1px solid #1E293B',
-                    borderRadius: 8, color: '#F8FAFC', fontSize: 13, marginTop: 4, boxSizing: 'border-box'
+                    width: '100%', padding: '8px 12px', background: '#09090b', border: '1px solid #121212',
+                    borderRadius: 8, color: '#000000', fontSize: 13, marginTop: 4, boxSizing: 'border-box'
                   }}
                 />
               </div>
 
               <div>
-                <label style={{ fontSize: 11, color: '#94A3B8', fontWeight: 700, textTransform: 'uppercase' }}>Target Cohort</label>
+                <label style={{ fontSize: 11, color: '#d4d4d8', fontWeight: 700, textTransform: 'uppercase' }}>Target Cohort</label>
                 <select
                   value={broadcastForm.cohort}
                   onChange={(e) => setBroadcastForm(prev => ({ ...prev, cohort: e.target.value }))}
                   style={{
-                    width: '100%', padding: '8px 12px', background: '#09090b', border: '1px solid #1E293B',
-                    borderRadius: 8, color: '#F8FAFC', fontSize: 13, marginTop: 4, boxSizing: 'border-box'
+                    width: '100%', padding: '8px 12px', background: '#09090b', border: '1px solid #121212',
+                    borderRadius: 8, color: '#000000', fontSize: 13, marginTop: 4, boxSizing: 'border-box'
                   }}
                 >
                   <option value="OUTDATED_ONLY">Outdated Nodes Only (Below Target Version - Recommended)</option>
@@ -879,46 +879,46 @@ export default function FleetUpdateCenter() {
                   onChange={(e) => setBroadcastForm(prev => ({ ...prev, mandatory: e.target.checked }))}
                   style={{ accentColor: '#ffffff', cursor: 'pointer' }}
                 />
-                <label htmlFor="bcast_mandatory_fuc" style={{ fontSize: 12, color: '#F8FAFC', cursor: 'pointer' }}>
+                <label htmlFor="bcast_mandatory_fuc" style={{ fontSize: 12, color: '#000000', cursor: 'pointer' }}>
                   <b>Mandatory Update</b> (Requires immediate restart on target workstation)
                 </label>
               </div>
 
               <div>
-                <label style={{ fontSize: 11, color: '#94A3B8', fontWeight: 700, textTransform: 'uppercase' }}>Notification Title</label>
+                <label style={{ fontSize: 11, color: '#d4d4d8', fontWeight: 700, textTransform: 'uppercase' }}>Notification Title</label>
                 <input
                   type="text"
                   value={broadcastForm.title}
                   onChange={(e) => setBroadcastForm(prev => ({ ...prev, title: e.target.value }))}
                   style={{
-                    width: '100%', padding: '8px 12px', background: '#09090b', border: '1px solid #1E293B',
-                    borderRadius: 8, color: '#F8FAFC', fontSize: 13, marginTop: 4, boxSizing: 'border-box'
+                    width: '100%', padding: '8px 12px', background: '#09090b', border: '1px solid #121212',
+                    borderRadius: 8, color: '#000000', fontSize: 13, marginTop: 4, boxSizing: 'border-box'
                   }}
                 />
               </div>
 
               <div>
-                <label style={{ fontSize: 11, color: '#94A3B8', fontWeight: 700, textTransform: 'uppercase' }}>Notification Message</label>
+                <label style={{ fontSize: 11, color: '#d4d4d8', fontWeight: 700, textTransform: 'uppercase' }}>Notification Message</label>
                 <textarea
                   rows={2}
                   value={broadcastForm.message}
                   onChange={(e) => setBroadcastForm(prev => ({ ...prev, message: e.target.value }))}
                   style={{
-                    width: '100%', padding: '8px 12px', background: '#09090b', border: '1px solid #1E293B',
-                    borderRadius: 8, color: '#F8FAFC', fontSize: 12, marginTop: 4, resize: 'vertical', boxSizing: 'border-box'
+                    width: '100%', padding: '8px 12px', background: '#09090b', border: '1px solid #121212',
+                    borderRadius: 8, color: '#000000', fontSize: 12, marginTop: 4, resize: 'vertical', boxSizing: 'border-box'
                   }}
                 />
               </div>
 
               <div>
-                <label style={{ fontSize: 11, color: '#94A3B8', fontWeight: 700, textTransform: 'uppercase' }}>Release Notes</label>
+                <label style={{ fontSize: 11, color: '#d4d4d8', fontWeight: 700, textTransform: 'uppercase' }}>Release Notes</label>
                 <textarea
                   rows={2}
                   value={broadcastForm.release_notes}
                   onChange={(e) => setBroadcastForm(prev => ({ ...prev, release_notes: e.target.value }))}
                   style={{
-                    width: '100%', padding: '8px 12px', background: '#09090b', border: '1px solid #1E293B',
-                    borderRadius: 8, color: '#F8FAFC', fontSize: 12, marginTop: 4, resize: 'vertical', boxSizing: 'border-box'
+                    width: '100%', padding: '8px 12px', background: '#09090b', border: '1px solid #121212',
+                    borderRadius: 8, color: '#000000', fontSize: 12, marginTop: 4, resize: 'vertical', boxSizing: 'border-box'
                   }}
                 />
               </div>
@@ -929,7 +929,7 @@ export default function FleetUpdateCenter() {
               <button
                 onClick={() => setShowBroadcastModal(false)}
                 style={{
-                  padding: '8px 16px', background: '#1E293B', color: '#94A3B8',
+                  padding: '8px 16px', background: '#121212', color: '#d4d4d8',
                   border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer'
                 }}
               >

@@ -78,7 +78,7 @@ const DatabaseIntelligenceCenter = () => {
   if (loading && !stats) {
     return (
       <div className="flex items-center justify-center h-full bg-[#05060b] text-[#e5e7eb]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#e41937]/50"></div>
       </div>
     );
   }
@@ -98,7 +98,7 @@ const DatabaseIntelligenceCenter = () => {
     : 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0a0f1e] via-[#070a12] to-[#05060b] text-[#e5e7eb] p-8 font-sans selection:bg-indigo-500/30">
+    <div className="min-h-screen bg-gradient-to-br from-[#0a0f1e] via-[#070a12] to-[#05060b] text-[#e5e7eb] p-8 font-sans selection:bg-[#e41937]/30">
       <div className="max-w-7xl mx-auto space-y-8">
         
         {/* Header */}
@@ -116,14 +116,14 @@ const DatabaseIntelligenceCenter = () => {
           {/* Status Badge */}
           <div className={`px-4 py-2 rounded-full text-sm font-semibold flex items-center gap-2 backdrop-blur-md border shadow-lg ${
             engine_state.status === 'Running' 
-              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-emerald-500/5' 
+              ? 'bg-white/10 text-white border-white/20 shadow-[#e41937]/5' 
               : 'bg-gray-500/10 text-gray-400 border-gray-500/20'
           }`}>
             <span className="relative flex h-2.5 w-2.5">
               {engine_state.status === 'Running' && (
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white text-black opacity-75"></span>
               )}
-              <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${engine_state.status === 'Running' ? 'bg-emerald-500' : 'bg-gray-500'}`}></span>
+              <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${engine_state.status === 'Running' ? 'bg-[#e41937] text-white' : 'bg-gray-500'}`}></span>
             </span>
             Sentinel Engine: {engine_state.status}
           </div>
@@ -152,8 +152,8 @@ const DatabaseIntelligenceCenter = () => {
             </div>
           </div>
           {engine_state.status === 'Running' && (
-            <p className="text-xs text-indigo-300 font-mono mt-3 flex items-center gap-2">
-              <svg className="animate-spin h-3 w-3 text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <p className="text-xs text-[#fe063f] font-mono mt-3 flex items-center gap-2">
+              <svg className="animate-spin h-3 w-3 text-[#fe063f]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
@@ -169,13 +169,13 @@ const DatabaseIntelligenceCenter = () => {
             title="Profiles Enriched" 
             value={metrics.profiles_enriched.toLocaleString()} 
             icon="✨"
-            gradient="from-blue-500 to-cyan-400"
+            gradient="from-[#e41937] to-[#fe063f]"
           />
           <MetricCard 
             title="Duplicates Merged" 
             value={metrics.duplicates_merged.toLocaleString()} 
             icon="🔗"
-            gradient="from-emerald-500 to-teal-400"
+            gradient="from-[#e41937] to-white"
           />
           <MetricCard 
             title="Domains Mapped" 
@@ -187,7 +187,7 @@ const DatabaseIntelligenceCenter = () => {
             title="Logos Assigned" 
             value={metrics.logos_assigned.toLocaleString()} 
             icon="🎨"
-            gradient="from-pink-500 to-rose-400"
+            gradient="from-pink-500 to-[#fe063f]"
           />
 
         </div>
@@ -204,37 +204,37 @@ const DatabaseIntelligenceCenter = () => {
               <div>
                 <div className="flex justify-between items-end mb-2">
                   <span className="text-sm font-medium text-gray-400">Average Completeness Score</span>
-                  <span className="text-xl font-bold text-indigo-400">{metrics.average_completeness}%</span>
+                  <span className="text-xl font-bold text-[#fe063f]">{metrics.average_completeness}%</span>
                 </div>
                 <div className="w-full bg-gray-900 rounded-full h-2">
-                  <div className="bg-indigo-500 h-2 rounded-full transition-all duration-1000" style={{ width: `${metrics.average_completeness}%` }}></div>
+                  <div className="bg-[#e41937] h-2 rounded-full transition-all duration-1000" style={{ width: `${metrics.average_completeness}%` }}></div>
                 </div>
               </div>
               
               <div>
                 <div className="flex justify-between items-end mb-2">
                   <span className="text-sm font-medium text-gray-400">Average Email Confidence</span>
-                  <span className="text-xl font-bold text-emerald-400">{metrics.average_email_confidence}%</span>
+                  <span className="text-xl font-bold text-white">{metrics.average_email_confidence}%</span>
                 </div>
                 <div className="w-full bg-gray-900 rounded-full h-2">
-                  <div className="bg-emerald-500 h-2 rounded-full transition-all duration-1000" style={{ width: `${metrics.average_email_confidence}%` }}></div>
+                  <div className="bg-[#e41937] text-white h-2 rounded-full transition-all duration-1000" style={{ width: `${metrics.average_email_confidence}%` }}></div>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Review Queue Alert */}
-          <div className="col-span-1 bg-gradient-to-br from-amber-500/10 to-orange-600/10 border border-amber-500/20 rounded-2xl p-6 backdrop-blur-md shadow-lg flex flex-col justify-center items-center text-center relative overflow-hidden group">
-            <div className="absolute inset-0 bg-amber-500/5 translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-out"></div>
+          <div className="col-span-1 bg-gradient-to-br from-[#e41937]/10 to-[#fe063f]/10 border border-white/15 rounded-2xl p-6 backdrop-blur-md shadow-lg flex flex-col justify-center items-center text-center relative overflow-hidden group">
+            <div className="absolute inset-0 bg-white/5 translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-out"></div>
             
             <div className="relative z-10">
-              <div className="w-16 h-16 bg-amber-500/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-amber-500/30">
+              <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-white/25">
                 <span className="text-3xl">⚠️</span>
               </div>
-              <h3 className="text-3xl font-black text-amber-400 mb-2">{metrics.records_needing_review.toLocaleString()}</h3>
-              <p className="text-sm font-medium text-amber-200/80 mb-4">Records require manual review</p>
+              <h3 className="text-3xl font-black text-[#e41937] mb-2">{metrics.records_needing_review.toLocaleString()}</h3>
+              <p className="text-sm font-medium text-zinc-300 mb-4">Records require manual review</p>
               
-              <button className="px-6 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded-lg text-sm font-semibold transition-colors border border-amber-500/30">
+              <button className="px-6 py-2 bg-white/10 hover:bg-white/15 text-zinc-300 rounded-lg text-sm font-semibold transition-colors border border-white/25">
                 Open Review Queue
               </button>
             </div>
@@ -256,7 +256,7 @@ const DatabaseIntelligenceCenter = () => {
                   setTimeout(() => setIdentityJobLoading(false), 2000);
                 }}
                 disabled={identityJobLoading || identityStats.job_state.status === 'running'}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-semibold rounded-lg shadow-md transition-colors"
+                className="px-4 py-2 bg-[#e41937] hover:bg-[#e41937] disabled:opacity-50 text-white text-sm font-semibold rounded-lg shadow-md transition-colors"
               >
                 {identityStats.job_state.status === 'running' ? 'Job Running...' : 'Trigger Full Identity Sweep'}
               </button>
@@ -267,29 +267,29 @@ const DatabaseIntelligenceCenter = () => {
                 <p className="text-sm text-gray-400">Total Companies</p>
                 <p className="text-2xl font-bold text-white mt-1">{identityStats.total_companies.toLocaleString()}</p>
               </div>
-              <div className="bg-gray-900/50 p-4 rounded-xl border border-emerald-900/30">
+              <div className="bg-gray-900/50 p-4 rounded-xl border border-zinc-800">
                 <p className="text-sm text-gray-400">Verified Logos</p>
-                <p className="text-2xl font-bold text-emerald-400 mt-1">{identityStats.verified_companies.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-white mt-1">{identityStats.verified_companies.toLocaleString()}</p>
               </div>
-              <div className="bg-gray-900/50 p-4 rounded-xl border border-rose-900/30">
+              <div className="bg-gray-900/50 p-4 rounded-xl border border-[#e41937]/30">
                 <p className="text-sm text-gray-400">Missing/Invalid Logos</p>
-                <p className="text-2xl font-bold text-rose-400 mt-1">{(identityStats.missing_logos + identityStats.invalid_logos).toLocaleString()}</p>
+                <p className="text-2xl font-bold text-[#fe063f] mt-1">{(identityStats.missing_logos + identityStats.invalid_logos).toLocaleString()}</p>
               </div>
-              <div className="bg-gray-900/50 p-4 rounded-xl border border-amber-900/30">
+              <div className="bg-gray-900/50 p-4 rounded-xl border border-zinc-800">
                 <p className="text-sm text-gray-400">Unresolved</p>
-                <p className="text-2xl font-bold text-amber-400 mt-1">{identityStats.unresolved_companies.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-[#e41937] mt-1">{identityStats.unresolved_companies.toLocaleString()}</p>
               </div>
             </div>
 
             {identityStats.job_state.status !== 'idle' && (
-              <div className="bg-gray-900/30 p-5 rounded-xl border border-indigo-500/20">
+              <div className="bg-gray-900/30 p-5 rounded-xl border border-[#e41937]/50/20">
                 <div className="flex justify-between text-sm mb-2">
-                  <span className="font-medium text-indigo-300">Background Job Status: {identityStats.job_state.status.toUpperCase()}</span>
+                  <span className="font-medium text-[#fe063f]">Background Job Status: {identityStats.job_state.status.toUpperCase()}</span>
                   <span className="text-gray-400">{identityStats.job_state.processed} / {identityStats.job_state.total_companies} Processed</span>
                 </div>
                 <div className="w-full bg-gray-900 rounded-full h-2 mb-3">
                   <div 
-                    className="bg-indigo-500 h-2 rounded-full transition-all duration-500" 
+                    className="bg-[#e41937] h-2 rounded-full transition-all duration-500" 
                     style={{ width: `${identityStats.job_state.total_companies > 0 ? (identityStats.job_state.processed / identityStats.job_state.total_companies) * 100 : 0}%` }}
                   ></div>
                 </div>
@@ -309,24 +309,24 @@ const DatabaseIntelligenceCenter = () => {
           <div className="flex justify-between items-center mb-6">
             <div>
               <h2 className="text-xl font-bold text-gray-100 flex items-center gap-2">
-                <span className="h-3 w-3 rounded-full bg-emerald-500"></span>
+                <span className="h-3 w-3 rounded-full bg-[#e41937] text-white"></span>
                 Source Connector Hub & Orchestration
               </h2>
               <p className="text-xs text-gray-400 mt-1">
                 Multi-source data ingestion, reliability weights, and field-level provenance contracts.
               </p>
             </div>
-            <span className="text-xs font-mono bg-indigo-500/10 text-indigo-300 px-3 py-1.5 rounded-lg border border-indigo-500/20">
+            <span className="text-xs font-mono bg-[#e41937]/10 text-[#fe063f] px-3 py-1.5 rounded-lg border border-[#e41937]/50/20">
               {connectors.length} Connectors Active
             </span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {connectors.map((c) => (
-              <div key={c.connector_key} className="bg-gray-900/50 border border-white/5 rounded-xl p-4 hover:border-indigo-500/30 transition-all">
+              <div key={c.connector_key} className="bg-gray-900/50 border border-white/5 rounded-xl p-4 hover:border-[#e41937]/50/30 transition-all">
                 <div className="flex justify-between items-start mb-2">
                   <span className="font-semibold text-sm text-gray-200">{c.name}</span>
-                  <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-mono">
+                  <span className="text-xs px-2 py-0.5 rounded bg-white/10 text-white font-mono">
                     {Math.round(c.source_reliability * 100)}% Rel
                   </span>
                 </div>
@@ -353,7 +353,7 @@ const DatabaseIntelligenceCenter = () => {
           <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-6 backdrop-blur-md shadow-xl space-y-4">
             <div>
               <h3 className="text-lg font-bold text-gray-100 flex items-center gap-2">
-                <span className="text-indigo-400">⚡</span> Natural Language Evidence Query
+                <span className="text-[#fe063f]">⚡</span> Natural Language Evidence Query
               </h3>
               <p className="text-xs text-gray-400 mt-1">
                 Translates recruiting questions into structured SQL queries over multi-source provenance.
@@ -365,12 +365,12 @@ const DatabaseIntelligenceCenter = () => {
                 value={aiQuery}
                 onChange={(e) => setAiQuery(e.target.value)}
                 placeholder="e.g. Find engineers in US with verified email"
-                className="flex-1 bg-gray-900/80 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+                className="flex-1 bg-gray-900/80 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-[#e41937]/50"
               />
               <button
                 onClick={handleRunAiQuery}
                 disabled={aiLoading}
-                className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm rounded-xl transition-all disabled:opacity-50"
+                className="px-4 py-2.5 bg-[#e41937] hover:bg-[#e41937] text-white font-semibold text-sm rounded-xl transition-all disabled:opacity-50"
               >
                 {aiLoading ? 'Querying...' : 'Run Query'}
               </button>
@@ -378,7 +378,7 @@ const DatabaseIntelligenceCenter = () => {
 
             {aiResult && (
               <div className="bg-gray-900/60 border border-white/5 rounded-xl p-4 space-y-3 font-mono text-xs">
-                <div className="flex justify-between text-indigo-300 border-b border-white/5 pb-2">
+                <div className="flex justify-between text-[#fe063f] border-b border-white/5 pb-2">
                   <span>Matches: {aiResult.total_matches}</span>
                   <span>Country Filter: {aiResult.parsed_filters?.country || 'All'}</span>
                 </div>
@@ -390,7 +390,7 @@ const DatabaseIntelligenceCenter = () => {
                     {aiResult.results.slice(0, 5).map((r) => (
                       <div key={r.id} className="p-2 bg-black/40 rounded flex justify-between">
                         <span className="text-gray-200 font-sans">{r.canonical_name} ({r.current_company || 'N/A'})</span>
-                        <span className="text-emerald-400">{r.primary_email || r.primary_phone || 'Profile Only'}</span>
+                        <span className="text-white">{r.primary_email || r.primary_phone || 'Profile Only'}</span>
                       </div>
                     ))}
                   </div>
@@ -405,7 +405,7 @@ const DatabaseIntelligenceCenter = () => {
           <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-6 backdrop-blur-md shadow-xl space-y-4">
             <div>
               <h3 className="text-lg font-bold text-gray-100 flex items-center gap-2">
-                <span className="text-emerald-400">💬</span> Chat Intelligence Pipeline Tester
+                <span className="text-white">💬</span> Chat Intelligence Pipeline Tester
               </h3>
               <p className="text-xs text-gray-400 mt-1">
                 Ingests messy Google Chat & Microsoft Teams recruiter notes with zero identity fabrication.
@@ -417,12 +417,12 @@ const DatabaseIntelligenceCenter = () => {
                 value={chatText}
                 onChange={(e) => setChatText(e.target.value)}
                 placeholder="e.g. John - 5716175929 - john@abc.com"
-                className="flex-1 bg-gray-900/80 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+                className="flex-1 bg-gray-900/80 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-[#e41937]/50"
               />
               <button
                 onClick={handleTestChatIngest}
                 disabled={chatLoading}
-                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm rounded-xl transition-all disabled:opacity-50"
+                className="px-4 py-2.5 bg-[#e41937] text-white hover:bg-[#e41937] text-white text-white font-semibold text-sm rounded-xl transition-all disabled:opacity-50"
               >
                 {chatLoading ? 'Ingesting...' : 'Ingest Note'}
               </button>
@@ -430,7 +430,7 @@ const DatabaseIntelligenceCenter = () => {
 
             {chatResult && (
               <div className="bg-gray-900/60 border border-white/5 rounded-xl p-4 space-y-2 font-mono text-xs">
-                <div className="flex justify-between text-emerald-400 border-b border-white/5 pb-2">
+                <div className="flex justify-between text-white border-b border-white/5 pb-2">
                   <span>Status: {chatResult.status}</span>
                   <span>Hash: {chatResult.content_hash?.slice(0, 12)}...</span>
                 </div>
@@ -441,7 +441,7 @@ const DatabaseIntelligenceCenter = () => {
                   <div>Company: <span className="text-white">{chatResult.analysis?.extracted_fields?.current_company || 'None'}</span></div>
                 </div>
                 <div className="text-[11px] text-gray-400">
-                  Partial Record: <span className={chatResult.analysis?.is_partial ? 'text-amber-400' : 'text-emerald-400'}>{chatResult.analysis?.is_partial ? 'TRUE (Safe Staging)' : 'FALSE (Complete)'}</span> | Score: {Math.round((chatResult.analysis?.confidence_score || 0) * 100)}%
+                  Partial Record: <span className={chatResult.analysis?.is_partial ? 'text-[#e41937]' : 'text-white'}>{chatResult.analysis?.is_partial ? 'TRUE (Safe Staging)' : 'FALSE (Complete)'}</span> | Score: {Math.round((chatResult.analysis?.confidence_score || 0) * 100)}%
                 </div>
               </div>
             )}

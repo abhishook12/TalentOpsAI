@@ -109,7 +109,7 @@ export default function WorkerDashboard() {
                     {w.status === "running" ? (
                       <button
                         onClick={() => toggle(w.name, "stop")}
-                        style={{ padding: '6px 12px', background: '#dc2626', color: '#ffffff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '14px' }}
+                        style={{ padding: '6px 12px', background: '#e41937', color: '#ffffff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '14px' }}
                       >
                         Stop
                       </button>

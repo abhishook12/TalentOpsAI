@@ -140,7 +140,7 @@ export default function PreflightSafetyModal({
           {/* Header */}
           <div className="px-6 py-5 border-b border-[#22222a] flex items-center justify-between bg-[#121217]">
             <div className="flex items-center gap-3.5">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center text-white shadow-sm">
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <div>
@@ -148,9 +148,9 @@ export default function PreflightSafetyModal({
                   Pre-Flight Deliverability Gate
                   <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-md border uppercase tracking-wider ${
                     isSafe
-                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                      ? 'bg-white/10 text-white border-white/20'
                       : isRisky
-                        ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                        ? 'bg-white/5 text-[#e41937] border-white/15'
                         : 'bg-red-500/10 text-red-400 border-red-500/20'
                   }`}>
                     {risk_level} Risk
@@ -178,7 +178,7 @@ export default function PreflightSafetyModal({
                   <span className="text-xs font-semibold text-[#a1a1aa] uppercase tracking-wider">
                     Deliverability Health
                   </span>
-                  <span className="text-xs font-bold text-emerald-400">
+                  <span className="text-xs font-bold text-white">
                     {deliverability_rate}% Safe & Deliverable
                   </span>
                 </div>
@@ -188,7 +188,7 @@ export default function PreflightSafetyModal({
                     className="h-full rounded-full transition-all duration-500"
                     style={{
                       width: `${deliverability_rate}%`,
-                      background: deliverability_rate >= 80 ? 'linear-gradient(90deg, #ffffff, #d4d4d8)' : deliverability_rate >= 50 ? 'linear-gradient(90deg, #d4d4d8, #d4d4d8)' : 'linear-gradient(90deg, #ef4444, #f87171)'
+                      background: deliverability_rate >= 80 ? 'linear-gradient(90deg, #ffffff, #d4d4d8)' : deliverability_rate >= 50 ? 'linear-gradient(90deg, #d4d4d8, #d4d4d8)' : 'linear-gradient(90deg, #e41937, #e41937)'
                     }}
                   />
                 </div>
@@ -204,9 +204,9 @@ export default function PreflightSafetyModal({
 
             {/* Auto-Healer Banner if blocked or risky exist */}
             {(blocked > 0 || risky_review > 0) && (
-              <div className="p-4 rounded-xl bg-gradient-to-r from-purple-950/30 via-[#181524] to-[#141419] border border-purple-500/25 flex items-center justify-between gap-4">
+              <div className="p-4 rounded-xl bg-gradient-to-r from-black/40 via-[#181524] to-[#141419] border border-[#e41937]/35 flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-purple-500/15 border border-purple-500/25 flex items-center justify-center text-purple-400 flex-shrink-0">
+                  <div className="w-9 h-9 rounded-xl bg-[#e41937]/15 border border-[#e41937]/35 flex items-center justify-center text-[#fe063f] flex-shrink-0">
                     <Wand2 className="w-4 h-4" />
                   </div>
                   <div className="min-w-0">
@@ -221,7 +221,7 @@ export default function PreflightSafetyModal({
                 <button
                   onClick={handleAutoHeal}
                   disabled={isHealing}
-                  className="px-3.5 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold flex items-center gap-1.5 flex-shrink-0 shadow-md shadow-purple-950/50 transition-all cursor-pointer"
+                  className="px-3.5 py-2 rounded-lg bg-[#e41937] hover:bg-[#e41937] text-white text-xs font-semibold flex items-center gap-1.5 flex-shrink-0 shadow-md shadow-black/60 transition-all cursor-pointer"
                 >
                   {isHealing ? (
                     <>
@@ -238,9 +238,9 @@ export default function PreflightSafetyModal({
 
             {/* Healed Notification Badge */}
             {healedInfo && healedInfo.total_healed > 0 && (
-              <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-2.5">
-                <CheckCheck className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                <div className="text-xs text-emerald-300">
+              <div className="p-3.5 rounded-xl bg-white/10 border border-white/20 flex items-center gap-2.5">
+                <CheckCheck className="w-4 h-4 text-white flex-shrink-0" />
+                <div className="text-xs text-white">
                   Repaired <strong>{healedInfo.total_healed}</strong> addresses into verified corporate mailboxes!
                 </div>
               </div>
@@ -248,9 +248,9 @@ export default function PreflightSafetyModal({
 
             {/* Warning if blocked */}
             {warning_message && !healedInfo && (
-              <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-start gap-3">
-                <AlertCircle className="w-4 h-4 text-rose-400 mt-0.5 flex-shrink-0" />
-                <div className="text-xs text-rose-300 leading-relaxed">{warning_message}</div>
+              <div className="p-3.5 rounded-xl bg-[#e41937]/15 border border-[#e41937]/30 flex items-start gap-3">
+                <AlertCircle className="w-4 h-4 text-[#fe063f] mt-0.5 flex-shrink-0" />
+                <div className="text-xs text-[#fe063f] leading-relaxed">{warning_message}</div>
               </div>
             )}
 
@@ -261,15 +261,15 @@ export default function PreflightSafetyModal({
                 onClick={() => setFilterTier(filterTier === 'safe' ? 'all' : 'safe')}
                 className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
                   filterTier === 'safe'
-                    ? 'bg-emerald-500/10 border-emerald-500/40 ring-1 ring-emerald-500/30'
+                    ? 'bg-white/10 border-white/40 ring-1 ring-white/30'
                     : 'bg-[#141419] border-[#262630] hover:border-[#383846]'
                 }`}
               >
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs font-semibold text-emerald-400 flex items-center gap-1.5">
+                  <span className="text-xs font-semibold text-white flex items-center gap-1.5">
                     <CheckCircle2 className="w-3.5 h-3.5" /> Safe to Send
                   </span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 font-mono font-bold">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-white font-mono font-bold">
                     Tier 1-2
                   </span>
                 </div>
@@ -282,15 +282,15 @@ export default function PreflightSafetyModal({
                 onClick={() => setFilterTier(filterTier === 'review' ? 'all' : 'review')}
                 className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
                   filterTier === 'review'
-                    ? 'bg-amber-500/10 border-amber-500/40 ring-1 ring-amber-500/30'
+                    ? 'bg-white/5 border-white/30 ring-1 ring-white/20'
                     : 'bg-[#141419] border-[#262630] hover:border-[#383846]'
                 }`}
               >
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs font-semibold text-amber-400 flex items-center gap-1.5">
+                  <span className="text-xs font-semibold text-[#e41937] flex items-center gap-1.5">
                     <AlertTriangle className="w-3.5 h-3.5" /> Catch-All
                   </span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 font-mono font-bold">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-zinc-300 font-mono font-bold">
                     Tier 3
                   </span>
                 </div>
@@ -303,15 +303,15 @@ export default function PreflightSafetyModal({
                 onClick={() => setFilterTier(filterTier === 'blocked' ? 'all' : 'blocked')}
                 className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
                   filterTier === 'blocked'
-                    ? 'bg-rose-500/10 border-rose-500/40 ring-1 ring-rose-500/30'
+                    ? 'bg-[#e41937]/15 border-[#e41937]/50 ring-1 ring-[#e41937]/30'
                     : 'bg-[#141419] border-[#262630] hover:border-[#383846]'
                 }`}
               >
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs font-semibold text-rose-400 flex items-center gap-1.5">
+                  <span className="text-xs font-semibold text-[#fe063f] flex items-center gap-1.5">
                     <XCircle className="w-3.5 h-3.5" /> Excluded
                   </span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-300 font-mono font-bold">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#e41937]/15 text-[#fe063f] font-mono font-bold">
                     Tier 4-5
                   </span>
                 </div>
@@ -323,13 +323,13 @@ export default function PreflightSafetyModal({
             {/* Smart Outreach Powerhouse Badges (Timezone & Reputation Shield) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="p-3.5 rounded-xl bg-[#141419] border border-[#262630] flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-indigo-500/15 border border-indigo-500/25 flex items-center justify-center text-indigo-400 flex-shrink-0">
+                <div className="w-8 h-8 rounded-lg bg-[#e41937]/15 border border-[#e41937]/50/25 flex items-center justify-center text-[#fe063f] flex-shrink-0">
                   <Clock className="w-4 h-4" />
                 </div>
                 <div>
                   <div className="text-xs font-bold text-white flex items-center gap-1.5">
                     Prime-Time Timezone Dispatch
-                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 font-mono font-bold">8:45 AM</span>
+                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-[#e41937]/20 text-[#fe063f] font-mono font-bold">8:45 AM</span>
                   </div>
                   <div className="text-[11px] text-[#8e8e99] mt-0.5">
                     Recipients scheduled for 8:45 AM local recipient time across ET, CT, MT, PT.
@@ -338,13 +338,13 @@ export default function PreflightSafetyModal({
               </div>
 
               <div className="p-3.5 rounded-xl bg-[#141419] border border-[#262630] flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center text-emerald-400 flex-shrink-0">
+                <div className="w-8 h-8 rounded-lg bg-white/10 border border-white/25 flex items-center justify-center text-white flex-shrink-0">
                   <ShieldCheck className="w-4 h-4" />
                 </div>
                 <div>
                   <div className="text-xs font-bold text-white flex items-center gap-1.5">
                     Domain Reputation Shield
-                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-mono font-bold">2.0% Cap</span>
+                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-white/15 text-white font-mono font-bold">2.0% Cap</span>
                   </div>
                   <div className="text-[11px] text-[#8e8e99] mt-0.5">
                     Emergency circuit breaker auto-pauses campaign if bounce velocity spikes.
@@ -357,10 +357,10 @@ export default function PreflightSafetyModal({
             {spamResult && (
               <div className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 ${
                 (spamResult.score || 0) < 30
-                  ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-300'
+                  ? 'bg-white/10 border-white/25 text-white'
                   : (spamResult.score || 0) < 60
-                  ? 'bg-amber-500/10 border-amber-500/25 text-amber-300'
-                  : 'bg-rose-500/10 border-rose-500/25 text-rose-300'
+                  ? 'bg-white/5 border-white/20 text-zinc-300'
+                  : 'bg-[#e41937]/15 border-[#e41937]/35 text-[#fe063f]'
               }`}>
                 <div className="flex items-center gap-2.5">
                   <Shield className="w-4 h-4 flex-shrink-0" />
@@ -390,13 +390,13 @@ export default function PreflightSafetyModal({
                       value={searchQuery}
                       onChange={e => setSearchQuery(e.target.value)}
                       placeholder="Filter leads..."
-                      className="text-[11px] pl-8 pr-2.5 py-1 rounded-lg bg-[#141419] border border-[#262630] text-white placeholder-[#71717a] outline-none focus:border-indigo-500 transition-colors w-32 sm:w-40"
+                      className="text-[11px] pl-8 pr-2.5 py-1 rounded-lg bg-[#141419] border border-[#262630] text-white placeholder-[#71717a] outline-none focus:border-[#e41937]/50 transition-colors w-32 sm:w-40"
                     />
                   </div>
                   {filterTier !== 'all' && (
                     <button
                       onClick={() => setFilterTier('all')}
-                      className="text-[11px] text-indigo-400 hover:underline cursor-pointer"
+                      className="text-[11px] text-[#fe063f] hover:underline cursor-pointer"
                     >
                       Reset
                     </button>
@@ -428,17 +428,17 @@ export default function PreflightSafetyModal({
                           {r.email_confidence ?? r.confidence ?? 95}% Verified
                         </span>
                         {r.action === 'send' && (
-                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/10 text-white border border-white/25">
                             Ready to Send
                           </span>
                         )}
                         {r.action === 'review' && (
-                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/25">
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/10 text-[#e41937] border border-white/20">
                             Catch-All
                           </span>
                         )}
                         {r.action === 'block' && (
-                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-400 border border-rose-500/25">
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#e41937]/15 text-[#fe063f] border border-[#e41937]/35">
                             Excluded
                           </span>
                         )}
@@ -466,7 +466,7 @@ export default function PreflightSafetyModal({
                     type="checkbox"
                     checked={excludeRisky}
                     onChange={e => setExcludeRisky(e.target.checked)}
-                    className="w-4 h-4 rounded border-[#383846] bg-[#141419] text-emerald-500 focus:ring-emerald-500 cursor-pointer"
+                    className="w-4 h-4 rounded border-[#383846] bg-[#141419] text-white focus:ring-white cursor-pointer"
                   />
                   <span>Exclude Catch-All ({risky_review})</span>
                 </label>
@@ -478,7 +478,7 @@ export default function PreflightSafetyModal({
               disabled={!can_proceed || effectiveSendCount === 0 || isLaunching}
               className={`px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-lg ${
                 can_proceed && effectiveSendCount > 0
-                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/40 cursor-pointer'
+                  ? 'bg-[#e41937] text-white hover:bg-[#e41937] text-white text-white shadow-black/60 cursor-pointer'
                   : 'bg-[#202028] text-[#555562] cursor-not-allowed'
               }`}
             >

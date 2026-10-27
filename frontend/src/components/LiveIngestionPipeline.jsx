@@ -63,7 +63,7 @@ export default function LiveIngestionPipeline() {
     RECEIVING_DATA: { tone: 'success', text: 'RECEIVING DATA', color: '#ffffff', bg: 'rgba(255, 255, 255, 0.08)' },
     PROCESSING: { tone: 'warning', text: 'BATCH PROCESSING', color: '#d4d4d8', bg: 'rgba(212, 212, 216,0.15)' },
     IDLE: { tone: 'neutral', text: 'IDLE', color: '#d4d4d8', bg: 'rgba(255, 255, 255, 0.05)' },
-    NO_INGESTION_WARNING: { tone: 'danger', text: 'NO INGESTION (>10m)', color: '#ef4444', bg: 'rgba(239,68,68,0.15)' },
+    NO_INGESTION_WARNING: { tone: 'danger', text: 'NO INGESTION (>10m)', color: '#e41937', bg: 'rgba(239,68,68,0.15)' },
   }[derivedStatus] || { tone: 'neutral', text: 'STANDBY', color: '#9ca3af', bg: 'rgba(156,163,175,0.15)' }
 
   return (
@@ -214,7 +214,7 @@ export default function LiveIngestionPipeline() {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: 'var(--text-secondary)' }}>Rejected / Ungrounded:</span>
-              <span style={{ fontWeight: 700, color: '#ef4444' }}><AnimatedNumber value={metrics.rejected_low_confidence} /></span>
+              <span style={{ fontWeight: 700, color: '#e41937' }}><AnimatedNumber value={metrics.rejected_low_confidence} /></span>
             </div>
           </div>
         </div>

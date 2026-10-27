@@ -39,14 +39,14 @@ function ColleaguesSection({ recruiterId, company, onSelectRecruiter }) {
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Users className="w-4 h-4 text-emerald-400" />
+          <Users className="w-4 h-4 text-white" />
           <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted, #a1a1aa)' }}>
             Company Colleagues
           </span>
         </div>
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="text-xs text-emerald-500 hover:text-emerald-400 font-medium cursor-pointer"
+          className="text-xs text-white hover:text-white font-medium cursor-pointer"
         >
           {isExpanded ? 'Collapse' : 'Explore Peers'}
         </button>
@@ -56,7 +56,7 @@ function ColleaguesSection({ recruiterId, company, onSelectRecruiter }) {
         <div className="space-y-2 pt-2" style={{ borderTop: '1px solid var(--card-border, #27272a)' }}>
           {loading ? (
             <div className="text-xs py-2 flex items-center gap-2" style={{ color: 'var(--text-muted, #71717a)' }}>
-              <RefreshCw className="w-3 h-3 animate-spin text-emerald-400" /> Finding colleagues at {company}...
+              <RefreshCw className="w-3 h-3 animate-spin text-white" /> Finding colleagues at {company}...
             </div>
           ) : colleagues.length === 0 ? (
             <div className="text-xs py-1" style={{ color: 'var(--text-muted, #71717a)' }}>
@@ -70,7 +70,7 @@ function ColleaguesSection({ recruiterId, company, onSelectRecruiter }) {
                 className="p-2.5 rounded-lg bg-[#202026] hover:bg-[#272730] border border-[#2d2d35] cursor-pointer transition-colors flex items-center justify-between group"
               >
                 <div className="min-w-0 pr-2">
-                  <div className="text-xs font-semibold text-white group-hover:text-emerald-400 transition-colors truncate">
+                  <div className="text-xs font-semibold text-white group-hover:text-white transition-colors truncate">
                     {colleague.recruiter_name}
                   </div>
                   <div className="text-[10px] text-[#a1a1aa] truncate">
@@ -78,7 +78,7 @@ function ColleaguesSection({ recruiterId, company, onSelectRecruiter }) {
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5 flex-shrink-0">
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-mono">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-white font-mono">
                     {colleague.quality_score || 85}%
                   </span>
                   <ChevronRight className="w-3.5 h-3.5 text-[#71717a] group-hover:text-white" />
@@ -218,10 +218,10 @@ export default function RecruiterProfileDrawer({
   };
 
   const getGradeBadge = (score) => {
-    if (score >= 90) return { label: 'Grade A+', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' };
-    if (score >= 75) return { label: 'Grade A', color: 'text-blue-400 bg-blue-500/10 border-blue-500/30' };
-    if (score >= 60) return { label: 'Grade B', color: 'text-amber-400 bg-amber-500/10 border-amber-500/30' };
-    return { label: 'Grade C', color: 'text-rose-400 bg-rose-500/10 border-rose-500/30' };
+    if (score >= 90) return { label: 'Grade A+', color: 'text-white bg-white/10 border-white/30' };
+    if (score >= 75) return { label: 'Grade A', color: 'text-[#fe063f] bg-[#e41937]/10 border-[#e41937]/50/30' };
+    if (score >= 60) return { label: 'Grade B', color: 'text-[#e41937] bg-white/5 border-white/25' };
+    return { label: 'Grade C', color: 'text-[#fe063f] bg-[#e41937]/15 border-[#e41937]/40' };
   };
 
   const grade = getGradeBadge(completeness);
@@ -327,7 +327,7 @@ export default function RecruiterProfileDrawer({
                 {email ? (
                   <a
                     href={`mailto:${email}`}
-                    className="flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold no-underline transition-all shadow-md shadow-emerald-950/20"
+                    className="flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl bg-[#e41937] text-white hover:bg-[#e41937] text-white text-white text-xs font-semibold no-underline transition-all shadow-md shadow-emerald-950/20"
                   >
                     <Mail className="w-3.5 h-3.5" /> Email Candidate
                   </a>
@@ -381,10 +381,10 @@ export default function RecruiterProfileDrawer({
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5" style={{ color: 'var(--text-secondary, #a1a1aa)' }}>
-                      <Building2 className="w-3.5 h-3.5 text-blue-400" /> Company Tech Stack (DNS Verified)
+                      <Building2 className="w-3.5 h-3.5 text-[#fe063f]" /> Company Tech Stack (DNS Verified)
                     </span>
                     {atsSystem && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/10 text-white border border-white/30">
                         {atsSystem} ATS
                       </span>
                     )}
@@ -417,9 +417,9 @@ export default function RecruiterProfileDrawer({
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5" style={{ color: 'var(--text-secondary, #a1a1aa)' }}>
-                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Client Engagement & NSR Dossier
+                      <ShieldCheck className="w-3.5 h-3.5 text-white" /> Client Engagement & NSR Dossier
                     </span>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/10 text-white border border-white/30 flex items-center gap-1">
                       <CheckCircle2 className="w-2.5 h-2.5" /> {nsrProfile?.status || 'VERIFIED'}
                     </span>
                   </div>
@@ -433,7 +433,7 @@ export default function RecruiterProfileDrawer({
                     </div>
                     <div className="p-2 rounded-lg bg-zinc-900/60 border border-zinc-800/80">
                       <div className="text-[10px] uppercase text-zinc-500 font-medium">BGV Clearance</div>
-                      <div className="text-emerald-400 mt-0.5 font-semibold text-[11px] flex items-center gap-1">
+                      <div className="text-white mt-0.5 font-semibold text-[11px] flex items-center gap-1">
                         <Check className="w-3 h-3" /> {nsrProfile?.bgv_status || 'CLEARED'}
                       </div>
                     </div>
@@ -445,7 +445,7 @@ export default function RecruiterProfileDrawer({
                     </div>
                     <div className="p-2 rounded-lg bg-zinc-900/60 border border-zinc-800/80">
                       <div className="text-[10px] uppercase text-zinc-500 font-medium">Client SOW Gate</div>
-                      <div className="text-emerald-400 mt-0.5 font-semibold text-[11px] truncate">
+                      <div className="text-white mt-0.5 font-semibold text-[11px] truncate">
                         {nsrProfile?.client_clearance ? 'Deployment Cleared' : 'Pre-Cleared'}
                       </div>
                     </div>
@@ -453,9 +453,9 @@ export default function RecruiterProfileDrawer({
 
                   {/* Candidate Bill or Interview Context Banner */}
                   {isCandidateBill && (
-                    <div className="mt-2 p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/25 flex items-start gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
-                      <div className="text-[11px] text-emerald-300 leading-tight">
+                    <div className="mt-2 p-2.5 rounded-lg bg-white/10 border border-white/25 flex items-start gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-white flex-shrink-0 mt-0.5" />
+                      <div className="text-[11px] text-white leading-tight">
                         <span className="font-semibold text-white">Bill's 2nd Interview Clearance:</span> NSR Profile active with biometric KYC verified. Ready for immediate enterprise statement of work (SOW) client deployment.
                       </div>
                     </div>
@@ -479,14 +479,14 @@ export default function RecruiterProfileDrawer({
                       }}
                       title="Autonomous Engine: Continuously scans and enriches DNS tech-stack, identity, and NSR verification in background"
                     >
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-white text-black animate-pulse" />
                       {isEnriching ? 'Auto-Enriching...' : 'Autonomous Engine Active'}
                     </div>
                     {recruiter.recruiter_id && (
                       <button
                         onClick={handleAutoFixEmail}
                         disabled={isFixingEmail}
-                        className="text-[11px] font-semibold text-purple-400 hover:text-purple-300 flex items-center gap-1 cursor-pointer bg-purple-500/10 hover:bg-purple-500/20 px-2.5 py-1 rounded-lg border border-purple-500/20 transition-colors"
+                        className="text-[11px] font-semibold text-[#fe063f] hover:text-[#fe063f] flex items-center gap-1 cursor-pointer bg-[#e41937]/15 hover:bg-[#e41937]/20 px-2.5 py-1 rounded-lg border border-[#e41937]/30 transition-colors"
                       >
                         {isFixingEmail ? (
                           <>
@@ -511,7 +511,7 @@ export default function RecruiterProfileDrawer({
                       style={{ background: 'var(--card-bg, #18181c)', border: '1px solid var(--card-border, #27272a)' }}
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 flex-shrink-0">
+                        <div className="w-8 h-8 rounded-lg bg-white/10 border border-white/20 flex items-center justify-center text-white flex-shrink-0">
                           <Mail className="w-4 h-4" />
                         </div>
                         <div className="min-w-0">
@@ -525,7 +525,7 @@ export default function RecruiterProfileDrawer({
                         style={{ color: 'var(--text-muted, #71717a)' }}
                         title="Copy Email"
                       >
-                        {copiedField === `Email ${idx + 1}` ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                        {copiedField === `Email ${idx + 1}` ? <Check className="w-3.5 h-3.5 text-white" /> : <Copy className="w-3.5 h-3.5" />}
                       </button>
                     </div>
                   ))
@@ -540,7 +540,7 @@ export default function RecruiterProfileDrawer({
                       style={{ background: 'var(--card-bg, #18181c)', border: '1px solid var(--card-border, #27272a)' }}
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 flex-shrink-0">
+                        <div className="w-8 h-8 rounded-lg bg-[#e41937]/10 border border-[#e41937]/50/20 flex items-center justify-center text-[#fe063f] flex-shrink-0">
                           <Phone className="w-4 h-4" />
                         </div>
                         <div className="min-w-0">
@@ -554,7 +554,7 @@ export default function RecruiterProfileDrawer({
                         style={{ color: 'var(--text-muted, #71717a)' }}
                         title="Copy Phone"
                       >
-                        {copiedField === `Phone ${idx + 1}` ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                        {copiedField === `Phone ${idx + 1}` ? <Check className="w-3.5 h-3.5 text-white" /> : <Copy className="w-3.5 h-3.5" />}
                       </button>
                     </div>
                   ))
@@ -566,7 +566,7 @@ export default function RecruiterProfileDrawer({
                   style={{ background: 'var(--card-bg, #18181c)', border: '1px solid var(--card-border, #27272a)' }}
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 flex-shrink-0">
+                    <div className="w-8 h-8 rounded-lg bg-[#e41937]/15 border border-[#e41937]/30 flex items-center justify-center text-[#fe063f] flex-shrink-0">
                       <MapPin className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
@@ -591,7 +591,7 @@ export default function RecruiterProfileDrawer({
                     className="pt-2 text-[11px]"
                     style={{ borderTop: '1px solid var(--card-border, #27272a)', color: 'var(--text-secondary, #a1a1aa)' }}
                   >
-                    Specialization: <strong className="text-emerald-400">{recruiter.specialization}</strong>
+                    Specialization: <strong className="text-white">{recruiter.specialization}</strong>
                   </div>
                 )}
               </div>
@@ -658,7 +658,7 @@ export default function RecruiterProfileDrawer({
               {onEnrollCampaign && (
                 <button
                   onClick={() => onEnrollCampaign(recruiter)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors flex items-center gap-1.5 shadow-md cursor-pointer"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-[#e41937] text-white hover:bg-[#e41937] text-white text-white transition-colors flex items-center gap-1.5 shadow-md cursor-pointer"
                 >
                   <Send className="w-3.5 h-3.5" /> Add to Campaign
                 </button>

@@ -232,15 +232,15 @@ export default function ScoutContributors() {
           justifyContent: 'space-between',
           alignItems: 'center'
         }}>
-          <div style={{ color: '#ef4444', fontSize: 13 }}>
+          <div style={{ color: '#e41937', fontSize: 13 }}>
             Failed to load Scout contributors. Showing cached or fallback data.
           </div>
           <button
             onClick={() => refetch()}
             style={{
               background: 'transparent',
-              border: '1px solid #ef4444',
-              color: '#ef4444',
+              border: '1px solid #e41937',
+              color: '#e41937',
               borderRadius: 4,
               padding: '4px 10px',
               fontSize: 12,

@@ -159,6 +159,7 @@ def run_supervisor_loop():
     backend_fails = 0
     frontend_fails = 0
     last_loop_time = time.time()
+    last_watchdog_time = 0.0
 
     # Initial check & launch
     if not is_backend_responsive(timeout_sec=2.0):
@@ -196,6 +197,25 @@ def run_supervisor_loop():
                     logger.error(f"Failed to spawn wake Antigravity check thread: {ex}")
 
             last_loop_time = current_time
+
+            # Autonomous Morning Watchdog: If morning has arrived (>= 8:00 AM) and routine hasn't executed today, trigger it!
+            if current_time - last_watchdog_time > 300.0:
+                last_watchdog_time = current_time
+                try:
+                    if datetime.now().hour >= 8:
+                        if WORKSPACE_DIR not in sys.path:
+                            sys.path.insert(0, WORKSPACE_DIR)
+                        from daily_antigravity_routine import has_run_today, trigger_daily_antigravity_routine_check
+                        if not has_run_today():
+                            logger.info("Autonomous Morning Watchdog: Routine check has not run yet today. Dispatching...")
+                            threading.Thread(
+                                target=trigger_daily_antigravity_routine_check,
+                                kwargs={"source": "SUPERVISOR_PERIODIC_WATCHDOG"},
+                                daemon=True,
+                                name="WatchdogAntigravityCheck",
+                            ).start()
+                except Exception as w_err:
+                    logger.debug(f"Watchdog evaluation note: {w_err}")
 
 
             # 1. Probe Backend (Port 8000)

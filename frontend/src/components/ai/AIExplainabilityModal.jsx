@@ -263,9 +263,9 @@ export default function AIExplainabilityModal({ isOpen, onClose, explanationData
                     fontSize: '12px',
                     fontWeight: 700,
                     borderRadius: '6px',
-                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    border: '1px solid rgba(228, 25, 55, 0.35)',
                     backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                    color: '#ef4444',
+                    color: '#e41937',
                     cursor: 'pointer'
                   }}
                 >

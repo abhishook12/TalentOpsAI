@@ -463,7 +463,7 @@ export default function DataQualityCenter() {
   } = data || {}
 
   const overallHealth = dqSummary?.quality_dimensions?.overall_health_score || health_score || 92.6
-  const healthColor = overallHealth >= 90 ? '#ffffff' : overallHealth >= 70 ? '#d4d4d8' : '#EF4444'
+  const healthColor = overallHealth >= 90 ? '#ffffff' : overallHealth >= 70 ? '#d4d4d8' : '#e41937'
   const grade = overallHealth >= 95 ? 'A+' : overallHealth >= 90 ? 'A' : overallHealth >= 80 ? 'B' : overallHealth >= 70 ? 'C' : 'D'
 
   // Top KPI metrics
@@ -547,7 +547,7 @@ export default function DataQualityCenter() {
           <button 
             onClick={() => setShowRollbackModal(true)}
             className="cc-ghost-button"
-            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', fontSize: 13, fontWeight: 600, color: '#EF4444', borderColor: '#EF444440' }}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', fontSize: 13, fontWeight: 600, color: '#e41937', borderColor: '#EF444440' }}
           >
             <RotateCcw size={16} />
             Rollback Batch
@@ -591,7 +591,7 @@ export default function DataQualityCenter() {
           label="Quarantined" 
           value={quarantinedCount} 
           icon={ShieldAlert} 
-          color="#EF4444" 
+          color="#e41937" 
           subtitle="Isolated from Outreach" 
         />
         <MetricCard 
@@ -625,7 +625,7 @@ export default function DataQualityCenter() {
           icon={ShieldAlert}
           label="Quarantine Isolation Room"
           badge={quarantineList.length}
-          badgeColor="#EF4444"
+          badgeColor="#e41937"
         />
         <TabButton 
           active={activeTab === 'proposals'} 
@@ -720,7 +720,7 @@ export default function DataQualityCenter() {
               title="Invalid Email"
               count={dqSummary?.issues_breakdown?.undeliverable_emails ?? 18421}
               severity="HIGH"
-              color="#EF4444"
+              color="#e41937"
               description="Malformed syntax, failed DNS, or dead MX"
               actionLabel="View Quarantine"
               onClick={() => setActiveTab('quarantine')}
@@ -859,7 +859,7 @@ export default function DataQualityCenter() {
                       padding: '3px 8px', 
                       borderRadius: 4, 
                       background: emailEvalResult.quality_status === 'VERIFIED' ? 'rgba(255, 255, 255, 0.1)' : '#EF444420',
-                      color: emailEvalResult.quality_status === 'VERIFIED' ? '#ffffff' : '#EF4444'
+                      color: emailEvalResult.quality_status === 'VERIFIED' ? '#ffffff' : '#e41937'
                     }}>
                       STATUS: {emailEvalResult.quality_status}
                     </span>
@@ -958,7 +958,7 @@ export default function DataQualityCenter() {
                             padding: '2px 7px', 
                             borderRadius: 4,
                             background: item.severity === 'HIGH' ? '#EF444418' : item.severity === 'MEDIUM' ? 'rgba(255, 255, 255, 0.06)' : '#d4d4d818',
-                            color: item.severity === 'HIGH' ? '#EF4444' : item.severity === 'MEDIUM' ? '#d4d4d8' : '#d4d4d8'
+                            color: item.severity === 'HIGH' ? '#e41937' : item.severity === 'MEDIUM' ? '#d4d4d8' : '#d4d4d8'
                           }}>
                             {item.severity}
                           </span>
@@ -1029,7 +1029,7 @@ export default function DataQualityCenter() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: 12 }}>
             <div>
               <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <ShieldAlert color="#EF4444" size={20} />
+                <ShieldAlert color="#e41937" size={20} />
                 Quarantine Isolation Room
               </h2>
               <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
@@ -1088,7 +1088,7 @@ export default function DataQualityCenter() {
                         </td>
                         <td style={{ padding: '12px 14px' }}>
                           <span style={{ fontWeight: 700, color: 'var(--text-muted)' }}>{item.field_name}: </span>
-                          <span style={{ color: '#EF4444', background: '#EF444415', padding: '2px 6px', borderRadius: 4, fontFamily: 'monospace' }}>
+                          <span style={{ color: '#e41937', background: '#EF444415', padding: '2px 6px', borderRadius: 4, fontFamily: 'monospace' }}>
                             {item.raw_value || '<EMPTY>'}
                           </span>
                         </td>
@@ -1099,7 +1099,7 @@ export default function DataQualityCenter() {
                             padding: '2px 7px', 
                             borderRadius: 4,
                             background: item.problem_type === 'BAD' ? '#EF444420' : 'rgba(255, 255, 255, 0.08)',
-                            color: item.problem_type === 'BAD' ? '#EF4444' : '#d4d4d8'
+                            color: item.problem_type === 'BAD' ? '#e41937' : '#d4d4d8'
                           }}>
                             {item.problem_type}
                           </span>
@@ -1186,7 +1186,7 @@ export default function DataQualityCenter() {
                           <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{prop.entity_type} #{prop.entity_id}</span>
                           <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{prop.field_name}</div>
                         </td>
-                        <td style={{ padding: '12px 14px', color: '#EF4444', textDecoration: 'line-through' }}>
+                        <td style={{ padding: '12px 14px', color: '#e41937', textDecoration: 'line-through' }}>
                           {prop.old_value || '<NONE>'}
                         </td>
                         <td style={{ padding: '12px 14px', color: '#ffffff', fontWeight: 700 }}>
@@ -1242,7 +1242,7 @@ export default function DataQualityCenter() {
             <button 
               onClick={() => setShowRollbackModal(true)}
               className="cc-ghost-button"
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', fontSize: 12, color: '#EF4444', borderColor: '#EF444440' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', fontSize: 12, color: '#e41937', borderColor: '#EF444440' }}
             >
               <RotateCcw size={14} /> Revert Batch Snapshot
             </button>
@@ -1286,7 +1286,7 @@ export default function DataQualityCenter() {
                           <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{item.entity_type} #{item.entity_id}</span>
                           <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{item.field_name}</div>
                         </td>
-                        <td style={{ padding: '12px 14px', color: '#EF4444' }}>
+                        <td style={{ padding: '12px 14px', color: '#e41937' }}>
                           {item.old_value || '<EMPTY>'}
                         </td>
                         <td style={{ padding: '12px 14px', color: '#ffffff', fontWeight: 700 }}>
@@ -1306,7 +1306,7 @@ export default function DataQualityCenter() {
                             padding: '2px 7px', 
                             borderRadius: 4,
                             background: item.reverted ? '#EF444420' : 'rgba(255, 255, 255, 0.1)',
-                            color: item.reverted ? '#EF4444' : '#ffffff'
+                            color: item.reverted ? '#e41937' : '#ffffff'
                           }}>
                             {item.reverted ? 'REVERTED' : 'CURRENT'}
                           </span>
@@ -1547,7 +1547,7 @@ export default function DataQualityCenter() {
                             onClick={handleRevertToDate}
                             disabled={revertingPointInTime}
                             className="cc-primary-button"
-                            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 18px', fontSize: 13, fontWeight: 700, background: '#EF4444', borderColor: '#EF4444' }}
+                            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 18px', fontSize: 13, fontWeight: 700, background: '#e41937', borderColor: '#e41937' }}
                           >
                             {revertingPointInTime ? <RefreshCw className="animate-spin" size={15} /> : <RotateCcw size={15} />}
                             Revert Canonical Profile to This Milestone
@@ -1669,7 +1669,7 @@ export default function DataQualityCenter() {
             {/* Side-by-Side Current vs Proposed */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
               <div style={{ padding: '1rem', borderRadius: 8, background: '#EF444410', border: '1px solid #EF444430' }}>
-                <div style={{ fontSize: 11, fontWeight: 800, color: '#EF4444', textTransform: 'uppercase', marginBottom: 4 }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: '#e41937', textTransform: 'uppercase', marginBottom: 4 }}>
                   CURRENT VALUE
                 </div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', wordBreak: 'break-all' }}>
@@ -1713,7 +1713,7 @@ export default function DataQualityCenter() {
               <button
                 onClick={() => handleRejectProposal(selectedProposal.id)}
                 className="cc-ghost-button"
-                style={{ padding: '9px 16px', fontSize: 12, fontWeight: 700, color: '#EF4444', borderColor: '#EF444440' }}
+                style={{ padding: '9px 16px', fontSize: 12, fontWeight: 700, color: '#e41937', borderColor: '#EF444440' }}
               >
                 Reject Proposal
               </button>
@@ -1769,7 +1769,7 @@ export default function DataQualityCenter() {
               <X size={20} />
             </button>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#EF4444', marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#e41937', marginBottom: 12 }}>
               <RotateCcw size={24} />
               <h3 style={{ fontSize: 18, fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
                 Reversible Batch Rollback
@@ -1806,7 +1806,7 @@ export default function DataQualityCenter() {
               <button
                 onClick={() => handleRollbackBatch(rollbackBatchId)}
                 className="cc-primary-button"
-                style={{ padding: '8px 18px', fontSize: 12, fontWeight: 700, background: '#EF4444' }}
+                style={{ padding: '8px 18px', fontSize: 12, fontWeight: 700, background: '#e41937' }}
               >
                 Confirm Lossless Rollback
               </button>
@@ -1946,7 +1946,7 @@ export default function DataQualityCenter() {
   )
 }
 
-function TabButton({ active, onClick, icon: Icon, label, badge, badgeColor = '#EF4444' }) {
+function TabButton({ active, onClick, icon: Icon, label, badge, badgeColor = '#e41937' }) {
   return (
     <button
       onClick={onClick}
@@ -2054,7 +2054,7 @@ function ResultItem({ label, value, pass }) {
   return (
     <div style={{ padding: '8px 10px', borderRadius: 6, background: 'var(--panel-bg)', border: '1px solid var(--card-border)' }}>
       <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>{label}</div>
-      <div style={{ fontSize: 13, fontWeight: 700, color: pass ? '#ffffff' : '#EF4444', marginTop: 2 }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: pass ? '#ffffff' : '#e41937', marginTop: 2 }}>
         {value}
       </div>
     </div>

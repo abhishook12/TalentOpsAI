@@ -304,7 +304,7 @@ export default function PasteRecipientsView({ onAddRecipients }) {
         {showSuggestions && suggestions.length > 0 && (
           <div 
             ref={suggestionsBoxRef}
-            className="absolute z-50 left-2 right-2 bottom-3 bg-[var(--card-bg, #1a1a24)] border border-[var(--brand)]/60 rounded-xl shadow-2xl overflow-hidden backdrop-blur-md animate-in fade-in slide-in-from-bottom-2 duration-150"
+            className="absolute z-50 left-2 right-2 bottom-3 bg-[var(--card-bg, #121212)] border border-[var(--brand)]/60 rounded-xl shadow-2xl overflow-hidden backdrop-blur-md animate-in fade-in slide-in-from-bottom-2 duration-150"
             style={{ maxHeight: '220px' }}
           >
             <div className="px-3 py-1.5 bg-[var(--brand)]/10 border-b border-[var(--brand)]/20 flex items-center justify-between">
@@ -357,12 +357,12 @@ export default function PasteRecipientsView({ onAddRecipients }) {
 
                   <div className="flex items-center gap-2 shrink-0 ml-2">
                     {item.use_count > 0 && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-medium">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/10 text-white font-medium">
                         Used {item.use_count}x
                       </span>
                     )}
                     {item.source === 'database' && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400 font-medium">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#e41937]/15 text-[#fe063f] font-medium">
                         Directory
                       </span>
                     )}
@@ -379,11 +379,11 @@ export default function PasteRecipientsView({ onAddRecipients }) {
       {text && (
         <div className="mt-3 p-3 bg-[var(--bg-page)] rounded-lg border border-[var(--border)] flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-3 text-xs flex-wrap">
-            <span className="text-green-500 font-medium flex items-center gap-1">
+            <span className="text-white font-medium flex items-center gap-1">
               <Check size={12} /> {stats.valid} Valid
             </span>
             {stats.duplicates > 0 && (
-              <span className="text-yellow-500 font-medium">
+              <span className="text-[#e41937] font-medium">
                 {stats.duplicates} Duplicates
               </span>
             )}
@@ -393,7 +393,7 @@ export default function PasteRecipientsView({ onAddRecipients }) {
               </span>
             )}
             {detectedDominant && (
-              <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/30">
+              <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#e41937]/15 text-[#fe063f] border border-[#e41937]/50/30">
                 <Building2 size={11} /> Auto-naming: {detectedDominant.companyName} ({detectedDominant.count})
               </span>
             )}

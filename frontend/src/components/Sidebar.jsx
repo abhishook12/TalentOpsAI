@@ -200,13 +200,13 @@ export default function Sidebar() {
                 <div style={{
                   background: item.badgeVariant === 'pending' || item.badgeVariant === 'danger' || (typeof item.badge === 'number' && item.badge > 0)
                     ? 'rgba(239, 68, 68, 0.16)'
-                    : 'rgba(34, 184, 207, 0.14)',
+                    : 'rgba(228, 25, 55, 0.14)',
                   color: item.badgeVariant === 'pending' || item.badgeVariant === 'danger' || (typeof item.badge === 'number' && item.badge > 0)
-                    ? '#f87171'
-                    : '#22B8CF',
+                    ? '#e41937'
+                    : '#e41937',
                   border: item.badgeVariant === 'pending' || item.badgeVariant === 'danger' || (typeof item.badge === 'number' && item.badge > 0)
-                    ? '1px solid rgba(239, 68, 68, 0.35)'
-                    : '1px solid rgba(34, 184, 207, 0.35)',
+                    ? '1px solid rgba(228, 25, 55, 0.35)'
+                    : '1px solid rgba(228, 25, 55, 0.35)',
                   fontSize: '11px',
                   fontWeight: 600,
                   padding: '2px 7px',

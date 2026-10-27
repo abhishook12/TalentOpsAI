@@ -33,10 +33,10 @@ export default function ScoutNodesPanel() {
   const statusColors = {
     LIVE_STREAMING: { text: '● LIVE STREAMING', color: '#ffffff', bg: 'rgba(255, 255, 255, 0.08)' },
     CONNECTED_IDLE: { text: '● CONNECTED (IDLE)', color: '#d4d4d8', bg: 'rgba(255, 255, 255, 0.05)' },
-    IDLE_NO_INGESTION: { text: '⚠ NO INGESTION (>5m)', color: '#ef4444', bg: 'rgba(239,68,68,0.15)' },
+    IDLE_NO_INGESTION: { text: '⚠ NO INGESTION (>5m)', color: '#e41937', bg: 'rgba(239,68,68,0.15)' },
     PREVIOUSLY_ACTIVE: { text: '○ HISTORICAL (OFFLINE)', color: '#9ca3af', bg: 'rgba(156,163,175,0.15)' },
     AWAITING_CONNECTION: { text: '○ AWAITING PAIRING', color: '#71717a', bg: 'rgba(100,116,139,0.15)' },
-    REVOKED: { text: '🔴 REVOKED', color: '#ef4444', bg: 'rgba(239,68,68,0.15)' },
+    REVOKED: { text: '🔴 REVOKED', color: '#e41937', bg: 'rgba(239,68,68,0.15)' },
   }
 
   const handleRevoke = async (deviceId) => {
@@ -323,8 +323,8 @@ export default function ScoutNodesPanel() {
                         disabled={actionLoading === node.device_id}
                         title="Revoke Device"
                         style={{
-                          background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)',
-                          color: '#ef4444', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center'
+                          background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(228, 25, 55, 0.35)',
+                          color: '#e41937', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center'
                         }}
                       >
                         <Trash2 size={12} />

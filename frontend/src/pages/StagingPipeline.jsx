@@ -291,7 +291,7 @@ export default function StagingPipeline() {
               ENRICH: { bg: 'rgba(212, 212, 216, 0.15)', text: '#d4d4d8' },
               DUPLICATE: { bg: 'rgba(107, 114, 128, 0.15)', text: '#9ca3af' },
               REVIEW: { bg: 'rgba(255, 255, 255, 0.05)', text: '#d4d4d8' },
-              CONFLICT: { bg: 'rgba(239, 68, 68, 0.15)', text: '#ef4444' },
+              CONFLICT: { bg: 'rgba(239, 68, 68, 0.15)', text: '#e41937' },
               IGNORE: { bg: 'rgba(156, 163, 175, 0.15)', text: '#6b7280' },
             }
             const c = colors[d.decision] || { bg: 'rgba(107, 114, 128, 0.15)', text: '#9ca3af' }
@@ -662,7 +662,7 @@ export default function StagingPipeline() {
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
                       <span style={{ fontWeight: 700, fontSize: 16 }}>{item.raw_name || 'Anonymous Candidate'}</span>
-                      <span style={{ padding: '2px 8px', borderRadius: 4, background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', fontSize: 11, fontWeight: 700 }}>
+                      <span style={{ padding: '2px 8px', borderRadius: 4, background: 'rgba(239, 68, 68, 0.15)', color: '#e41937', fontSize: 11, fontWeight: 700 }}>
                         {item.decision || 'REVIEW_REQUIRED'}
                       </span>
                     </div>
@@ -682,7 +682,7 @@ export default function StagingPipeline() {
                         borderRadius: 6,
                         border: '1px solid var(--border)',
                         background: 'var(--bg)',
-                        color: '#ef4444',
+                        color: '#e41937',
                         cursor: 'pointer',
                         fontSize: 12,
                         fontWeight: 600,
@@ -710,9 +710,9 @@ export default function StagingPipeline() {
                       style={{
                         padding: '6px 12px',
                         borderRadius: 6,
-                        border: '1px solid rgba(239, 68, 68, 0.3)',
+                        border: '1px solid rgba(228, 25, 55, 0.35)',
                         background: 'rgba(239, 68, 68, 0.08)',
-                        color: '#f87171',
+                        color: '#e41937',
                         cursor: 'pointer',
                         fontSize: 12,
                         fontWeight: 600,

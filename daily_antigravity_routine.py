@@ -51,7 +51,8 @@ ROUTINE_CHECK_PROMPT = (
     "4. Autonomous Background Engines: Verify the status of the Engine Immunity Sentinel, WebHarvest crawler, "
     "and Night Sweeper loops.\n"
     "5. Deliverability & Corporate Email Gate: Verify the 5-phase Corporate Email Intelligence Gate and Scout dual-sync status.\n"
-    "6. Summary & Report: Provide an executive health checklist and flag any issues or anomalies that require user attention."
+    "6. Desktop Workstation Tools: Verify Vitel Global (Softphone/Dialer) and Microsoft Outlook are running and ready.\n"
+    "7. Summary & Report: Provide an executive health checklist and flag any issues or anomalies that require user attention."
 )
 
 
@@ -115,7 +116,11 @@ def is_antigravity_running() -> bool:
 
 
 def launch_antigravity() -> bool:
-    """Launches the Antigravity desktop application if not running."""
+    """
+    Launches the Antigravity desktop application if not running.
+    Uses Windows ShellExecute (os.startfile) to prevent pipe inheritance
+    and eliminate 'EPIPE: broken pipe, write' crashes in Electron main process.
+    """
     if is_antigravity_running():
         logger.info("Antigravity desktop application is already running.")
         return True
@@ -124,20 +129,29 @@ def launch_antigravity() -> bool:
         logger.error(f"Antigravity executable not found at {ANTIGRAVITY_EXE}")
         return False
 
-    logger.info(f"Launching Antigravity desktop application from {ANTIGRAVITY_EXE}...")
-    creation_flags = 0
-    if sys.platform == "win32":
-        creation_flags = subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS
-
+    logger.info(f"Launching Antigravity desktop application safely via Windows Shell from {ANTIGRAVITY_EXE}...")
     try:
-        subprocess.Popen(
-            [ANTIGRAVITY_EXE],
-            cwd=WORKSPACE_DIR,
-            creationflags=creation_flags,
-            stdin=subprocess.DEVNULL,
-        )
+        # Use Windows ShellExecute (os.startfile) so Explorer spawns the GUI app cleanly
+        # with standard GUI handles instead of inheriting broken stdio pipes from short-lived scripts.
+        if hasattr(os, "startfile"):
+            os.startfile(ANTIGRAVITY_EXE)
+        else:
+            creation_flags = 0
+            if sys.platform == "win32":
+                creation_flags = subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS
+            with open(os.devnull, "wb") as devnull:
+                subprocess.Popen(
+                    [ANTIGRAVITY_EXE],
+                    cwd=WORKSPACE_DIR,
+                    creationflags=creation_flags,
+                    stdin=devnull,
+                    stdout=devnull,
+                    stderr=devnull,
+                    close_fds=True,
+                )
+
         # Give Antigravity Electron process time to start
-        for attempt in range(10):
+        for attempt in range(12):
             time.sleep(1.5)
             if is_antigravity_running():
                 logger.info(f"Antigravity desktop process active after {(attempt + 1) * 1.5:.1f}s.")
@@ -149,7 +163,88 @@ def launch_antigravity() -> bool:
         return False
 
 
-def is_language_server_ready(timeout_sec: float = 3.0) -> bool:
+def resolve_antigravity_env(max_wait_sec: float = 35.0) -> dict:
+    """
+    Dynamically finds the running language_server.exe process,
+    extracts the CSRF token from its command-line args,
+    discovers its active listening port(s), and tests for the working agentapi port.
+    Returns an environment dict with ANTIGRAVITY_LS_ADDRESS and ANTIGRAVITY_CSRF_TOKEN set.
+    """
+    start_time = time.time()
+    exe = LANGUAGE_SERVER_EXE if os.path.exists(LANGUAGE_SERVER_EXE) else AGENTAPI_BAT
+
+    # If already set in parent environment and working, verify and return
+    if os.environ.get("ANTIGRAVITY_LS_ADDRESS"):
+        current_env = os.environ.copy()
+        try:
+            res = subprocess.run([exe, "agentapi", "--help"], env=current_env, capture_output=True, text=True, timeout=3)
+            if res.returncode == 0 and "error" not in res.stdout.lower():
+                return current_env
+        except Exception:
+            pass
+
+    # Wait for language_server.exe to appear and bind ports
+    while time.time() - start_time < max_wait_sec:
+        ls_proc = None
+        try:
+            import psutil
+            for proc in psutil.process_iter(["pid", "name", "cmdline"]):
+                try:
+                    if proc.info["name"] and "language_server" in proc.info["name"].lower():
+                        ls_proc = proc
+                        break
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    pass
+        except Exception as e:
+            logger.warning(f"psutil process iteration failed: {e}")
+
+        if ls_proc:
+            cmdline = " ".join(ls_proc.info.get("cmdline") or [])
+            import re
+            m = re.search(r"--csrf_token\s+([a-f0-9\-]+)", cmdline)
+            csrf_token = m.group(1) if m else ""
+
+            ports = []
+            try:
+                for conn in ls_proc.net_connections(kind="tcp"):
+                    if conn.status == psutil.CONN_LISTEN:
+                        ports.append(conn.laddr.port)
+            except Exception:
+                try:
+                    for conn in ls_proc.connections(kind="tcp"):
+                        if conn.status == psutil.CONN_LISTEN:
+                            ports.append(conn.laddr.port)
+                except Exception:
+                    pass
+
+            for port in sorted(ports, reverse=True):
+                test_env = os.environ.copy()
+                test_env["ANTIGRAVITY_LS_ADDRESS"] = f"localhost:{port}"
+                if csrf_token:
+                    test_env["ANTIGRAVITY_CSRF_TOKEN"] = csrf_token
+                test_env["ANTIGRAVITY_APP_DATA_DIR"] = r"C:/Users/User/.gemini/antigravity"
+                test_env["ANTIGRAVITY_PROJECT_ID"] = "d195ef56-2d88-4d3c-9ef2-6d5d97f4bb91"
+                try:
+                    res = subprocess.run(
+                        [exe, "agentapi", "--help"],
+                        env=test_env,
+                        capture_output=True,
+                        text=True,
+                        timeout=3,
+                    )
+                    if res.returncode == 0 and "error" not in res.stdout.lower():
+                        logger.info(f"Successfully auto-discovered Antigravity language server on localhost:{port}")
+                        return test_env
+                except Exception:
+                    pass
+
+        time.sleep(1.5)
+
+    logger.warning("Could not auto-discover working ANTIGRAVITY_LS_ADDRESS within timeout.")
+    return os.environ.copy()
+
+
+def is_language_server_ready(timeout_sec: float = 3.0, env: dict = None) -> bool:
     """Probes Antigravity language server via agentapi get-conversation-metadata or --help."""
     exe = LANGUAGE_SERVER_EXE if os.path.exists(LANGUAGE_SERVER_EXE) else AGENTAPI_BAT
     try:
@@ -159,9 +254,10 @@ def is_language_server_ready(timeout_sec: float = 3.0) -> bool:
             text=True,
             timeout=timeout_sec,
             cwd=WORKSPACE_DIR,
+            env=env or os.environ,
             check=False,
         )
-        return res.returncode == 0
+        return res.returncode == 0 and "error" not in res.stdout.lower()
     except Exception:
         return False
 
@@ -192,81 +288,92 @@ def trigger_daily_antigravity_routine_check(force: bool = False, source: str = "
             "conversation_id": cid,
         }
 
-    # 1. Ensure Antigravity desktop app is open
+    # 1. Ensure Antigravity desktop app and daily work apps (Vitel Global, Outlook) are open
     launch_antigravity()
+    try:
+        from autostart_talentops import ensure_daily_work_apps
+        ensure_daily_work_apps()
+    except Exception as e:
+        logger.warning(f"Note: Could not run ensure_daily_work_apps from daily routine: {e}")
 
-    # 2. Probe language server readiness
-    ready = False
-    for attempt in range(5):
-        if is_language_server_ready(timeout_sec=4.0):
-            ready = True
-            break
-        time.sleep(2.0)
+    # 2. Resolve language server environment (address & csrf token)
+    env = resolve_antigravity_env(max_wait_sec=20.0)
 
+    # 3. Probe language server readiness
+    ready = is_language_server_ready(timeout_sec=4.0, env=env)
     if not ready:
         logger.warning("Language server probe did not respond immediately, attempting new-conversation anyway...")
 
-    # 3. Enter the prompt into Antigravity via agentapi new-conversation
+    # 4. Enter the prompt into Antigravity via agentapi new-conversation with auto-retries
     exe = LANGUAGE_SERVER_EXE if os.path.exists(LANGUAGE_SERVER_EXE) else AGENTAPI_BAT
     title = f"TalentOps AI Start-of-Day Routine Check ({today_str})"
     cmd = [exe, "agentapi", "new-conversation", f"--title={title}", ROUTINE_CHECK_PROMPT] if exe == LANGUAGE_SERVER_EXE else [exe, "new-conversation", f"--title={title}", ROUTINE_CHECK_PROMPT]
 
-    logger.info(f"Dispatching new conversation prompt to Antigravity: title='{title}'...")
+    max_attempts = 3
+    last_error = ""
 
-    try:
-        res = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=25.0,
-            cwd=WORKSPACE_DIR,
-            check=False,
-        )
+    for attempt in range(1, max_attempts + 1):
+        logger.info(f"Dispatching new conversation prompt to Antigravity (Attempt {attempt}/{max_attempts}): title='{title}'...")
+        try:
+            # Re-resolve env if previous attempt failed or timed out to ensure fresh port/token
+            if attempt > 1:
+                env = resolve_antigravity_env(max_wait_sec=20.0)
 
-        conversation_id = ""
-        if res.returncode == 0:
-            try:
-                data = json.loads(res.stdout)
-                conversation_id = data.get("response", {}).get("newConversation", {}).get("conversationId", "")
-            except Exception:
-                conversation_id = "UNKNOWN_JSON_PARSE"
-
-            logger.info(
-                f"SUCCESS: Daily routine check conversation created successfully in Antigravity! "
-                f"Conversation ID: {conversation_id}"
+            res = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=30.0,
+                cwd=WORKSPACE_DIR,
+                env=env,
+                check=False,
             )
 
-            # 4. Save state
-            new_state = {
-                "last_run_date": today_str,
-                "last_run_timestamp": datetime.now().isoformat(),
-                "conversation_id": conversation_id,
-                "conversation_title": title,
-                "trigger_source": source,
-                "status": "SUCCESS",
-            }
-            save_state(new_state)
+            if res.returncode == 0:
+                conversation_id = ""
+                try:
+                    data = json.loads(res.stdout)
+                    conversation_id = data.get("response", {}).get("newConversation", {}).get("conversationId", "")
+                except Exception:
+                    conversation_id = "UNKNOWN_JSON_PARSE"
 
-            return {
-                "status": "SUCCESS",
-                "date": today_str,
-                "conversation_id": conversation_id,
-                "title": title,
-            }
-        else:
-            logger.error(f"agentapi new-conversation failed (code {res.returncode}): stdout={res.stdout}, stderr={res.stderr}")
-            return {
-                "status": "FAILED",
-                "error": res.stderr or res.stdout,
-                "returncode": res.returncode,
-            }
+                logger.info(
+                    f"SUCCESS: Daily routine check conversation created successfully in Antigravity! "
+                    f"Conversation ID: {conversation_id}"
+                )
 
-    except Exception as e:
-        logger.error(f"Exception during agentapi execution: {e}", exc_info=True)
-        return {
-            "status": "ERROR",
-            "error": str(e),
-        }
+                # Save state
+                new_state = {
+                    "last_run_date": today_str,
+                    "last_run_timestamp": datetime.now().isoformat(),
+                    "conversation_id": conversation_id,
+                    "conversation_title": title,
+                    "trigger_source": source,
+                    "status": "SUCCESS",
+                }
+                save_state(new_state)
+
+                return {
+                    "status": "SUCCESS",
+                    "date": today_str,
+                    "conversation_id": conversation_id,
+                    "title": title,
+                }
+            else:
+                last_error = f"code {res.returncode}: stdout={res.stdout}, stderr={res.stderr}"
+                logger.warning(f"agentapi attempt {attempt}/{max_attempts} failed ({last_error}). Retrying in 4s...")
+                time.sleep(4.0)
+
+        except Exception as e:
+            last_error = str(e)
+            logger.warning(f"Exception during agentapi attempt {attempt}/{max_attempts}: {e}. Retrying in 4s...")
+            time.sleep(4.0)
+
+    logger.error(f"All {max_attempts} attempts to dispatch daily routine check failed: {last_error}")
+    return {
+        "status": "FAILED",
+        "error": last_error,
+    }
 
 
 if __name__ == "__main__":

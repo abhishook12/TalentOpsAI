@@ -264,20 +264,20 @@ export default function Login() {
             </Link>
           </div>
 
-          <button type="button" onClick={handleSubmit} className="w-full h-11 border-none rounded-lg bg-white text-zinc-950 text-sm font-semibold cursor-pointer transition-all flex items-center justify-center hover:not-disabled:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm" disabled={!isFormValid || isAuthenticating}>
+          <button type="button" onClick={handleSubmit} className="w-full h-11 border-none rounded-lg bg-[#e41937] text-white text-sm font-semibold cursor-pointer transition-all flex items-center justify-center hover:not-disabled:bg-[#fe063f] hover:not-disabled:shadow-[0_0_20px_rgba(228,25,55,0.45)] disabled:opacity-40 disabled:cursor-not-allowed shadow-md" disabled={!isFormValid || isAuthenticating}>
             {isAuthenticating ? (
-              <div className="flex items-center gap-2 text-zinc-950">
-                <i className="ti ti-loader animate-spin text-zinc-950" />
-                <span className="text-zinc-950 font-semibold">{getAuthStatusText()}</span>
+              <div className="flex items-center gap-2 text-white">
+                <i className="ti ti-loader animate-spin text-white" />
+                <span className="text-white font-semibold">{getAuthStatusText()}</span>
               </div>
             ) : (
-              <span className="text-zinc-950 font-semibold">Sign In</span>
+              <span className="text-white font-semibold">Sign In</span>
             )}
           </button>
 
           {isAuthenticating && authElapsed >= 3 && (
-            <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center gap-2.5 animate-fadeIn leading-relaxed">
-              <i className="ti ti-loader-2 animate-spin text-sm text-amber-400 shrink-0" />
+            <div className="p-3 rounded-lg bg-white/5 border border-white/15 text-zinc-300 text-xs flex items-center gap-2.5 animate-fadeIn leading-relaxed">
+              <i className="ti ti-loader-2 animate-spin text-sm text-[#e41937] shrink-0" />
               <div className="flex-1">
                 {authElapsed < 12 
                   ? 'Connecting to secure cloud instance...'

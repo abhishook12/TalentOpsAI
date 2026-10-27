@@ -268,7 +268,7 @@ export default function MailIntelDashboard() {
           label="Tier 4: Undeliverable" 
           value={invalid} 
           icon={XCircle} 
-          color="#EF4444" 
+          color="#e41937" 
           subtitle="Dead MX or disposable" 
         />
         <MetricCard 
@@ -326,12 +326,12 @@ export default function MailIntelDashboard() {
                 padding: '2px 8px', 
                 borderRadius: 999, 
                 background: outlookStatus?.status === 'active' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(234, 179, 8, 0.15)',
-                color: outlookStatus?.status === 'active' ? '#22c55e' : '#eab308',
+                color: outlookStatus?.status === 'active' ? '#ffffff' : '#a1a1aa',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 5
               }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: outlookStatus?.status === 'active' ? '#22c55e' : '#eab308' }} />
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: outlookStatus?.status === 'active' ? '#ffffff' : '#a1a1aa' }} />
                 {outlookStatus?.status === 'active' ? 'Active 60s Watcher' : 'Ready'}
               </span>
             </h3>
@@ -363,14 +363,14 @@ export default function MailIntelDashboard() {
 
           <div style={{ background: 'var(--bg-elevated)', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--card-border)' }}>
             <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>NDR Bounces Quarantined</div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: '#ef4444', marginTop: 2 }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#e41937', marginTop: 2 }}>
               {outlookStatus?.total_bounces_recorded?.toLocaleString() ?? 0}
             </div>
           </div>
 
           <div style={{ background: 'var(--bg-elevated)', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--card-border)' }}>
             <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Deliveries Confirmed</div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: '#22c55e', marginTop: 2 }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#ffffff', marginTop: 2 }}>
               {outlookStatus?.total_delivered_recorded?.toLocaleString() ?? 0}
             </div>
           </div>
@@ -404,7 +404,7 @@ export default function MailIntelDashboard() {
                   {bouncesList.map((b) => (
                     <tr key={b.id} style={{ borderBottom: '1px solid var(--card-border)' }}>
                       <td style={{ padding: '8px 12px', fontWeight: 600, color: 'var(--text-primary)' }}>{b.recipient_email}</td>
-                      <td style={{ padding: '8px 12px', color: '#ef4444', fontWeight: 700 }}>{b.smtp_code || '550'}</td>
+                      <td style={{ padding: '8px 12px', color: '#e41937', fontWeight: 700 }}>{b.smtp_code || '550'}</td>
                       <td style={{ padding: '8px 12px', color: 'var(--text-secondary)', maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {b.diagnostic_reason}
                       </td>

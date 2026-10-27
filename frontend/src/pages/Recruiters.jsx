@@ -98,8 +98,8 @@ function Modal({ title, onClose, onSave, form, setForm, saving }) {
           </div>
           {form.needs_review && (
             <div style={{ gridColumn: 'span 2', padding: '10px 14px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: 8 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: '#d97706', marginBottom: 4 }}>Needs Manual Review</div>
-              <div style={{ fontSize: 12, color: '#b45309' }}>{form.review_reason || 'Flagged for manual review.'}</div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#e41937', marginBottom: 4 }}>Needs Manual Review</div>
+              <div style={{ fontSize: 12, color: '#e41937' }}>{form.review_reason || 'Flagged for manual review.'}</div>
             </div>
           )}
         </div>
@@ -182,7 +182,7 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleA
                 <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14, letterSpacing: '-0.01em' }}>{r.recruiter_name}</div>
                 <SourceProvenanceBadge source={r.data_source} size="xs" />
                 {r.linkedin && (
-                  <a href={r.linkedin} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} title="LinkedIn Profile" style={{ color: '#22B8CF', display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
+                  <a href={r.linkedin} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} title="LinkedIn Profile" style={{ color: '#e41937', display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
                     <i className="ti ti-brand-linkedin" style={{ fontSize: 15 }} />
                   </a>
                 )}
@@ -199,15 +199,15 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleA
                   <div style={{ 
                     display: 'inline-flex', alignItems: 'center', gap: 4, 
                     padding: '2px 7px', borderRadius: 4, fontSize: 11.5, fontWeight: 500,
-                    background: r.seniority_level === 'Executive' ? 'rgba(245, 158, 11, 0.14)' :
-                                r.seniority_level === 'Lead' ? 'rgba(34, 184, 207, 0.14)' :
+                    background: r.seniority_level === 'Executive' ? 'rgba(255, 255, 255, 0.05)' :
+                                r.seniority_level === 'Lead' ? 'rgba(228, 25, 55, 0.14)' :
                                 r.seniority_level === 'Senior' ? 'rgba(255, 255, 255, 0.08)' : 'var(--bg-elevated)',
-                    color: r.seniority_level === 'Executive' ? '#fbbf24' :
-                           r.seniority_level === 'Lead' ? '#22B8CF' :
+                    color: r.seniority_level === 'Executive' ? '#a1a1aa' :
+                           r.seniority_level === 'Lead' ? '#e41937' :
                            r.seniority_level === 'Senior' ? '#f2f2f2' : 'var(--text-secondary)',
                     border: `1px solid ${
-                      r.seniority_level === 'Executive' ? 'rgba(245, 158, 11, 0.35)' :
-                      r.seniority_level === 'Lead' ? 'rgba(34, 184, 207, 0.35)' :
+                      r.seniority_level === 'Executive' ? 'rgba(255, 255, 255, 0.15)' :
+                      r.seniority_level === 'Lead' ? 'rgba(228, 25, 55, 0.35)' :
                       r.seniority_level === 'Senior' ? 'rgba(255, 255, 255, 0.16)' : 'var(--card-border)'
                     }`
                   }}>
@@ -219,7 +219,7 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleA
                   <div style={{ 
                     display: 'inline-flex', alignItems: 'center', gap: 4, 
                     padding: '2px 7px', borderRadius: 4, fontSize: 11.5, fontWeight: 500,
-                    background: 'rgba(245, 158, 11, 0.14)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.35)'
+                    background: 'rgba(255, 255, 255, 0.05)', color: '#a1a1aa', border: '1px solid rgba(255, 255, 255, 0.15)'
                   }} title={r.email_source ? `AI Synthesized via ${r.email_source} (${r.email_confidence || 0}% conf)` : 'Corporate Email Inferred by Engine'}>
                     <i className="ti ti-sparkles" style={{ fontSize: 11 }} /> AI Inferred
                   </div>
@@ -228,7 +228,7 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleA
                   <div style={{ 
                     display: 'inline-flex', alignItems: 'center', gap: 4, 
                     padding: '2px 7px', borderRadius: 4, fontSize: 11.5, fontWeight: 500,
-                    background: 'rgba(34, 184, 207, 0.14)', color: '#22B8CF', border: '1px solid rgba(34, 184, 207, 0.35)'
+                    background: 'rgba(228, 25, 55, 0.14)', color: '#e41937', border: '1px solid rgba(228, 25, 55, 0.35)'
                   }} title={r.email_source ? `Pattern Verified | Source: ${r.email_source} | ${r.email_confidence || 0}% safe` : `Company Pattern Verified (${r.email_confidence || 0}%)`}>
                     <i className="ti ti-bolt" style={{ fontSize: 11 }} /> Pattern Verified
                   </div>
@@ -236,7 +236,7 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleA
                   <div style={{ 
                     display: 'inline-flex', alignItems: 'center', gap: 4, 
                     padding: '2px 7px', borderRadius: 4, fontSize: 11.5, fontWeight: 500,
-                    background: 'rgba(34, 197, 94, 0.14)', color: '#4ade80', border: '1px solid rgba(34, 197, 94, 0.35)'
+                    background: 'rgba(255, 255, 255, 0.08)', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.2)'
                   }} title="DNS MX Mail Server Pre-Validated & Deliverable">
                     <i className="ti ti-circle-check" style={{ fontSize: 11 }} /> MX Verified
                   </div>
@@ -245,16 +245,16 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleA
                   <div style={{ 
                     display: 'inline-flex', alignItems: 'center', gap: 4, 
                     padding: '2px 7px', borderRadius: 4, fontSize: 11.5, fontWeight: 500,
-                    background: r.email_status === 'verified' ? 'rgba(34, 197, 94, 0.14)' : 
-                                r.email_status === 'likely_valid' ? 'rgba(34, 184, 207, 0.14)' :
-                                r.email_status === 'needs_monitoring' ? 'rgba(245, 158, 11, 0.14)' : 'rgba(239, 68, 68, 0.14)',
-                    color: r.email_status === 'verified' ? '#4ade80' : 
-                           r.email_status === 'likely_valid' ? '#22B8CF' :
-                           r.email_status === 'needs_monitoring' ? '#fbbf24' : '#f87171',
+                    background: r.email_status === 'verified' ? 'rgba(255, 255, 255, 0.08)' : 
+                                r.email_status === 'likely_valid' ? 'rgba(228, 25, 55, 0.14)' :
+                                r.email_status === 'needs_monitoring' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(228, 25, 55, 0.14)',
+                    color: r.email_status === 'verified' ? '#ffffff' : 
+                           r.email_status === 'likely_valid' ? '#e41937' :
+                           r.email_status === 'needs_monitoring' ? '#a1a1aa' : '#e41937',
                     border: `1px solid ${
-                      r.email_status === 'verified' ? 'rgba(34, 197, 94, 0.35)' : 
-                      r.email_status === 'likely_valid' ? 'rgba(34, 184, 207, 0.35)' :
-                      r.email_status === 'needs_monitoring' ? 'rgba(245, 158, 11, 0.35)' : 'rgba(239, 68, 68, 0.35)'
+                      r.email_status === 'verified' ? 'rgba(255, 255, 255, 0.2)' : 
+                      r.email_status === 'likely_valid' ? 'rgba(228, 25, 55, 0.35)' :
+                      r.email_status === 'needs_monitoring' ? 'rgba(255, 255, 255, 0.15)' : 'rgba(228, 25, 55, 0.35)'
                     }`
                   }} title={r.email_source ? `Confidence: ${r.email_confidence}% | Source: ${r.email_source}` : `Confidence: ${r.email_confidence || 0}%`}>
                     {r.email_status.replace('_', ' ')}
@@ -347,12 +347,12 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleA
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }} title="Profile Completeness">
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               <span>Profile</span>
-              <span style={{ color: r.completeness_score > 70 ? '#ffffff' : r.completeness_score > 40 ? '#d4d4d8' : '#ff4444' }}>
+              <span style={{ color: r.completeness_score > 70 ? '#ffffff' : r.completeness_score > 40 ? '#d4d4d8' : '#e41937' }}>
                 {r.completeness_score || 0}%
               </span>
             </div>
             <div style={{ width: '100%', height: '3px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: `${r.completeness_score || 0}%`, background: r.completeness_score > 70 ? '#ffffff' : r.completeness_score > 40 ? '#d4d4d8' : '#ff4444', transition: 'width 0.3s ease' }} />
+              <div style={{ height: '100%', width: `${r.completeness_score || 0}%`, background: r.completeness_score > 70 ? '#ffffff' : r.completeness_score > 40 ? '#d4d4d8' : '#e41937', transition: 'width 0.3s ease' }} />
             </div>
           </div>
         </div>
@@ -899,9 +899,9 @@ export default function Recruiters() {
           {/* Table */}
           <div className="card" style={{ overflow: 'hidden' }}>
             {isError ? (
-              <div style={{ padding: '16px 20px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, color: '#ef4444', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ padding: '16px 20px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, color: '#e41937', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span>Failed to load recruiters. Please try again.</span>
-                <button onClick={() => refetch()} style={{ marginLeft: 'auto', background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontSize: 12 }}>Retry</button>
+                <button onClick={() => refetch()} style={{ marginLeft: 'auto', background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.3)', color: '#e41937', borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontSize: 12 }}>Retry</button>
               </div>
             ) : loading ? (
               <div style={{ padding: 120, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>

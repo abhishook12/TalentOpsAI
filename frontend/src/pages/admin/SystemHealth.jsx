@@ -53,7 +53,7 @@ export default function SystemHealth() {
             <span style={{ fontWeight: 600 }}>API Server</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12 }}>
-            <div style={{ fontSize: 32, fontWeight: 800, color: health?.status === 'healthy' ? '#ffffff' : (health?.status === 'warning' ? '#d4d4d8' : '#ef4444') }}>
+            <div style={{ fontSize: 32, fontWeight: 800, color: health?.status === 'healthy' ? '#ffffff' : (health?.status === 'warning' ? '#d4d4d8' : '#e41937') }}>
               {health?.status === 'healthy' ? 'Online' : (health?.status === 'warning' ? 'Warning' : 'Degraded')}
             </div>
           </div>
@@ -67,7 +67,7 @@ export default function SystemHealth() {
             <span style={{ fontWeight: 600 }}>Database (PostgreSQL)</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12 }}>
-            <div style={{ fontSize: 32, fontWeight: 800, color: health?.components?.database?.status === 'healthy' ? '#ffffff' : '#ef4444' }}>
+            <div style={{ fontSize: 32, fontWeight: 800, color: health?.components?.database?.status === 'healthy' ? '#ffffff' : '#e41937' }}>
               {health?.components?.database?.status === 'healthy' ? 'Connected' : 'Error'}
             </div>
           </div>

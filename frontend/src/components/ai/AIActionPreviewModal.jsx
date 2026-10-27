@@ -105,7 +105,7 @@ export default function AIActionPreviewModal({
           </div>
           <div style={{ background: 'var(--bg-base, #0b0b0c)', border: '1px solid var(--border, #232326)', borderRadius: '6px', padding: '10px', textAlign: 'center' }}>
             <div style={{ fontSize: '10px', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Flagged Stale</div>
-            <div style={{ fontSize: '18px', fontWeight: 900, color: '#ef4444', marginTop: '2px' }}>{summaryMetrics.flagged || 0}</div>
+            <div style={{ fontSize: '18px', fontWeight: 900, color: '#e41937', marginTop: '2px' }}>{summaryMetrics.flagged || 0}</div>
           </div>
         </div>
 

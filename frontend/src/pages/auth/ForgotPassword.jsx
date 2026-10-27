@@ -42,7 +42,7 @@ export default function ForgotPassword() {
       )}
 
       {status && (
-        <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 p-3 rounded-lg text-sm mb-4 flex items-center gap-2">
+        <div className="bg-white/10 border border-white/20 text-white p-3 rounded-lg text-sm mb-4 flex items-center gap-2">
           <i className="ti ti-check text-base" />
           <span>{status}</span>
         </div>

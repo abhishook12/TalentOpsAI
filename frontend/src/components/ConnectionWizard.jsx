@@ -156,7 +156,7 @@ export default function ConnectionWizard({ onClose, onSuccess }) {
               description="Sends via your local Outlook app — emails land in Sent Items instantly"
               icon={<Mail size={20} />} 
               bgColor="rgba(0, 120, 212, 0.15)" 
-              textColor="#0078d4" 
+              textColor="#e41937" 
               onClick={handleConnectLocalOutlook} 
             />
             <ProviderCard 
@@ -188,7 +188,7 @@ export default function ConnectionWizard({ onClose, onSuccess }) {
               description="For @outlook.com or Microsoft 365 work accounts"
               icon={<Mail size={20} />} 
               bgColor="rgba(0, 120, 212, 0.1)" 
-              textColor="#0078d4" 
+              textColor="#e41937" 
               onClick={() => handleOAuthConnect('microsoft')} 
             />
             <ProviderCard 

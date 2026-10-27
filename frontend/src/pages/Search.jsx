@@ -1483,7 +1483,7 @@ export default function AISearch() {
                     </div>
                     <div style={{ border: '1px dashed var(--card-border)', borderRadius: 6, padding: 10, background: 'var(--panel-bg)', borderColor: selected?.needs_review ? 'rgba(255, 255, 255, 0.05)' : 'var(--card-border)' }}>
                       <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Data Quality</div>
-                      <div style={{ marginTop: 8, fontSize: 12, fontWeight: 700, color: selected?.needs_review ? '#d97706' : 'var(--success)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <div style={{ marginTop: 8, fontSize: 12, fontWeight: 700, color: selected?.needs_review ? '#e41937' : 'var(--success)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {selected?.needs_review ? (selected?.review_reason || 'Needs Review') : 'Verified Clean'}
                       </div>
                     </div>
@@ -1586,7 +1586,7 @@ export default function AISearch() {
                     <i className="ti ti-lock-open" /> Unlock
                   </button>
                 </div>
-                {editError && <div style={{ fontSize: 12, color: '#f87171' }}>{editError}</div>}
+                {editError && <div style={{ fontSize: 12, color: '#e41937' }}>{editError}</div>}
               </div>
             ) : (
               <div style={{ marginTop: 14, display: 'grid', gap: 12 }}>
@@ -1612,7 +1612,7 @@ export default function AISearch() {
                   />
                 </div>
 
-                {editError && <div style={{ fontSize: 12, color: '#f87171' }}>{editError}</div>}
+                {editError && <div style={{ fontSize: 12, color: '#e41937' }}>{editError}</div>}
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
                   <button onClick={() => setEditOpen(false)} style={{ padding: '10px 12px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--card-bg)', color: 'var(--text-secondary)', fontWeight: 900, cursor: 'pointer' }}>

@@ -173,7 +173,7 @@ export default function AddScoutModal({ isOpen, onClose, onActivated }) {
             </span>
             <span style={{
               fontSize: 11, fontWeight: 700,
-              color: timeLeft < 60 ? '#ef4444' : '#ffffff',
+              color: timeLeft < 60 ? '#e41937' : '#ffffff',
               background: timeLeft < 60 ? 'rgba(239, 68, 68, 0.15)' : 'rgba(255, 255, 255, 0.08)',
               padding: '2px 8px', borderRadius: 10
             }}>

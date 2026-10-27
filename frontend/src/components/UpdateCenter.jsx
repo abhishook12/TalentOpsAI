@@ -131,7 +131,7 @@ export default function UpdateCenter() {
     color = '#d4d4d8'; // Yellow
     icon = 'ti-alert-triangle';
   } else if (activeStatus.status === 'Failed Verification') {
-    color = '#ef4444'; // Red
+    color = '#e41937'; // Red
     icon = 'ti-x';
   }
 
@@ -256,7 +256,7 @@ export default function UpdateCenter() {
                           <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{update.title} <span style={{ color: 'var(--text-muted)', fontWeight: 500, fontSize: 12, marginLeft: 8 }}>{update.version}</span></div>
                           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{new Date(update.date).toLocaleDateString()} · By {update.developer}</div>
                         </div>
-                        <div style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 99, background: update.status.includes('Verified') ? 'rgba(255, 255, 255, 0.08)' : update.status.includes('Failed') ? 'rgba(239,68,68,0.1)' : 'rgba(251,191,36,0.1)', color: update.status.includes('Verified') ? '#ffffff' : update.status.includes('Failed') ? '#ef4444' : '#d4d4d8' }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 99, background: update.status.includes('Verified') ? 'rgba(255, 255, 255, 0.08)' : update.status.includes('Failed') ? 'rgba(239,68,68,0.1)' : 'rgba(251,191,36,0.1)', color: update.status.includes('Verified') ? '#ffffff' : update.status.includes('Failed') ? '#e41937' : '#d4d4d8' }}>
                           {update.status.toUpperCase()}
                         </div>
                       </div>
@@ -266,7 +266,7 @@ export default function UpdateCenter() {
                           {update.features.map(f => (
                             <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-secondary)' }}>
                               {f.status.includes('Verified') ? <i className="ti ti-check" style={{ color: '#ffffff' }} /> : 
-                               f.status.includes('Failed') ? <i className="ti ti-x" style={{ color: '#ef4444' }} /> :
+                               f.status.includes('Failed') ? <i className="ti ti-x" style={{ color: '#e41937' }} /> :
                                <i className="ti ti-alert-circle" style={{ color: '#d4d4d8' }} />}
                               {f.name}
                             </div>

@@ -124,7 +124,7 @@ export default function DatabaseRecipientsView({ onAddRecipients }) {
           <button
             onClick={() => { setPreset('execs'); setPage(1); }}
             className={`px-2.5 py-1 rounded-md transition-colors whitespace-nowrap text-[11px] font-medium ${
-              preset === 'execs' ? 'bg-purple-600 text-white' : 'bg-[var(--bg-page)] text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border)]'
+              preset === 'execs' ? 'bg-[#e41937] text-white' : 'bg-[var(--bg-page)] text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border)]'
             }`}
           >
             👑 Leadership & Heads
@@ -132,7 +132,7 @@ export default function DatabaseRecipientsView({ onAddRecipients }) {
           <button
             onClick={() => { setPreset('tech_sf'); setPage(1); }}
             className={`px-2.5 py-1 rounded-md transition-colors whitespace-nowrap text-[11px] font-medium ${
-              preset === 'tech_sf' ? 'bg-indigo-600 text-white' : 'bg-[var(--bg-page)] text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border)]'
+              preset === 'tech_sf' ? 'bg-[#e41937] text-white' : 'bg-[var(--bg-page)] text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border)]'
             }`}
           >
             💻 SF Bay Tech Recruiters
@@ -140,7 +140,7 @@ export default function DatabaseRecipientsView({ onAddRecipients }) {
           <button
             onClick={() => { setPreset('enterprise'); setPage(1); }}
             className={`px-2.5 py-1 rounded-md transition-colors whitespace-nowrap text-[11px] font-medium ${
-              preset === 'enterprise' ? 'bg-emerald-600 text-white' : 'bg-[var(--bg-page)] text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border)]'
+              preset === 'enterprise' ? 'bg-[#e41937] text-white text-white' : 'bg-[var(--bg-page)] text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border)]'
             }`}
           >
             🏢 Enterprise Scale (500+)
@@ -148,7 +148,7 @@ export default function DatabaseRecipientsView({ onAddRecipients }) {
           <button
             onClick={() => { setPreset('pacific'); setPage(1); }}
             className={`px-2.5 py-1 rounded-md transition-colors whitespace-nowrap text-[11px] font-medium ${
-              preset === 'pacific' ? 'bg-blue-600 text-white' : 'bg-[var(--bg-page)] text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border)]'
+              preset === 'pacific' ? 'bg-[#e41937] text-white' : 'bg-[var(--bg-page)] text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border)]'
             }`}
           >
             🌊 Pacific Time (PT)
@@ -211,10 +211,10 @@ export default function DatabaseRecipientsView({ onAddRecipients }) {
                       <p className="text-sm font-semibold text-[var(--text-primary)] truncate">{r.recruiter_name}</p>
                       {r.seniority_level && r.seniority_level !== 'Specialist' && (
                         <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded border ${
-                          r.seniority_level === 'Executive' ? 'bg-purple-500/10 border-purple-500/30 text-purple-400' :
-                          r.seniority_level === 'Lead' ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-400' :
-                          r.seniority_level === 'Senior' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' :
-                          'bg-amber-500/10 border-amber-500/30 text-amber-400'
+                          r.seniority_level === 'Executive' ? 'bg-[#e41937]/15 border-[#e41937]/40 text-[#fe063f]' :
+                          r.seniority_level === 'Lead' ? 'bg-[#e41937]/10 border-[#e41937]/50/30 text-[#fe063f]' :
+                          r.seniority_level === 'Senior' ? 'bg-white/10 border-white/30 text-white' :
+                          'bg-white/5 border-white/25 text-[#e41937]'
                         }`}>
                           {r.seniority_level}
                         </span>
@@ -229,12 +229,12 @@ export default function DatabaseRecipientsView({ onAddRecipients }) {
                   <div className="flex items-center gap-2 mt-0.5">
                     <p className="text-xs text-[var(--text-muted)] truncate">{r.email}</p>
                     {r.is_deliverable !== false && (
-                      <span className="text-[9px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-semibold px-1.5 py-0.2 rounded">
+                      <span className="text-[9px] bg-white/10 border border-white/20 text-white font-semibold px-1.5 py-0.2 rounded">
                         MX Verified
                       </span>
                     )}
                     {r.timezone_code && (
-                      <span className="text-[9px] bg-blue-500/10 border border-blue-500/20 text-blue-400 font-medium px-1 py-0.2 rounded">
+                      <span className="text-[9px] bg-[#e41937]/10 border border-[#e41937]/50/20 text-[#fe063f] font-medium px-1 py-0.2 rounded">
                         {r.timezone_code}
                       </span>
                     )}

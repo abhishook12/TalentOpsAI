@@ -139,7 +139,7 @@ export default function PersonIntelligenceWorkspace({ person, onClose, onExplain
                 <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '12px' }}>
                   <span style={{ color: 'var(--text-secondary)', width: '70px', fontWeight: 600 }}>{ch.date}</span>
                   <span style={{ color: 'var(--text-primary)', fontWeight: 700, width: '100px' }}>{ch.field}:</span>
-                  <span style={{ color: '#ef4444', textDecoration: 'line-through' }}>{ch.before}</span>
+                  <span style={{ color: '#e41937', textDecoration: 'line-through' }}>{ch.before}</span>
                   <span style={{ color: 'var(--text-secondary)' }}>→</span>
                   <span style={{ color: '#ffffff', fontWeight: 600 }}>{ch.after}</span>
                 </div>

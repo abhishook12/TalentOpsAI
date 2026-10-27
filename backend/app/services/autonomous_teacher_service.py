@@ -160,10 +160,16 @@ Return valid JSON only (no markdown, no preamble):
     ) -> List[Dict[str, Any]]:
         """Processes a batch of ambiguous observations and returns adjudication results."""
         results = []
+        batch_cache = {}
         for obs in observations:
             text = obs.get("candidate_text")
             if not text:
                 continue
+            norm_key = text.strip().lower()
+            if norm_key in batch_cache:
+                results.append(batch_cache[norm_key])
+                continue
+
             ctx = obs.get("context_lines", [])
             url = obs.get("source_url", "")
             wt = obs.get("window_title", "")
@@ -175,6 +181,7 @@ Return valid JSON only (no markdown, no preamble):
                 owner_user_id=owner_user_id,
                 db=db,
             )
+            batch_cache[norm_key] = adj
             results.append(adj)
         return results
 

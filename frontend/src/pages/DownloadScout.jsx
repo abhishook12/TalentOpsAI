@@ -925,7 +925,7 @@ export default function DownloadScout() {
                   fontSize: 11, color: 'var(--text-secondary, #a1a1aa)', lineHeight: 1.4
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <span style={{ color: '#f87171', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ color: '#e41937', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
                       <span>🛡️ Antivirus or Code 225 Warning?</span>
                     </span>
                     <button
@@ -1114,7 +1114,7 @@ export default function DownloadScout() {
                         </button>
                       </div>
 
-                      <p style={{ color: 'var(--text-muted, #94a3b8)', fontSize: 11, lineHeight: 1.4, margin: 0 }}>
+                      <p style={{ color: 'var(--text-muted, #d4d4d8)', fontSize: 11, lineHeight: 1.4, margin: 0 }}>
                         💡 <b>Where to enter in Scout:</b> In Desktop Scout, click <b>&quot;Switch Account&quot;</b> at top-right (or <b>Settings → Node Identity</b>), click <i>&quot;Have an admin activation code? Enter it manually&quot;</i>, paste this code, and click <b>Connect Account</b>.
                       </p>
                     </div>
@@ -1162,8 +1162,8 @@ export default function DownloadScout() {
 
                   {pairingError && (
                     <div style={{
-                      background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.35)',
-                      borderRadius: 8, padding: '10px 14px', color: '#f87171', fontSize: 12, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12
+                      background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(228, 25, 55, 0.35)',
+                      borderRadius: 8, padding: '10px 14px', color: '#e41937', fontSize: 12, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12
                     }}>
                       <AlertCircle size={15} flexShrink={0} />
                       <span>{pairingError}</span>
@@ -1296,8 +1296,8 @@ export default function DownloadScout() {
                           onClick={() => handleDisconnectDevice(dev.device_id)}
                           disabled={disconnectingId === dev.device_id}
                           style={{
-                            padding: '6px 12px', background: 'transparent', border: '1px solid rgba(239, 68, 68, 0.3)',
-                            color: '#f87171', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                            padding: '6px 12px', background: 'transparent', border: '1px solid rgba(228, 25, 55, 0.35)',
+                            color: '#e41937', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer',
                             display: 'flex', alignItems: 'center', gap: 5
                           }}
                         >
@@ -1637,7 +1637,7 @@ export default function DownloadScout() {
                 <div style={{
                   background: 'var(--card-bg, #0b0b0c)', border: '1px solid var(--card-border, #232326)', borderRadius: 8, padding: 12, marginBottom: 10
                 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#ef4444', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#e41937', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
                     <AlertTriangle size={13} />
                     Google Chrome — "Virus detected" or "Dangerous file"
                   </div>
@@ -1824,7 +1824,7 @@ export default function DownloadScout() {
                 {pairingError && (
                   <div style={{
                     background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.4)',
-                    borderRadius: 8, padding: '8px 14px', color: '#f87171', fontSize: 12, display: 'flex', alignItems: 'center', gap: 8
+                    borderRadius: 8, padding: '8px 14px', color: '#e41937', fontSize: 12, display: 'flex', alignItems: 'center', gap: 8
                   }}>
                     <AlertCircle size={15} flexShrink={0} />
                     <span>{pairingError}</span>
@@ -2007,11 +2007,11 @@ export default function DownloadScout() {
           {/* Reconnection / Error Banner */}
           {isError && (
             <div style={{
-              background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.35)',
+              background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(228, 25, 55, 0.35)',
               borderRadius: 8, padding: '12px 18px', marginBottom: 16, display: 'flex',
               alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#f87171', fontSize: 13 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#e41937', fontSize: 13 }}>
                 <AlertCircle size={18} />
                 <span>Backend telemetry engine is currently deploying or reconnecting. Telemetry will sync automatically.</span>
               </div>
@@ -2070,7 +2070,7 @@ export default function DownloadScout() {
               { label: 'CONTRIBUTING USERS', value: contributingUsersCount, icon: Sparkles, color: '#a1a1aa', sub: 'Added / enriched data' },
               { label: 'OFFLINE USERS', value: offlineUsersCount, icon: Clock, color: '#a1a1aa', sub: 'No signal > 7d' },
               { label: 'UPDATE REQUIRED', value: updateReqCount, icon: AlertTriangle, color: '#d4d4d8', sub: `Prod is v${latestProdVer}` },
-              { label: 'REVOKED', value: revokedCount, icon: ShieldAlert, color: '#f43f5e', sub: 'Blocked or quarantined' },
+              { label: 'REVOKED', value: revokedCount, icon: ShieldAlert, color: '#e41937', sub: 'Blocked or quarantined' },
             ].map((card, idx) => {
               const Icon = card.icon;
               return (

@@ -1,45 +1,47 @@
 /**
  * TalentOpsAI — Semantic AI Design Tokens & Styles
- * Aligned with Google PAIR, IBM, Microsoft Fluent, Apple HIG, W3C WCAG 2.2, and NIST.
+ * 4-Color Strict Palette: 60% Black, 20% White (lines/text), 10% Crimson Red, 10% Grey.
  */
 
 :root {
-  /* Semantic Enterprise Dark Charcoal Palette — Microsoft Outlook Desktop Grade */
-  --ai-bg-canvas: #141414;
-  --ai-bg-surface: #202020;
-  --ai-bg-surface-raised: #262626;
-  --ai-bg-surface-elevated: #2a2a2a;
-  --ai-border-subtle: #383838;
-  --ai-border-medium: #484848;
-  --ai-border-focus: #22B8CF;
+  /* Semantic 60% Black Base & 10% Grey Surfaces */
+  --ai-bg-canvas: #000000;
+  --ai-bg-surface: #0a0a0a;
+  --ai-bg-surface-raised: #121212;
+  --ai-bg-surface-elevated: #18181b;
+  --ai-border-subtle: rgba(255, 255, 255, 0.12);
+  --ai-border-medium: rgba(255, 255, 255, 0.25);
+  --ai-border-focus: #e41937;
 
   /* Standard Application System Variables */
-  --main-bg: #141414;
-  --panel-bg: #191919;
-  --card-bg: #202020;
-  --card-bg-elevated: #262626;
-  --card-border: #383838;
-  --text-primary: #F2F2F2;
-  --text-secondary: #C2C2C2;
-  --text-muted: #A3A3A3;
-  --accent-primary: #22B8CF;
-  --brand: #22B8CF;
+  --main-bg: #000000;
+  --panel-bg: #0a0a0a;
+  --card-bg: #121212;
+  --card-bg-elevated: #18181b;
+  --card-border: rgba(255, 255, 255, 0.12);
+  --card-border-strong: rgba(255, 255, 255, 0.28);
+  --text-primary: #ffffff;
+  --text-secondary: #f4f4f5;
+  --text-muted: #a1a1aa;
+  --accent-primary: #e41937;
+  --brand: #e41937;
+  --brand-strong: #fe063f;
 
-  /* Primary Brand & AI Accents - Signature Cyan & Platinum */
-  --ai-primary-cyan: #22B8CF;
-  --ai-accent-violet: #38bdf8;
-  --ai-accent-indigo: #0ea5e9;
-  --ai-accent-gradient: linear-gradient(135deg, #22B8CF 0%, #38bdf8 50%, #e2e8f0 100%);
-  --ai-accent-subtle-glow: rgba(34, 184, 207, 0.16);
+  /* Primary Brand & AI Accents - Signature Crimson Red */
+  --ai-primary-cyan: #e41937;
+  --ai-accent-violet: #fe063f;
+  --ai-accent-indigo: #e41937;
+  --ai-accent-gradient: linear-gradient(135deg, #e41937 0%, #fe063f 50%, #ffffff 100%);
+  --ai-accent-subtle-glow: rgba(228, 25, 55, 0.25);
 
   /* Semantic Data Provenance Status */
-  --ai-status-verified: #22c55e;
-  --ai-status-observed: #38bdf8;
-  --ai-status-inferred: #f59e0b;
-  --ai-status-derived: #a3a3a3;
-  --ai-status-predicted: #818cf8;
-  --ai-status-unknown: #737373;
-  --ai-status-danger: #ef4444;
+  --ai-status-verified: #ffffff;
+  --ai-status-observed: #f4f4f5;
+  --ai-status-inferred: #d4d4d8;
+  --ai-status-derived: #a1a1aa;
+  --ai-status-predicted: #e41937;
+  --ai-status-unknown: #71717a;
+  --ai-status-danger: #e41937;
 
   /* Typography */
   --ai-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -47,28 +49,28 @@
 }
 
 [data-theme='light'] {
-  --ai-bg-canvas: #fafafa;
-  --ai-bg-surface: #ffffff;
-  --ai-bg-surface-raised: #f4f4f5;
-  --ai-bg-surface-elevated: #ffffff;
-  --ai-border-subtle: #e4e4e7;
-  --ai-border-medium: #d4d4d8;
-  --ai-border-focus: #121214;
-  --ai-primary-cyan: #18181b;
-  --ai-accent-violet: #27272a;
-  --ai-accent-indigo: #3f3f46;
-  --ai-accent-gradient: linear-gradient(135deg, #18181b 0%, #3f3f46 50%, #71717a 100%);
-  --ai-accent-subtle-glow: rgba(0, 0, 0, 0.05);
-  --ai-status-verified: #09090b;
-  --ai-status-observed: #27272a;
-  --ai-status-derived: #52525b;
+  --ai-bg-canvas: #000000;
+  --ai-bg-surface: #0a0a0a;
+  --ai-bg-surface-raised: #121212;
+  --ai-bg-surface-elevated: #18181b;
+  --ai-border-subtle: rgba(255, 255, 255, 0.12);
+  --ai-border-medium: rgba(255, 255, 255, 0.25);
+  --ai-border-focus: #e41937;
+  --ai-primary-cyan: #e41937;
+  --ai-accent-violet: #fe063f;
+  --ai-accent-indigo: #e41937;
+  --ai-accent-gradient: linear-gradient(135deg, #e41937 0%, #fe063f 50%, #ffffff 100%);
+  --ai-accent-subtle-glow: rgba(228, 25, 55, 0.25);
+  --ai-status-verified: #ffffff;
+  --ai-status-observed: #f4f4f5;
+  --ai-status-derived: #a1a1aa;
   --ai-status-unknown: #71717a;
-  --ai-status-danger: #dc2626;
+  --ai-status-danger: #e41937;
 }
 
 /* Subtle AI Ambient Glow */
 .ai-glow {
-  box-shadow: 0 0 20px -5px var(--ai-accent-subtle-glow);
+  box-shadow: 0 0 24px -4px var(--ai-accent-subtle-glow);
 }
 
 .ai-card {
@@ -79,8 +81,8 @@
 }
 
 .ai-card:hover {
-  border-color: rgba(212, 212, 216, 0.35);
-  box-shadow: 0 4px 24px -6px rgba(212, 212, 216, 0.1);
+  border-color: rgba(255, 255, 255, 0.28);
+  box-shadow: 0 4px 24px -6px rgba(228, 25, 55, 0.2);
 }
 
 /* Gradient Header Text */
@@ -129,9 +131,9 @@
 }
 
 .ai-badge-predicted {
-  background: rgba(255, 255, 255, 0.08);
-  color: #f4f4f5;
-  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(228, 25, 55, 0.15);
+  color: #ffffff;
+  border-color: rgba(228, 25, 55, 0.35);
 }
 
 .ai-badge-unknown {
@@ -141,52 +143,51 @@
 }
 
 .ai-badge-danger {
-  background: rgba(239, 68, 68, 0.14);
-  color: #ef4444;
-  border-color: rgba(239, 68, 68, 0.32);
+  background: rgba(228, 25, 55, 0.18);
+  color: #fe063f;
+  border-color: rgba(228, 25, 55, 0.4);
 }
 
-/* Light Mode Overrides for Crisp Typography on Light Backgrounds */
 [data-theme='light'] .ai-badge-verified,
 html[data-theme='light'] .ai-badge-verified {
-  background: rgba(0, 0, 0, 0.08);
-  color: #09090b;
-  border-color: rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.22);
 }
 
 [data-theme='light'] .ai-badge-observed,
 html[data-theme='light'] .ai-badge-observed {
-  background: rgba(0, 0, 0, 0.05);
-  color: #27272a;
-  border-color: rgba(0, 0, 0, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: #e4e4e7;
+  border-color: rgba(255, 255, 255, 0.14);
 }
 
 [data-theme='light'] .ai-badge-inferred,
 html[data-theme='light'] .ai-badge-inferred {
-  background: rgba(0, 0, 0, 0.04);
-  color: #52525b;
-  border-color: rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: #d4d4d8;
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
 [data-theme='light'] .ai-badge-derived,
 html[data-theme='light'] .ai-badge-derived {
-  background: rgba(0, 0, 0, 0.04);
-  color: #71717a;
-  border-color: rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: #a1a1aa;
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 [data-theme='light'] .ai-badge-unknown,
 html[data-theme='light'] .ai-badge-unknown {
-  background: rgba(0, 0, 0, 0.03);
+  background: rgba(255, 255, 255, 0.03);
   color: #71717a;
-  border-color: rgba(0, 0, 0, 0.08);
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
 [data-theme='light'] .ai-badge-danger,
 html[data-theme='light'] .ai-badge-danger {
-  background: rgba(220, 38, 38, 0.12);
-  color: #dc2626;
-  border-color: rgba(220, 38, 38, 0.3);
+  background: rgba(228, 25, 55, 0.18);
+  color: #fe063f;
+  border-color: rgba(228, 25, 55, 0.4);
 }
 
 /* Subtle Animated Processing Indicator */
@@ -198,7 +199,7 @@ html[data-theme='light'] .ai-badge-danger {
   50% {
     opacity: 1;
     transform: scale(1.05);
-    filter: drop-shadow(0 0 8px rgba(161, 161, 170, 0.6));
+    filter: drop-shadow(0 0 10px rgba(228, 25, 55, 0.8));
   }
 }
 

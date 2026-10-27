@@ -288,7 +288,7 @@ export default function ExtensionReport() {
                   </div>
                   <div style={{
                     width: 8, height: 8, borderRadius: '50%',
-                    background: d.is_active ? '#ffffff' : '#ef4444',
+                    background: d.is_active ? '#ffffff' : '#e41937',
                   }} />
                 </div>
               </div>
@@ -375,7 +375,7 @@ export default function ExtensionReport() {
                         onClick={() => revokeCode(c.id)}
                         style={{
                           padding: '5px 12px', background: '#ef444411', border: '1px solid #ef444433',
-                          borderRadius: 6, fontSize: 12, color: '#ef4444', cursor: 'pointer',
+                          borderRadius: 6, fontSize: 12, color: '#e41937', cursor: 'pointer',
                         }}
                       >
                         Revoke

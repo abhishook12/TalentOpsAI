@@ -134,7 +134,7 @@ export default function AdminLock({ onUnlock, errorMessage }) {
             <div style={{ width: 64, height: 64, borderRadius: 6, background: 'linear-gradient(135deg, #d4d4d8, #d4d4d8)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 30px rgba(212, 212, 216,0.4)' }}>
               <i className="ti ti-terminal-2" style={{ color: 'var(--text-primary)', fontSize: 30 }} />
             </div>
-            <div style={{ position: 'absolute', top: -4, right: -4, width: 16, height: 16, borderRadius: '50%', background: '#ef4444', border: '2px solid #0d1829', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ position: 'absolute', top: -4, right: -4, width: 16, height: 16, borderRadius: '50%', background: '#e41937', border: '2px solid #0d1829', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <i className="ti ti-lock" style={{ color: 'var(--text-primary)', fontSize: 8 }} />
             </div>
           </div>
@@ -262,7 +262,7 @@ export default function AdminLock({ onUnlock, errorMessage }) {
           )}
 
           {(lockedMsg || errorMessage || attempts > 0) && (
-            <div style={{ fontSize: 11.5, color: lockedMsg ? '#d4d4d8' : '#f87171', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ fontSize: 11.5, color: lockedMsg ? '#d4d4d8' : '#e41937', display: 'flex', alignItems: 'center', gap: 6 }}>
               <i className={`ti ${lockedMsg ? 'ti-alert-circle' : 'ti-alert-triangle'}`} style={{ fontSize: 13 }} />
               {lockedMsg || errorMessage || `Invalid PIN`}
             </div>

@@ -89,12 +89,12 @@ export default function ApprovalProgress({ deviceId, onApproved }) {
           ) : status === 'approved' ? (
             <CheckCircle2 size={20} color="var(--success, #ffffff)" />
           ) : (
-            <XCircle size={20} color="var(--danger, #ef4444)" />
+            <XCircle size={20} color="var(--danger, #e41937)" />
           )}
           <span style={{ 
             fontSize: '14px', 
             fontWeight: 500, 
-            color: status === 'pending' ? 'var(--text-muted, #a1a1aa)' : status === 'rejected' ? 'var(--danger, #ef4444)' : 'var(--text-primary)'
+            color: status === 'pending' ? 'var(--text-muted, #a1a1aa)' : status === 'rejected' ? 'var(--danger, #e41937)' : 'var(--text-primary)'
           }}>
             {status === 'pending' ? 'Waiting for administrator approval...' : status === 'approved' ? 'Device approved' : 'Access denied by administrator'}
           </span>
@@ -122,7 +122,7 @@ export default function ApprovalProgress({ deviceId, onApproved }) {
           display: 'flex',
           alignItems: 'flex-start',
           gap: '10px',
-          color: '#ef4444',
+          color: '#e41937',
           fontSize: '13px',
           lineHeight: 1.5
         }}>

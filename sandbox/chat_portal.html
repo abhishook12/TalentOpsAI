@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Practice Chat Portal - High-Fidelity Simulation</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { display: flex; height: 100vh; background: #0f172a; color: #f8fafc; overflow: hidden; }
+        #sidebar { width: 340px; border-right: 1px solid #334155; display: flex; flex-direction: column; background: #1e293b; }
+        #sidebar-header { padding: 16px; font-size: 16px; font-weight: 700; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; }
+        #chat-list { flex: 1; overflow-y: auto; }
+        .chat-item { padding: 14px 16px; border-bottom: 1px solid #334155; cursor: pointer; transition: background 0.15s; display: flex; align-items: center; justify-content: space-between; }
+        .chat-item:hover { background: #334155; }
+        .chat-item.active { background: #2563eb; color: #ffffff; }
+        .chat-info { display: flex; flex-direction: column; }
+        .chat-name { font-weight: 600; font-size: 14px; }
+        .chat-last-msg { font-size: 12px; color: #94a3b8; margin-top: 4px; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .chat-item.active .chat-last-msg { color: #dbeafe; }
+        .badge { background: #10b981; color: #fff; font-size: 11px; padding: 2px 7px; border-radius: 12px; font-weight: 700; }
+        #main-chat { flex: 1; display: flex; flex-direction: column; background: #0f172a; }
+        #chat-header { padding: 16px 20px; border-bottom: 1px solid #334155; background: #1e293b; display: flex; justify-content: space-between; align-items: center; }
+        #chat-title { font-size: 16px; font-weight: 700; color: #60a5fa; }
+        #chat-messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+        .msg-bubble { max-width: 70%; padding: 12px 16px; border-radius: 12px; font-size: 14px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+        .msg-bubble.sent { align-self: flex-end; background: #2563eb; color: #ffffff; border-bottom-right-radius: 2px; }
+        .msg-bubble.received { align-self: flex-start; background: #334155; color: #f8fafc; border-bottom-left-radius: 2px; }
+        .msg-time { font-size: 11px; opacity: 0.7; margin-top: 4px; text-align: right; }
+        #input-container { padding: 16px 20px; background: #1e293b; border-top: 1px solid #334155; display: flex; gap: 12px; align-items: flex-end; }
+        #myInput { flex: 1; background: #334155; border: 1px solid #475569; border-radius: 8px; color: #ffffff; padding: 12px; font-size: 14px; resize: none; height: 52px; outline: none; font-family: inherit; }
+        #myInput:focus { border-color: #3b82f6; }
+        #sendBtn { background: #3b82f6; color: #ffffff; border: none; border-radius: 8px; padding: 0 24px; height: 52px; font-weight: 600; font-size: 14px; cursor: pointer; transition: background 0.15s; }
+        #sendBtn:hover { background: #2563eb; }
+    </style>
+</head>
+<body>
+    <div id="sidebar">
+        <div id="sidebar-header">
+            <span>Conversations (Top 20)</span>
+            <span class="badge" id="totalSentBadge">0 Sent</span>
+        </div>
+        <div id="chat-list"></div>
+    </div>
+    <div id="main-chat">
+        <div id="chat-header">
+            <span id="chat-title">+1 (972) 419-1616</span>
+            <span id="chat-status" style="font-size: 13px; color: #10b981;">Online</span>
+        </div>
+        <div id="chat-messages"></div>
+        <div id="input-container">
+            <textarea id="myInput" placeholder="Type a message or paste here..."></textarea>
+            <button id="sendBtn">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const CONTACTS = [
+            "+1 (972) 419-1616",
+            "+1 (972) 419-1607",
+            "+1 (972) 419-1615",
+            "+1 (516) 510-6582",
+            "+1 (414) 217-6217",
+            "+1 (262) 409-1002",
+            "+1 (145) 674-5646",
+            "+1 (801) 870-6007",
+            "+1 (262) 567-8166",
+            "+1 (414) 773-0679",
+            "+1 (646) 421-2155",
+            "+1 (717) 628-9614",
+            "+1 (860) 331-9007",
+            "+1 (860) 404-8883",
+            "+1 (860) 678-1300",
+            "+1 (860) 439-5069",
+            "+1 (724) 584-3567",
+            "+1 (817) 845-1837",
+            "+1 (972) 419-1629",
+            "+1 (774) 328-1700"
+        ];
+
+        let activeIndex = 0;
+        const histories = {};
+        CONTACTS.forEach(c => { histories[c] = []; });
+
+        const chatListEl = document.getElementById('chat-list');
+        const chatTitleEl = document.getElementById('chat-title');
+        const chatMessagesEl = document.getElementById('chat-messages');
+        const inputEl = document.getElementById('myInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const totalSentBadge = document.getElementById('totalSentBadge');
+
+        // Global inspection state for forensic verification
+        window.__chatState = {
+            contacts: CONTACTS,
+            totalDispatched: 0,
+            dispatchedLog: [],
+            histories: histories
+        };
+
+        function renderList() {
+            chatListEl.innerHTML = '';
+            CONTACTS.forEach((c, idx) => {
+                const item = document.createElement('div');
+                item.className = 'chat-item' + (idx === activeIndex ? ' active' : '');
+                item.dataset.index = idx;
+                item.id = `chat-item-${idx}`;
+
+                const lastMsg = histories[c].length > 0 
+                    ? histories[c][histories[c].length - 1].text.substring(0, 30) + '...'
+                    : 'No messages yet';
+
+                item.innerHTML = `
+                    <div class="chat-info">
+                        <span class="chat-name">${idx + 1}. ${c}</span>
+                        <span class="chat-last-msg">${lastMsg}</span>
+                    </div>
+                    ${histories[c].length > 0 ? `<span class="badge">${histories[c].length}</span>` : ''}
+                `;
+                item.onclick = () => selectChat(idx);
+                chatListEl.appendChild(item);
+            });
+        }
+
+        function renderMessages() {
+            chatMessagesEl.innerHTML = '';
+            const c = CONTACTS[activeIndex];
+            histories[c].forEach(m => {
+                const bubble = document.createElement('div');
+                bubble.className = 'msg-bubble ' + m.type;
+                bubble.innerHTML = `
+                    <div>${m.text.replace(/\\n/g, '<br>')}</div>
+                    <div class="msg-time">${m.time}</div>
+                `;
+                chatMessagesEl.appendChild(bubble);
+            });
+            chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+        }
+
+        function selectChat(idx) {
+            activeIndex = idx;
+            chatTitleEl.innerText = `${idx + 1}. ${CONTACTS[idx]}`;
+            renderList();
+            renderMessages();
+        }
+
+        function sendMessage() {
+            const text = inputEl.value;
+            if (!text || !text.trim()) return;
+
+            const target = CONTACTS[activeIndex];
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+            const entry = {
+                chatIndex: activeIndex + 1,
+                target: target,
+                text: text,
+                time: timeStr,
+                timestamp: Date.now(),
+                type: 'sent'
+            };
+
+            histories[target].push(entry);
+            window.__chatState.totalDispatched++;
+            window.__chatState.dispatchedLog.push(entry);
+
+            totalSentBadge.innerText = `${window.__chatState.totalDispatched} Sent`;
+            inputEl.value = '';
+
+            renderList();
+            renderMessages();
+        }
+
+        sendBtn.onclick = sendMessage;
+
+        inputEl.onkeydown = (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        };
+
+        // Initial render
+        renderList();
+        renderMessages();
+    </script>
+</body>
+</html>

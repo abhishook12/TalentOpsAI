@@ -256,7 +256,7 @@ export default function Profile() {
                   fontWeight: 600,
                   background: 'rgba(239, 68, 68, 0.08)',
                   border: '1px solid rgba(239, 68, 68, 0.25)',
-                  color: '#ef4444',
+                  color: '#e41937',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',

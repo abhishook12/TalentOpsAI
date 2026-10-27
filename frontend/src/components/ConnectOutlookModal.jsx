@@ -169,10 +169,10 @@ const ConnectOutlookModal = ({ isOpen, onClose, onSuccess }) => {
 
           {status === 'success' && (
             <div className="py-8 flex flex-col items-center">
-              <div className="w-16 h-16 bg-green-500/20 border border-green-500/30 rounded-full flex items-center justify-center mb-6">
-                <i className="ti ti-check text-3xl text-green-500"></i>
+              <div className="w-16 h-16 bg-white/15 border border-white/30 rounded-full flex items-center justify-center mb-6">
+                <i className="ti ti-check text-3xl text-white"></i>
               </div>
-              <h3 className="text-lg font-medium text-green-500 mb-2">
+              <h3 className="text-lg font-medium text-white mb-2">
                 Connected Successfully!
               </h3>
               <p className="text-[var(--text-secondary)] text-sm">

@@ -1,0 +1,35 @@
+{
+  "timestamp": 1793032511.4614635,
+  "checks": [
+    {
+      "check_num": 1,
+      "name": "First 2 Chats Dispatch",
+      "passed": true,
+      "chats_delivered": "2/2",
+      "total_ms": 3239.42,
+      "avg_ms": 1619.71,
+      "mouse_drift": 0,
+      "focus_preserved": true
+    },
+    {
+      "check_num": 2,
+      "name": "Full Top 20 Chats Dispatch",
+      "passed": true,
+      "chats_delivered": "20/20",
+      "total_ms": 5309.69,
+      "avg_ms": 265.48,
+      "mouse_drift": 0,
+      "focus_preserved": true
+    },
+    {
+      "check_num": 3,
+      "name": "High-Stress Repeatability & Emoji Fidelity",
+      "passed": true,
+      "chats_delivered": "20/20",
+      "total_ms": 5296.95,
+      "avg_ms": 264.85,
+      "mouse_drift": 0,
+      "focus_preserved": true
+    }
+  ]
+}

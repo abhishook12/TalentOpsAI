@@ -121,11 +121,11 @@ export default function EmailPreview({ campaignId, subjectTemplate, bodyTemplate
             
             {/* Recipient Context Card */}
             {currentRecipient.company_name && (
-              <div className="mx-4 mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg flex items-center gap-4">
-                <div className="text-blue-400"><Briefcase className="w-4 h-4" /></div>
+              <div className="mx-4 mt-4 p-3 bg-[#e41937]/10 border border-[#e41937]/50/20 rounded-lg flex items-center gap-4">
+                <div className="text-[#fe063f]"><Briefcase className="w-4 h-4" /></div>
                 <div>
-                  <div className="text-xs text-blue-400 font-medium">Context</div>
-                  <div className="text-xs text-blue-400/80">Company: {currentRecipient.company_name}</div>
+                  <div className="text-xs text-[#fe063f] font-medium">Context</div>
+                  <div className="text-xs text-[#fe063f]/80">Company: {currentRecipient.company_name}</div>
                 </div>
               </div>
             )}

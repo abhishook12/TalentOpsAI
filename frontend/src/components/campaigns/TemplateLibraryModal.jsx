@@ -319,7 +319,7 @@ export default function TemplateLibraryModal({ isOpen, onClose, onImport }) {
                 <div className="flex flex-col h-full">
                   <div className="flex items-center justify-between p-4 border-b border-[var(--border)] bg-[var(--bg-surface)]">
                     <div className="flex items-center gap-2">
-                      <span className="px-3 py-1 bg-green-500/10 text-green-400 rounded-full text-xs font-bold uppercase tracking-wider">SAVED TEMPLATE</span>
+                      <span className="px-3 py-1 bg-white/10 text-white rounded-full text-xs font-bold uppercase tracking-wider">SAVED TEMPLATE</span>
                     </div>
                     <button 
                       onClick={handleUseForCampaign}

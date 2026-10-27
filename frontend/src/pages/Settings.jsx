@@ -370,9 +370,9 @@ export default function Settings() {
               </div>
 
               <div style={{ background: 'rgba(239, 68, 68, 0.02)', borderRadius: 8, border: '1px solid rgba(239, 68, 68, 0.2)', padding: 24 }}>
-                <h3 style={{ margin: '0 0 8px', fontSize: 16, color: '#ef4444', fontWeight: 600 }}>Danger Zone</h3>
+                <h3 style={{ margin: '0 0 8px', fontSize: 16, color: '#e41937', fontWeight: 600 }}>Danger Zone</h3>
                 <p style={{ margin: '0 0 20px', fontSize: 13, color: 'var(--text-secondary)' }}>Once you delete your account, there is no going back. Please be certain.</p>
-                <button disabled style={{ padding: '8px 16px', background: '#ef4444', color: '#ffffff', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: 13, cursor: 'not-allowed', opacity: 0.5 }}>Delete Account</button>
+                <button disabled style={{ padding: '8px 16px', background: '#e41937', color: '#ffffff', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: 13, cursor: 'not-allowed', opacity: 0.5 }}>Delete Account</button>
               </div>
             </div>
           )}
@@ -542,8 +542,8 @@ export default function Settings() {
                               </div>
                             </td>
                             <td style={{ padding: '16px 24px' }}>
-                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: acc.health_status === 'healthy' ? '#ffffff' : '#ef4444', fontSize: 13, background: acc.health_status === 'healthy' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(239, 68, 68, 0.1)', padding: '4px 8px', borderRadius: 12 }}>
-                                <div style={{ width: 6, height: 6, borderRadius: '50%', background: acc.health_status === 'healthy' ? '#ffffff' : '#ef4444' }} />
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: acc.health_status === 'healthy' ? '#ffffff' : '#e41937', fontSize: 13, background: acc.health_status === 'healthy' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(239, 68, 68, 0.1)', padding: '4px 8px', borderRadius: 12 }}>
+                                <div style={{ width: 6, height: 6, borderRadius: '50%', background: acc.health_status === 'healthy' ? '#ffffff' : '#e41937' }} />
                                 {acc.health_status === 'healthy' ? 'Connected' : 'Error'}
                               </div>
                             </td>
@@ -557,7 +557,7 @@ export default function Settings() {
                                   <button onClick={() => handleSetDefaultAccount(acc.account_id)} style={{ padding: '6px 12px', background: 'transparent', border: '1px solid var(--card-border)', color: 'var(--text-primary)', borderRadius: 6, fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>Make Default</button>
                                 )}
                                 <button onClick={() => handleTestConnection(acc.account_id)} style={{ padding: '6px 12px', background: 'transparent', border: '1px solid var(--card-border)', color: 'var(--text-primary)', borderRadius: 6, fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>Verify</button>
-                                <button onClick={() => handleOpenTestModal(acc)} style={{ padding: '6px 12px', background: 'rgba(59, 130, 246, 0.12)', border: '1px solid rgba(59, 130, 246, 0.3)', color: '#60a5fa', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+                                <button onClick={() => handleOpenTestModal(acc)} style={{ padding: '6px 12px', background: 'rgba(228, 25, 55, 0.12)', border: '1px solid rgba(228, 25, 55, 0.3)', color: '#e41937', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
                                   <Mail size={12} /> Send Test (CC)
                                 </button>
                                 <button onClick={() => handleDeleteAccount(acc.account_id)} style={{ padding: '6px 8px', background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
@@ -762,9 +762,9 @@ export default function Settings() {
                               type="button"
                               onClick={() => setShowTestCc(!showTestCc)}
                               style={{
-                                background: (showTestCc || testCcEmail) ? 'rgba(59, 130, 246, 0.2)' : '#27272a',
-                                border: (showTestCc || testCcEmail) ? '1px solid #3b82f6' : '1px solid #3f3f46',
-                                color: (showTestCc || testCcEmail) ? '#60a5fa' : '#a1a1aa',
+                                background: (showTestCc || testCcEmail) ? 'rgba(228, 25, 55, 0.2)' : '#27272a',
+                                border: (showTestCc || testCcEmail) ? '1px solid #e41937' : '1px solid #3f3f46',
+                                color: (showTestCc || testCcEmail) ? '#e41937' : '#a1a1aa',
                                 borderRadius: 4,
                                 padding: '2px 8px',
                                 fontSize: 11,
@@ -778,9 +778,9 @@ export default function Settings() {
                               type="button"
                               onClick={() => setShowTestBcc(!showTestBcc)}
                               style={{
-                                background: (showTestBcc || testBccEmail) ? 'rgba(59, 130, 246, 0.2)' : '#27272a',
-                                border: (showTestBcc || testBccEmail) ? '1px solid #3b82f6' : '1px solid #3f3f46',
-                                color: (showTestBcc || testBccEmail) ? '#60a5fa' : '#a1a1aa',
+                                background: (showTestBcc || testBccEmail) ? 'rgba(228, 25, 55, 0.2)' : '#27272a',
+                                border: (showTestBcc || testBccEmail) ? '1px solid #e41937' : '1px solid #3f3f46',
+                                color: (showTestBcc || testBccEmail) ? '#e41937' : '#a1a1aa',
                                 borderRadius: 4,
                                 padding: '2px 8px',
                                 fontSize: 11,
@@ -874,7 +874,7 @@ export default function Settings() {
                           <button
                             type="submit"
                             disabled={sendingTest}
-                            style={{ background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 18px', fontSize: 13, fontWeight: 600, cursor: sendingTest ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+                            style={{ background: '#e41937', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 18px', fontSize: 13, fontWeight: 600, cursor: sendingTest ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
                           >
                             {sendingTest ? <Loader2 size={14} className="animate-spin" /> : <Mail size={14} />}
                             {sendingTest ? 'Sending...' : 'Send Test Email'}

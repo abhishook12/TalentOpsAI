@@ -277,7 +277,7 @@ function AppShell() {
                   height: 6,
                   borderRadius: '50%',
                   background: 'var(--brand)',
-                  boxShadow: '0 0 6px rgba(34, 184, 207, 0.7)'
+                  boxShadow: '0 0 6px rgba(228, 25, 55, 0.7)'
                 }} />
                 <span>System Online</span>
                 <span style={{ opacity: 0.4 }}>•</span>
@@ -349,16 +349,16 @@ function AppShell() {
                   fontSize: '12px',
                   fontWeight: 500,
                   backgroundColor: dbConnected ? 'var(--bg-elevated)' : 'rgba(239, 68, 68, 0.12)',
-                  color: dbConnected ? 'var(--text-primary)' : '#ef4444',
-                  border: dbConnected ? '1px solid var(--card-border)' : '1px solid rgba(239, 68, 68, 0.35)'
+                  color: dbConnected ? 'var(--text-primary)' : '#e41937',
+                  border: dbConnected ? '1px solid var(--card-border)' : '1px solid rgba(228, 25, 55, 0.35)'
                 }}>
                   <span style={{
                     width: 6,
                     height: 6,
                     borderRadius: '50%',
-                    backgroundColor: dbConnected ? '#22c55e' : '#ef4444',
+                    backgroundColor: dbConnected ? '#ffffff' : '#e41937',
                     display: 'inline-block',
-                    boxShadow: dbConnected ? '0 0 6px rgba(34, 197, 94, 0.7)' : '0 0 6px rgba(239, 68, 68, 0.7)'
+                    boxShadow: dbConnected ? '0 0 6px rgba(255, 255, 255, 0.8)' : '0 0 6px rgba(228, 25, 55, 0.8)'
                   }} />
                   {dbConnected ? 'Database Connected' : 'Database Reconnecting...'}
                 </span>

@@ -157,7 +157,7 @@ export default function UploadRecipientsView({ onAddRecipients }) {
                           {!mapping.email ? (
                             <span className="text-[var(--text-muted)]">Pending map</span>
                           ) : isValid ? (
-                            <span className="text-green-500">Valid</span>
+                            <span className="text-white">Valid</span>
                           ) : (
                             <span className="text-red-500 font-medium">Invalid Email</span>
                           )}
@@ -175,7 +175,7 @@ export default function UploadRecipientsView({ onAddRecipients }) {
           <div className="text-xs text-[var(--text-muted)]">
             {mapping.email && (
               <>
-                <span className="text-green-500 font-medium">{data.filter(r => /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/.test(r[mapping.email]?.trim().toLowerCase())).length} Valid</span>
+                <span className="text-white font-medium">{data.filter(r => /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/.test(r[mapping.email]?.trim().toLowerCase())).length} Valid</span>
                 {' • '}
                 <span className="text-red-500 font-medium">{data.filter(r => !/^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/.test(r[mapping.email]?.trim().toLowerCase())).length} Invalid</span>
               </>

@@ -73,16 +73,16 @@ export default function CampaignLogs({ campaignId }) {
   const inFlightCount = logs.filter(l => ['sending', 'retrying', 'queued', 'pending'].includes((l.status || '').toLowerCase())).length;
 
   return (
-    <div className="flex flex-col bg-[#111116] rounded-xl border border-[#22222a] overflow-hidden text-white shadow-xl">
+    <div className="flex flex-col bg-[#121212] rounded-xl border border-[#22222a] overflow-hidden text-white shadow-xl">
       {/* Table Header Bar */}
       <div className="p-4 border-b border-[#22222a] bg-[#141419] flex flex-wrap justify-between items-center gap-3">
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1 bg-[#1a1a22] p-1 rounded-lg border border-[#282834]">
             {[
               { id: 'all', label: `All (${logs.length})` },
-              { id: 'delivered', label: `Sent / Delivered (${sentCount})`, color: 'text-emerald-400' },
-              { id: 'sending', label: `In-Flight (${inFlightCount})`, color: 'text-cyan-400' },
-              { id: 'failed', label: `Bounced / Failed (${failedCount})`, color: 'text-rose-400' },
+              { id: 'delivered', label: `Sent / Delivered (${sentCount})`, color: 'text-white' },
+              { id: 'sending', label: `In-Flight (${inFlightCount})`, color: 'text-[#fe063f]' },
+              { id: 'failed', label: `Bounced / Failed (${failedCount})`, color: 'text-[#fe063f]' },
             ].map(tab => (
               <button
                 key={tab.id}
@@ -107,7 +107,7 @@ export default function CampaignLogs({ campaignId }) {
               placeholder="Search recipient..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-56 bg-[#181820] border border-[#2b2b38] rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-[#52525b] focus:outline-none focus:border-cyan-500 transition"
+              className="w-56 bg-[#181820] border border-[#2b2b38] rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-[#52525b] focus:outline-none focus:border-[#e41937]/50 transition"
             />
           </div>
           <button
@@ -124,7 +124,7 @@ export default function CampaignLogs({ campaignId }) {
             className="p-2 rounded-lg bg-[#181820] hover:bg-[#22222d] text-[#8e8e99] hover:text-white border border-[#2b2b38] transition cursor-pointer"
             title="Refresh logs"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin text-cyan-400' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin text-[#fe063f]' : ''}`} />
           </button>
         </div>
       </div>
@@ -133,7 +133,7 @@ export default function CampaignLogs({ campaignId }) {
       <div className="overflow-x-auto max-h-[420px] custom-scrollbar">
         {loading && logs.length === 0 ? (
           <div className="py-16 flex flex-col items-center justify-center gap-3">
-            <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
+            <Loader2 className="w-8 h-8 animate-spin text-[#fe063f]" />
             <span className="text-xs text-[#8e8e99]">Connecting to live delivery stream...</span>
           </div>
         ) : filteredLogs.length === 0 ? (
@@ -172,23 +172,23 @@ export default function CampaignLogs({ campaignId }) {
                     <td className="py-3 px-4">
                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
                         isBounced
-                          ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 shadow-sm shadow-rose-950/40'
+                          ? 'bg-[#e41937]/20 text-[#fe063f] border-[#e41937]/50 shadow-sm shadow-black/60'
                           : isDelivered
-                          ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25'
+                          ? 'bg-white/10 text-white border-white/25'
                           : isSent
-                          ? 'bg-blue-500/15 text-blue-400 border-blue-500/25'
+                          ? 'bg-[#e41937]/15 text-[#fe063f] border-[#e41937]/50/25'
                           : isFailed
-                          ? 'bg-rose-500/15 text-rose-400 border-rose-500/25'
+                          ? 'bg-[#e41937]/15 text-[#fe063f] border-[#e41937]/35'
                           : isSending
-                          ? 'bg-cyan-500/15 text-cyan-400 border-cyan-500/25 animate-pulse'
-                          : 'bg-amber-500/15 text-amber-400 border-amber-500/25'
+                          ? 'bg-[#e41937]/15 text-[#fe063f] border-[#e41937]/50/25 animate-pulse'
+                          : 'bg-white/10 text-[#e41937] border-white/20'
                       }`}>
-                        {isBounced && <XCircle className="w-3 h-3 text-rose-400" />}
-                        {isDelivered && <CheckCircle2 className="w-3 h-3 text-emerald-400" />}
-                        {isSent && <Send className="w-3 h-3 text-blue-400" />}
-                        {isFailed && <AlertCircle className="w-3 h-3 text-rose-400" />}
-                        {isSending && <Loader2 className="w-3 h-3 animate-spin text-cyan-400" />}
-                        {isQueued && <Clock className="w-3 h-3 text-amber-400" />}
+                        {isBounced && <XCircle className="w-3 h-3 text-[#fe063f]" />}
+                        {isDelivered && <CheckCircle2 className="w-3 h-3 text-white" />}
+                        {isSent && <Send className="w-3 h-3 text-[#fe063f]" />}
+                        {isFailed && <AlertCircle className="w-3 h-3 text-[#fe063f]" />}
+                        {isSending && <Loader2 className="w-3 h-3 animate-spin text-[#fe063f]" />}
+                        {isQueued && <Clock className="w-3 h-3 text-[#e41937]" />}
                         {log.status || 'Queued'}
                       </span>
                     </td>
@@ -197,24 +197,24 @@ export default function CampaignLogs({ campaignId }) {
                     </td>
                     <td className="py-3 px-4 text-xs">
                       {isBounced || log.error ? (
-                        <div className="flex items-center gap-1.5 text-rose-400 font-mono text-[11px]" title={log.error || 'Undelivered NDR bounce received'}>
-                          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 text-rose-400" />
+                        <div className="flex items-center gap-1.5 text-[#fe063f] font-mono text-[11px]" title={log.error || 'Undelivered NDR bounce received'}>
+                          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 text-[#fe063f]" />
                           <span className="truncate max-w-sm">{log.error || '550 Recipient address rejected (NDR bounce)'}</span>
                           {log.retry_count > 0 && <span className="text-[#71717a] text-[10px] ml-1">(Retry {log.retry_count})</span>}
                         </div>
                       ) : isDelivered ? (
-                        <span className="text-emerald-400/90 text-[11px] font-medium flex items-center gap-1.5">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="text-white/90 text-[11px] font-medium flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-white" />
                           Confirmed delivered to mailbox
                         </span>
                       ) : isSent ? (
-                        <span className="text-blue-400/90 text-[11px] font-medium flex items-center gap-1.5" title="Dispatched to remote mail server — monitoring for bounce NDR (1-2 min settling window)">
-                          <Send className="w-3 h-3 text-blue-400" />
+                        <span className="text-[#fe063f]/90 text-[11px] font-medium flex items-center gap-1.5" title="Dispatched to remote mail server — monitoring for bounce NDR (1-2 min settling window)">
+                          <Send className="w-3 h-3 text-[#fe063f]" />
                           Dispatched — Settling feedback (1-2m)
                         </span>
                       ) : isSending ? (
-                        <span className="text-cyan-400/90 text-[11px] font-medium flex items-center gap-1.5">
-                          <Loader2 className="w-3 h-3 animate-spin text-cyan-400" />
+                        <span className="text-[#fe063f]/90 text-[11px] font-medium flex items-center gap-1.5">
+                          <Loader2 className="w-3 h-3 animate-spin text-[#fe063f]" />
                           {log.sent_via?.startsWith('api_') ? `Dispatching via ${log.sent_via.replace('api_', '').toUpperCase()} API...` : (log.sent_via === 'direct_api' ? 'Dispatching via Direct Cloud API...' : 'Transferring to Outlook...')}
                         </span>
                       ) : (

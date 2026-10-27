@@ -91,16 +91,16 @@ export default function CampaignProgress({ campaignId, onStatusChange }) {
   const isPaused = data.status === 'paused';
 
   return (
-    <div className="p-6 bg-[#111116] border border-[#22222a] rounded-xl flex flex-col gap-6 text-white">
+    <div className="p-6 bg-[#121212] border border-[#22222a] rounded-xl flex flex-col gap-6 text-white">
       {/* Top Header Strip */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-3.5">
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center border shadow-md ${
             isCompleted
-              ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
+              ? 'bg-white/10 border-white/30 text-white'
               : isPaused
-              ? 'bg-amber-500/15 border-amber-500/30 text-amber-400'
-              : 'bg-cyan-500/15 border-cyan-500/30 text-cyan-400'
+              ? 'bg-white/10 border-white/25 text-[#e41937]'
+              : 'bg-[#e41937]/15 border-[#e41937]/50/30 text-[#fe063f]'
           }`}>
             {isCompleted ? (
               <CheckCircle2 className="w-5 h-5" />
@@ -117,10 +117,10 @@ export default function CampaignProgress({ campaignId, onStatusChange }) {
               </h3>
               <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
                 isCompleted
-                  ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25'
+                  ? 'bg-white/10 text-white border-white/25'
                   : isPaused
-                  ? 'bg-amber-500/15 text-amber-400 border-amber-500/25'
-                  : 'bg-cyan-500/15 text-cyan-400 border-cyan-500/25 animate-pulse'
+                  ? 'bg-white/10 text-[#e41937] border-white/20'
+                  : 'bg-[#e41937]/15 text-[#fe063f] border-[#e41937]/50/25 animate-pulse'
               }`}>
                 {data.status || 'Active'}
               </span>
@@ -141,7 +141,7 @@ export default function CampaignProgress({ campaignId, onStatusChange }) {
             <button
               onClick={handlePause}
               disabled={actionLoading}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#202026] hover:bg-[#282830] text-amber-400 border border-amber-500/20 text-xs font-semibold transition cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#202026] hover:bg-[#282830] text-[#e41937] border border-white/15 text-xs font-semibold transition cursor-pointer"
             >
               <Pause className="w-3.5 h-3.5" /> Pause
             </button>
@@ -150,7 +150,7 @@ export default function CampaignProgress({ campaignId, onStatusChange }) {
             <button
               onClick={handleResume}
               disabled={actionLoading}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-md shadow-emerald-600/20 transition cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#e41937] text-white hover:bg-[#e41937] text-white text-white text-xs font-semibold shadow-md shadow-[#e41937]/20 transition cursor-pointer"
             >
               <Play className="w-3.5 h-3.5" /> Resume
             </button>
@@ -191,45 +191,45 @@ export default function CampaignProgress({ campaignId, onStatusChange }) {
       {/* Metric KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {/* Sent Card */}
-        <div className="p-3.5 rounded-xl bg-[#141419] border border-[#24242e] flex flex-col justify-between">
+        <div className="p-3.5 rounded-xl bg-[#141419] border border-[#27272a] flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold text-[#8e8e99] uppercase tracking-wider">Sent / Delivered</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <CheckCircle2 className="w-4 h-4 text-white" />
           </div>
-          <div className="text-2xl font-black text-emerald-400 mt-2">{data.sent}</div>
+          <div className="text-2xl font-black text-white mt-2">{data.sent}</div>
           <div className="text-[10px] text-[#71717a] mt-0.5">
             {data.delivered > 0 ? `${data.delivered} verified delivered` : 'Successfully dispatched'}
           </div>
         </div>
 
         {/* In-Flight / Sending Card */}
-        <div className="p-3.5 rounded-xl bg-[#141419] border border-[#24242e] flex flex-col justify-between">
+        <div className="p-3.5 rounded-xl bg-[#141419] border border-[#27272a] flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold text-[#8e8e99] uppercase tracking-wider">In-Flight</span>
-            <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />
+            <Loader2 className="w-4 h-4 text-[#fe063f] animate-spin" />
           </div>
-          <div className="text-2xl font-black text-cyan-400 mt-2">{data.sending || 0}</div>
+          <div className="text-2xl font-black text-[#fe063f] mt-2">{data.sending || 0}</div>
           <div className="text-[10px] text-[#71717a] mt-0.5">Currently sending</div>
         </div>
 
         {/* Queued / Pending Card */}
-        <div className="p-3.5 rounded-xl bg-[#141419] border border-[#24242e] flex flex-col justify-between">
+        <div className="p-3.5 rounded-xl bg-[#141419] border border-[#27272a] flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold text-[#8e8e99] uppercase tracking-wider">Pending</span>
-            <Clock className="w-4 h-4 text-amber-400" />
+            <Clock className="w-4 h-4 text-[#e41937]" />
           </div>
-          <div className="text-2xl font-black text-amber-400 mt-2">{data.pending || (data.total - data.sent - data.failed)}</div>
+          <div className="text-2xl font-black text-[#e41937] mt-2">{data.pending || (data.total - data.sent - data.failed)}</div>
           <div className="text-[10px] text-[#71717a] mt-0.5">Remaining in queue</div>
         </div>
 
         {/* Failed / Bounced Card */}
-        <div className="p-3.5 rounded-xl bg-[#141419] border border-[#24242e] flex flex-col justify-between">
+        <div className="p-3.5 rounded-xl bg-[#141419] border border-[#27272a] flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold text-[#8e8e99] uppercase tracking-wider">Bounced / Failed</span>
-            <XCircle className="w-4 h-4 text-rose-400" />
+            <XCircle className="w-4 h-4 text-[#fe063f]" />
           </div>
-          <div className="text-2xl font-black text-rose-400 mt-2">{data.failed || data.bounced || 0}</div>
-          <div className="text-[10px] text-rose-400/80 mt-0.5">
+          <div className="text-2xl font-black text-[#fe063f] mt-2">{data.failed || data.bounced || 0}</div>
+          <div className="text-[10px] text-[#fe063f]/80 mt-0.5">
             {data.bounced > 0 ? `${data.bounced} NDR bounces detected` : 'Quarantined'}
           </div>
         </div>

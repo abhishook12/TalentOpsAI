@@ -52,7 +52,7 @@ const ToolbarButton = ({ onClick, isActive, disabled, children, title }) => (
       borderRadius: '4px',
       border: 'none',
       background: isActive ? 'var(--brand)' : 'transparent',
-      color: isActive ? '#0f172a' : 'var(--text-secondary)',
+      color: isActive ? '#000000' : 'var(--text-secondary)',
       cursor: disabled ? 'not-allowed' : 'pointer',
       opacity: disabled ? 0.45 : 1,
       transition: 'background 0.12s ease, color 0.12s ease',

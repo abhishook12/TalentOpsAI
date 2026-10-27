@@ -89,7 +89,7 @@ export default function VerifyEmail() {
         {status === 'error' && (
           <>
             <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'center' }}>
-              <i className="ti ti-alert-circle" style={{ fontSize: '48px', color: '#ef4444' }} />
+              <i className="ti ti-alert-circle" style={{ fontSize: '48px', color: '#e41937' }} />
             </div>
             <h1 style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)', margin: '0 0 8px 0' }}>Verification Failed</h1>
             <p style={{ color: '#a1a1aa', margin: '0 0 24px 0', fontSize: '14px' }}>{message}</p>

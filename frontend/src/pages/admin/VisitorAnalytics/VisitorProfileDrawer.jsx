@@ -50,7 +50,7 @@ export default function VisitorProfileDrawer({ sessionId, onClose }) {
         {isLoading ? (
           <div style={{ color: 'var(--text-muted)' }}>Loading timeline...</div>
         ) : !data || data.error ? (
-          <div style={{ color: '#ef4444' }}>{data?.error || 'Failed to load'}</div>
+          <div style={{ color: '#e41937' }}>{data?.error || 'Failed to load'}</div>
         ) : (
           <>
             <div style={{ 

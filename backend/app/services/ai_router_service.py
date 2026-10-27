@@ -20,6 +20,9 @@ from ..resource_lockdown import track_gemini_call
 logger = logging.getLogger("talentops.ai_router")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
+_gemini_auth_circuit_open_until = 0.0
+_circuit_open_reason = ""
+
 
 class AIRouterService:
     @staticmethod
@@ -34,6 +37,7 @@ class AIRouterService:
         Executes an AI prompt with automatic graceful fallback.
         Returns: (parsed_json_or_dict, model_name_used, latency_ms)
         """
+        global _gemini_auth_circuit_open_until, _circuit_open_reason
         start_time = time.time()
         prompt_hash = hashlib.sha256(prompt.encode("utf-8")).hexdigest()[:16]
         model_used = preferred_model
@@ -42,7 +46,10 @@ class AIRouterService:
         tokens_est = len(prompt.split()) * 2
 
         # ── Tier 1: Google Gemini Execution ───────────────────────────────────
-        if GEMINI_API_KEY:
+        now = time.time()
+        can_attempt_gemini = bool(GEMINI_API_KEY) and (now >= _gemini_auth_circuit_open_until)
+
+        if can_attempt_gemini:
             try:
                 from google import genai
                 track_gemini_call()
@@ -60,7 +67,18 @@ class AIRouterService:
                 output_data = json.loads(raw_text)
                 latency_ms = int((time.time() - start_time) * 1000)
             except Exception as e:
-                logger.warning(f"Tier 1 Gemini invocation fallback note: {e}")
+                err_str = str(e)
+                # If authentication failed (401, invalid key, unsupported token), open circuit for 10 minutes to save CPU
+                if "401" in err_str or "UNAUTHENTICATED" in err_str or "API key not valid" in err_str or "ACCESS_TOKEN_TYPE_UNSUPPORTED" in err_str:
+                    _gemini_auth_circuit_open_until = now + 600.0
+                    _circuit_open_reason = "401 Unauthenticated / Invalid API key"
+                    logger.warning(
+                        "[AI_ROUTER] Gemini API key invalid/unauthenticated (%s). "
+                        "Circuit breaker OPEN for 600s: routing automatically to high-speed local engine to save compute.",
+                        err_str[:120]
+                    )
+                else:
+                    logger.warning(f"Tier 1 Gemini invocation fallback note: {e}")
                 output_data = {}
 
         # ── Tier 2: Deterministic Local Heuristic Engine Fallback ──────────────

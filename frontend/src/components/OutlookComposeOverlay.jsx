@@ -151,9 +151,9 @@ export function OutlookComposeOverlay({ recipients, onClose, onSend }) {
               <button 
                 type="button"
                 style={{
-                  backgroundColor: cc ? 'rgba(59, 130, 246, 0.25)' : '#333', 
-                  color: cc ? '#60a5fa' : '#ccc', 
-                  border: cc ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid #444', 
+                  backgroundColor: cc ? 'rgba(228, 25, 55, 0.25)' : '#333', 
+                  color: cc ? '#e41937' : '#ccc', 
+                  border: cc ? '1px solid rgba(228, 25, 55, 0.4)' : '1px solid #444', 
                   borderRadius: '4px',
                   padding: '4px 8px', fontSize: '13px', width: '70px', textAlign: 'center', fontWeight: 600
                 }}>
@@ -171,9 +171,9 @@ export function OutlookComposeOverlay({ recipients, onClose, onSend }) {
               <button 
                 type="button"
                 style={{
-                  backgroundColor: bcc ? 'rgba(59, 130, 246, 0.25)' : '#333', 
-                  color: bcc ? '#60a5fa' : '#ccc', 
-                  border: bcc ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid #444', 
+                  backgroundColor: bcc ? 'rgba(228, 25, 55, 0.25)' : '#333', 
+                  color: bcc ? '#e41937' : '#ccc', 
+                  border: bcc ? '1px solid rgba(228, 25, 55, 0.4)' : '1px solid #444', 
                   borderRadius: '4px',
                   padding: '4px 8px', fontSize: '13px', width: '70px', textAlign: 'center', fontWeight: 600
                 }}>

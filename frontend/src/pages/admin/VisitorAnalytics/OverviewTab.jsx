@@ -30,7 +30,7 @@ export default function OverviewTab() {
     { label: 'Unique Users', value: stats?.unique_users, icon: Users, color: 'var(--brand)' },
     { label: 'Returning Users', value: stats?.returning_users, icon: MousePointerClick, color: 'var(--brand)' },
     { label: 'Avg Session', value: stats ? formatSecs(stats.avg_session_duration_sec) : null, icon: Clock, color: '#d4d4d8' },
-    { label: 'Bounce Rate', value: stats ? `${stats.bounce_rate}%` : null, icon: MousePointerClick, color: '#f87171' },
+    { label: 'Bounce Rate', value: stats ? `${stats.bounce_rate}%` : null, icon: MousePointerClick, color: '#e41937' },
     { label: 'Avg Pages / Session', value: stats?.avg_pages_per_session, icon: MousePointerClick, color: '#d4d4d8' },
     { label: 'Total Sessions (30d)', value: stats?.total_sessions, icon: Activity, color: '#a1a1aa' }
   ]

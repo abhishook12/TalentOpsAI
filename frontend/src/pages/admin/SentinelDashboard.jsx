@@ -164,7 +164,7 @@ export default function SentinelDashboard({ setToast }) {
                 <span style={{ color: 'var(--text-main)', fontSize: '0.9rem' }}>{item.label}</span>
                 <span style={{ 
                   background: item.val > 0 ? 'rgba(255, 50, 50, 0.1)' : 'rgba(0, 255, 100, 0.1)',
-                  color: item.val > 0 ? '#ff4444' : '#ffffff',
+                  color: item.val > 0 ? '#e41937' : '#ffffff',
                   padding: '0.2rem 0.6rem',
                   borderRadius: '100px',
                   fontSize: '0.8rem',

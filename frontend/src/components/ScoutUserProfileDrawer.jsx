@@ -105,9 +105,9 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
               {profile?.quality_scores && (
                 <span style={{
                   fontSize: 11.5, fontWeight: 600, padding: '3px 8px', borderRadius: 4,
-                  background: profile.quality_scores.overall_score >= 80 ? 'rgba(34, 184, 207, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                  background: profile.quality_scores.overall_score >= 80 ? 'rgba(228, 25, 55, 0.15)' : 'rgba(255, 255, 255, 0.05)',
                   color: profile.quality_scores.overall_score >= 80 ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                  border: `1px solid ${profile.quality_scores.overall_score >= 80 ? 'rgba(34, 184, 207, 0.3)' : 'var(--card-border)'}`
+                  border: `1px solid ${profile.quality_scores.overall_score >= 80 ? 'rgba(228, 25, 55, 0.3)' : 'var(--card-border)'}`
                 }}>
                   {profile.quality_scores.tier} • {profile.quality_scores.overall_score}% QUALITY
                 </span>
@@ -343,7 +343,7 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
                       </div>
                       <div>
                         <div style={{ fontSize: 11, color: 'var(--text-muted, #71717a)' }}>Low Confidence Rejections</div>
-                        <div style={{ fontSize: 18, fontWeight: 800, color: '#ef4444', marginTop: 2 }}>
+                        <div style={{ fontSize: 18, fontWeight: 800, color: '#e41937', marginTop: 2 }}>
                           {profile?.data_quality_impact?.rejected_observations || 0}
                         </div>
                       </div>
@@ -367,14 +367,14 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
                       }}>
                         <div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                            <Laptop size={16} color={dev.is_active ? '#ffffff' : '#ef4444'} />
+                            <Laptop size={16} color={dev.is_active ? '#ffffff' : '#e41937'} />
                             <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary, #fafafa)' }}>
                               {dev.device_name}
                             </span>
                             <span style={{
                               fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
                               background: dev.is_active ? 'rgba(255, 255, 255, 0.08)' : 'rgba(239,68,68,0.15)',
-                              color: dev.is_active ? '#ffffff' : '#ef4444'
+                              color: dev.is_active ? '#ffffff' : '#e41937'
                             }}>
                               {dev.is_active ? 'ACTIVE' : 'REVOKED'}
                             </span>
@@ -405,7 +405,7 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
                               onClick={() => handleRevokeDevice(dev.device_id)}
                               disabled={actionLoading === dev.device_id}
                               style={{
-                                padding: '6px 12px', background: 'rgba(239,68,68,0.15)', color: '#ef4444',
+                                padding: '6px 12px', background: 'rgba(239,68,68,0.15)', color: '#e41937',
                                 border: '1px solid rgba(239,68,68,0.3)', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer'
                               }}
                             >
@@ -458,7 +458,7 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
                     else if (src === 'GitHub') { srcColor = '#ffffff'; srcBg = 'rgba(255, 255, 255, 0.08)'; }
                     else if (src === 'WhatsApp' || src === 'WHATSAPP') { srcColor = '#e4e4e7'; srcBg = 'rgba(255, 255, 255, 0.08)'; }
                     else if (src === 'Telegram' || src === 'TELEGRAM') { srcColor = '#d4d4d8'; srcBg = 'rgba(255, 255, 255, 0.06)'; }
-                    else if (src === 'Gmail' || src === 'GMAIL') { srcColor = '#ef4444'; srcBg = 'rgba(239, 68, 68, 0.15)'; }
+                    else if (src === 'Gmail' || src === 'GMAIL') { srcColor = '#e41937'; srcBg = 'rgba(239, 68, 68, 0.15)'; }
                     else if (src === 'Outlook' || src === 'OUTLOOK') { srcColor = '#ffffff'; srcBg = 'rgba(255, 255, 255, 0.08)'; }
                     else if (src === 'WebHarvest' || src === 'web_harvest' || src === 'WEB_HARVEST') { srcColor = '#ffffff'; srcBg = 'rgba(255, 255, 255, 0.06)'; }
                     return (
@@ -497,7 +497,7 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
                           NORTH_AMERICA: '#e4e4e7',
                           UK: '#d4d4d8',
                           SOUTH_AMERICA: '#d4d4d8',
-                          OTHER: '#ef4444',
+                          OTHER: '#e41937',
                           UNKNOWN: '#6b7280',
                         };
                         const labels = {
@@ -605,7 +605,7 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
                       onClick={handleResetPairing}
                       disabled={actionLoading === 'pairing'}
                       style={{
-                        padding: '8px 16px', background: 'rgba(239,68,68,0.15)', color: '#ef4444',
+                        padding: '8px 16px', background: 'rgba(239,68,68,0.15)', color: '#e41937',
                         border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer'
                       }}
                     >

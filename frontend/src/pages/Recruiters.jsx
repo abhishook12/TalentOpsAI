@@ -1,5 +1,5 @@
 import { toast } from 'react-hot-toast'
-import { useEffect, useState, useCallback, memo, useRef } from 'react'
+import { useEffect, useState, useCallback, memo, useRef, useMemo } from 'react'
 import { exportToExcel } from '../services/export'
 import api from '../services/api'
 import { CompanyIdentity } from '../components/CompanyIdentity'
@@ -17,22 +17,129 @@ const emptyForm = {
 
 const STATE_OPTIONS = [
   { value: '', label: 'All States' },
-  { value: 'CA', label: 'California' },
-  { value: 'TX', label: 'Texas' },
-  { value: 'NY', label: 'New York' }
+  { value: 'AL', label: 'Alabama (AL)' },
+  { value: 'AK', label: 'Alaska (AK)' },
+  { value: 'AZ', label: 'Arizona (AZ)' },
+  { value: 'AR', label: 'Arkansas (AR)' },
+  { value: 'CA', label: 'California (CA)' },
+  { value: 'CO', label: 'Colorado (CO)' },
+  { value: 'CT', label: 'Connecticut (CT)' },
+  { value: 'DE', label: 'Delaware (DE)' },
+  { value: 'FL', label: 'Florida (FL)' },
+  { value: 'GA', label: 'Georgia (GA)' },
+  { value: 'HI', label: 'Hawaii (HI)' },
+  { value: 'ID', label: 'Idaho (ID)' },
+  { value: 'IL', label: 'Illinois (IL)' },
+  { value: 'IN', label: 'Indiana (IN)' },
+  { value: 'IA', label: 'Iowa (IA)' },
+  { value: 'KS', label: 'Kansas (KS)' },
+  { value: 'KY', label: 'Kentucky (KY)' },
+  { value: 'LA', label: 'Louisiana (LA)' },
+  { value: 'ME', label: 'Maine (ME)' },
+  { value: 'MD', label: 'Maryland (MD)' },
+  { value: 'MA', label: 'Massachusetts (MA)' },
+  { value: 'MI', label: 'Michigan (MI)' },
+  { value: 'MN', label: 'Minnesota (MN)' },
+  { value: 'MS', label: 'Mississippi (MS)' },
+  { value: 'MO', label: 'Missouri (MO)' },
+  { value: 'MT', label: 'Montana (MT)' },
+  { value: 'NE', label: 'Nebraska (NE)' },
+  { value: 'NV', label: 'Nevada (NV)' },
+  { value: 'NH', label: 'New Hampshire (NH)' },
+  { value: 'NJ', label: 'New Jersey (NJ)' },
+  { value: 'NM', label: 'New Mexico (NM)' },
+  { value: 'NY', label: 'New York (NY)' },
+  { value: 'NC', label: 'North Carolina (NC)' },
+  { value: 'ND', label: 'North Dakota (ND)' },
+  { value: 'OH', label: 'Ohio (OH)' },
+  { value: 'OK', label: 'Oklahoma (OK)' },
+  { value: 'OR', label: 'Oregon (OR)' },
+  { value: 'PA', label: 'Pennsylvania (PA)' },
+  { value: 'RI', label: 'Rhode Island (RI)' },
+  { value: 'SC', label: 'South Carolina (SC)' },
+  { value: 'SD', label: 'South Dakota (SD)' },
+  { value: 'TN', label: 'Tennessee (TN)' },
+  { value: 'TX', label: 'Texas (TX)' },
+  { value: 'UT', label: 'Utah (UT)' },
+  { value: 'VT', label: 'Vermont (VT)' },
+  { value: 'VA', label: 'Virginia (VA)' },
+  { value: 'WA', label: 'Washington (WA)' },
+  { value: 'WV', label: 'West Virginia (WV)' },
+  { value: 'WI', label: 'Wisconsin (WI)' },
+  { value: 'WY', label: 'Wyoming (WY)' },
+  { value: 'DC', label: 'District of Columbia (DC)' }
 ]
 
 const TITLE_OPTIONS = [
   { value: '', label: 'All Specialties' },
-  { value: 'Engineering', label: 'Engineering' },
-  { value: 'Product', label: 'Product' },
-  { value: 'Sales', label: 'Sales' }
+  { value: 'Technology', label: 'Technology / Software' },
+  { value: 'Engineering', label: 'Engineering / Technical' },
+  { value: 'IT Infrastructure', label: 'IT & Cloud Infrastructure' },
+  { value: 'Data', label: 'Data Science & AI / ML' },
+  { value: 'Product', label: 'Product & Design' },
+  { value: 'Healthcare', label: 'Healthcare & Clinical' },
+  { value: 'Finance', label: 'Finance & Accounting' },
+  { value: 'Sales', label: 'Sales & Business Dev' },
+  { value: 'Marketing', label: 'Marketing & Growth' },
+  { value: 'Human Resources', label: 'HR & Talent Acquisition' },
+  { value: 'Operations', label: 'Operations & Supply Chain' },
+  { value: 'Legal', label: 'Legal & Compliance' },
+  { value: 'Executive', label: 'Executive Search & Leadership' }
 ]
 
-const COMPANY_OPTIONS = [
-  { value: '', label: 'All Companies' },
-  { value: 'Apple', label: 'Apple' },
-  { value: 'Google', label: 'Google' }
+const BASELINE_COMPANIES = [
+  'Apex Systems',
+  'TEKsystems',
+  'Insight Global',
+  'Robert Half',
+  'Randstad USA',
+  'Aerotek',
+  'Beacon Hill Staffing Group',
+  'Kforce',
+  'Manpower',
+  'Optomi',
+  'The Judge Group',
+  'CyberCoders',
+  'Kelly Services',
+  'Collabera',
+  'Vaco',
+  'Mondo',
+  'Addison Group',
+  'Maxim Healthcare Staffing',
+  'Lucas Group',
+  'Heidrick & Struggles',
+  'Russell Reynolds Associates',
+  'Actalent',
+  'Massed Compute',
+  'Aspen Technical Staffing',
+  'EOS IT Solutions',
+  'Global Channel Management, Inc.',
+  'Gemtek',
+  'Latg',
+  'SunTechPros Inc',
+  'First Tek',
+  'Flowcontrolgroup',
+  'Allied Resources Technical Consultants',
+  'Stott and May',
+  'Daleyaa',
+  'Apple',
+  'Google',
+  'Microsoft',
+  'Amazon',
+  'Meta',
+  'Netflix',
+  'Salesforce',
+  'Cisco',
+  'Oracle',
+  'IBM',
+  'Deloitte',
+  'Accenture',
+  'PwC',
+  'EY',
+  'KPMG',
+  'JPMorgan Chase',
+  'Goldman Sachs',
+  'Morgan Stanley'
 ]
 
 const STATUS_OPTIONS = [
@@ -98,8 +205,8 @@ function Modal({ title, onClose, onSave, form, setForm, saving }) {
           </div>
           {form.needs_review && (
             <div style={{ gridColumn: 'span 2', padding: '10px 14px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: 8 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: '#e41937', marginBottom: 4 }}>Needs Manual Review</div>
-              <div style={{ fontSize: 12, color: '#e41937' }}>{form.review_reason || 'Flagged for manual review.'}</div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--warning)', marginBottom: 4 }}>Needs Manual Review</div>
+              <div style={{ fontSize: 12, color: 'var(--warning)' }}>{form.review_reason || 'Flagged for manual review.'}</div>
             </div>
           )}
         </div>
@@ -145,6 +252,17 @@ const formatLastActive = (dateStr) => {
 
 const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleActive, handleDelete, onSelect }) {
   const lastActiveText = formatLastActive(r.last_active_at || r.updated_at)
+  const isNewEntry = (() => {
+    if (!r.created_at) return false
+    try {
+      const d = new Date(r.created_at)
+      if (isNaN(d.getTime())) return false
+      const diffMs = Date.now() - d.getTime()
+      return diffMs >= 0 && diffMs < 24 * 60 * 60 * 1000
+    } catch {
+      return false
+    }
+  })()
   
   const avatarStyle = getAvatarColor(r.recruiter_name)
 
@@ -180,9 +298,20 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleA
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14, letterSpacing: '-0.01em' }}>{r.recruiter_name}</div>
-                <SourceProvenanceBadge source={r.data_source} size="xs" />
+                <SourceProvenanceBadge source={r.data_source} size="xs" detailed={true} />
+                {isNewEntry && (
+                  <div style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    padding: '2px 7px', borderRadius: 4, fontSize: 10.5, fontWeight: 700,
+                    background: 'rgba(16, 185, 129, 0.15)', color: '#10b981',
+                    border: '1px solid rgba(16, 185, 129, 0.35)', letterSpacing: '0.04em',
+                    textTransform: 'uppercase'
+                  }} title={`Newly ingested on ${new Date(r.created_at).toLocaleDateString()} ${new Date(r.created_at).toLocaleTimeString()}`}>
+                    <i className="ti ti-sparkles" style={{ fontSize: 10 }} /> NEW ENTRY
+                  </div>
+                )}
                 {r.linkedin && (
-                  <a href={r.linkedin} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} title="LinkedIn Profile" style={{ color: '#e41937', display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
+                  <a href={r.linkedin} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} title="LinkedIn Profile" style={{ color: '#38bdf8', display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
                     <i className="ti ti-brand-linkedin" style={{ fontSize: 15 }} />
                   </a>
                 )}
@@ -195,19 +324,71 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleA
                 {r.specialization && <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{r.specialization}</div>}
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
                 <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>{r.email?.toLowerCase()}</div>
+                {r.phone && (
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                    <i className="ti ti-phone" style={{ fontSize: 11, color: 'var(--text-muted)' }} />
+                    <span style={{ fontFamily: 'monospace' }}>{r.phone}</span>
+                  </div>
+                )}
+                {(() => {
+                  let pCount = 0;
+                  if (Array.isArray(r.all_phones)) pCount = r.all_phones.length;
+                  else if (typeof r.alternate_phones === 'string' && r.alternate_phones.startsWith('[')) {
+                    try { pCount = JSON.parse(r.alternate_phones).length; } catch(e){}
+                  } else {
+                    pCount = [r.phone, r.phone2, r.phone3, r.phone4].filter(Boolean).length;
+                  }
+                  if (pCount > 1) {
+                    return (
+                      <span style={{
+                        fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 4,
+                        background: 'rgba(255, 255, 255, 0.1)', color: '#ffffff',
+                        border: '1px solid rgba(255, 255, 255, 0.25)', letterSpacing: '0.02em',
+                        display: 'inline-flex', alignItems: 'center', gap: 3
+                      }} title={`Total ${pCount} separated phone numbers available`}>
+                        <i className="ti ti-phone-call" style={{ fontSize: 9 }} />
+                        +{pCount - 1} lines
+                      </span>
+                    );
+                  }
+                  return null;
+                })()}
+                {(() => {
+                  let eCount = 0;
+                  if (Array.isArray(r.all_emails)) eCount = r.all_emails.length;
+                  else if (typeof r.alternate_emails === 'string' && r.alternate_emails.startsWith('[')) {
+                    try { eCount = JSON.parse(r.alternate_emails).length; } catch(e){}
+                  } else {
+                    eCount = [r.email, r.email2, r.email3, r.email4].filter(Boolean).length;
+                  }
+                  if (eCount > 1) {
+                    return (
+                      <span style={{
+                        fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 4,
+                        background: 'rgba(255, 255, 255, 0.08)', color: '#ffffff',
+                        border: '1px solid rgba(255, 255, 255, 0.2)', letterSpacing: '0.02em',
+                        display: 'inline-flex', alignItems: 'center', gap: 3
+                      }} title={`Total ${eCount} email addresses available`}>
+                        <i className="ti ti-mail" style={{ fontSize: 9 }} />
+                        +{eCount - 1} emails
+                      </span>
+                    );
+                  }
+                  return null;
+                })()}
                 {r.seniority_level && r.seniority_level !== 'Specialist' && (
                   <div style={{ 
                     display: 'inline-flex', alignItems: 'center', gap: 4, 
                     padding: '2px 7px', borderRadius: 4, fontSize: 11.5, fontWeight: 500,
                     background: r.seniority_level === 'Executive' ? 'rgba(255, 255, 255, 0.05)' :
-                                r.seniority_level === 'Lead' ? 'rgba(228, 25, 55, 0.14)' :
+                                r.seniority_level === 'Lead' ? 'rgba(184, 213, 160, 0.14)' :
                                 r.seniority_level === 'Senior' ? 'rgba(255, 255, 255, 0.08)' : 'var(--bg-elevated)',
                     color: r.seniority_level === 'Executive' ? '#a1a1aa' :
-                           r.seniority_level === 'Lead' ? '#e41937' :
+                           r.seniority_level === 'Lead' ? 'var(--brand)' :
                            r.seniority_level === 'Senior' ? '#f2f2f2' : 'var(--text-secondary)',
                     border: `1px solid ${
                       r.seniority_level === 'Executive' ? 'rgba(255, 255, 255, 0.15)' :
-                      r.seniority_level === 'Lead' ? 'rgba(228, 25, 55, 0.35)' :
+                      r.seniority_level === 'Lead' ? 'rgba(184, 213, 160, 0.35)' :
                       r.seniority_level === 'Senior' ? 'rgba(255, 255, 255, 0.16)' : 'var(--card-border)'
                     }`
                   }}>
@@ -228,7 +409,7 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleA
                   <div style={{ 
                     display: 'inline-flex', alignItems: 'center', gap: 4, 
                     padding: '2px 7px', borderRadius: 4, fontSize: 11.5, fontWeight: 500,
-                    background: 'rgba(228, 25, 55, 0.14)', color: '#e41937', border: '1px solid rgba(228, 25, 55, 0.35)'
+                    background: 'rgba(196, 181, 217, 0.14)', color: 'var(--accent-secondary)', border: '1px solid rgba(196, 181, 217, 0.35)'
                   }} title={r.email_source ? `Pattern Verified | Source: ${r.email_source} | ${r.email_confidence || 0}% safe` : `Company Pattern Verified (${r.email_confidence || 0}%)`}>
                     <i className="ti ti-bolt" style={{ fontSize: 11 }} /> Pattern Verified
                   </div>
@@ -246,14 +427,14 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleA
                     display: 'inline-flex', alignItems: 'center', gap: 4, 
                     padding: '2px 7px', borderRadius: 4, fontSize: 11.5, fontWeight: 500,
                     background: r.email_status === 'verified' ? 'rgba(255, 255, 255, 0.08)' : 
-                                r.email_status === 'likely_valid' ? 'rgba(228, 25, 55, 0.14)' :
+                                r.email_status === 'likely_valid' ? 'rgba(184, 213, 160, 0.14)' :
                                 r.email_status === 'needs_monitoring' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(228, 25, 55, 0.14)',
                     color: r.email_status === 'verified' ? '#ffffff' : 
-                           r.email_status === 'likely_valid' ? '#e41937' :
+                           r.email_status === 'likely_valid' ? 'var(--brand)' :
                            r.email_status === 'needs_monitoring' ? '#a1a1aa' : '#e41937',
                     border: `1px solid ${
                       r.email_status === 'verified' ? 'rgba(255, 255, 255, 0.2)' : 
-                      r.email_status === 'likely_valid' ? 'rgba(228, 25, 55, 0.35)' :
+                      r.email_status === 'likely_valid' ? 'rgba(184, 213, 160, 0.35)' :
                       r.email_status === 'needs_monitoring' ? 'rgba(255, 255, 255, 0.15)' : 'rgba(228, 25, 55, 0.35)'
                     }`
                   }} title={r.email_source ? `Confidence: ${r.email_confidence}% | Source: ${r.email_source}` : `Confidence: ${r.email_confidence || 0}%`}>
@@ -347,12 +528,12 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleA
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }} title="Profile Completeness">
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               <span>Profile</span>
-              <span style={{ color: r.completeness_score > 70 ? '#ffffff' : r.completeness_score > 40 ? '#d4d4d8' : '#e41937' }}>
+              <span style={{ color: r.completeness_score > 70 ? 'var(--brand)' : r.completeness_score > 40 ? 'var(--accent-secondary)' : 'var(--warning)' }}>
                 {r.completeness_score || 0}%
               </span>
             </div>
             <div style={{ width: '100%', height: '3px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: `${r.completeness_score || 0}%`, background: r.completeness_score > 70 ? '#ffffff' : r.completeness_score > 40 ? '#d4d4d8' : '#e41937', transition: 'width 0.3s ease' }} />
+              <div style={{ height: '100%', width: `${r.completeness_score || 0}%`, background: r.completeness_score > 70 ? 'var(--brand)' : r.completeness_score > 40 ? 'var(--accent-secondary)' : 'var(--warning)', transition: 'width 0.3s ease' }} />
             </div>
           </div>
         </div>
@@ -387,8 +568,37 @@ export default function Recruiters() {
       state: '', city: '', metro_hub: '', company: '', title: '', specialization_sector: '',
       seniority_level: '', timezone_code: '', company_scale: '', is_deliverable: '',
       has_phone: '', missing_email: '', status: '',
-      needs_review: '', state_status: '', email_inference_status: '', sort_by: 'created_at', sort_desc: 'true'
+      needs_review: '', state_status: '', email_inference_status: '',
+      data_source: '', date_filter: '',
+      sort_by: 'created_at', sort_desc: 'true'
   })
+
+  const [dynamicCompanies, setDynamicCompanies] = useState([])
+
+  useEffect(() => {
+    let isMounted = true
+    api.get('/analytics/companies-search?limit=150').then(res => {
+      if (!isMounted) return
+      const rows = Array.isArray(res.data) ? res.data : (res.data?.rows || [])
+      const names = rows.map(r => r.company_name).filter(Boolean)
+      if (names.length > 0) {
+        setDynamicCompanies(names)
+      }
+    }).catch(() => {})
+    return () => { isMounted = false }
+  }, [])
+
+  const companyOptions = useMemo(() => {
+    const set = new Set(BASELINE_COMPANIES)
+    dynamicCompanies.forEach(c => set.add(c))
+    if (filters?.company) set.add(filters.company)
+    
+    const sorted = Array.from(set).sort((a, b) => a.localeCompare(b))
+    return [
+      { value: '', label: 'All Companies' },
+      ...sorted.map(c => ({ value: c, label: c }))
+    ]
+  }, [dynamicCompanies, filters?.company])
   
   const [debouncedSearch, setDebouncedSearch] = useState(search)
   const [debouncedFilters, setDebouncedFilters] = useState(filters)
@@ -496,6 +706,8 @@ export default function Recruiters() {
       const payload = {
         search: debouncedSearch || undefined,
         state: debouncedFilters.state || undefined,
+        city: debouncedFilters.city || undefined,
+        company: debouncedFilters.company || undefined,
         specialization: debouncedFilters.title || debouncedFilters.specialization_sector || undefined,
         has_phone: debouncedFilters.has_phone === 'yes' ? true : debouncedFilters.has_phone === 'no' ? false : undefined,
         limit: 10000
@@ -567,6 +779,7 @@ export default function Recruiters() {
           seniority_level: '', timezone_code: '', company_scale: '', is_deliverable: '',
           has_phone: '', missing_email: '', status: '', needs_review: '',
           state_status: '', email_inference_status: '',
+          data_source: '', date_filter: '',
           sort_by: 'created_at', sort_desc: 'true'
       })
       setPage(1)
@@ -705,11 +918,31 @@ export default function Recruiters() {
                           </select>
                           <select value={filters.data_source || ''} onChange={e => updateFilter('data_source', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--card-border)', fontSize: 13, background: 'var(--main-bg)', outline: 'none' }}>
                             <option value="">Any Sourcing Origin</option>
+                            <option value="teams">Microsoft Teams (Group Chat)</option>
                             <option value="extension">Desktop Scout</option>
                             <option value="web_intelligence:search_xray">Web Harvester</option>
                             <option value="campaign_import">Bulk Upload</option>
                             <option value="manual">Manual Entry</option>
                           </select>
+                  </div>
+                  
+                  <div style={{ height: 1, background: 'var(--card-border)' }} />
+
+                  <div>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>
+                        <i className="ti ti-calendar" style={{ marginRight: 4 }} /> Date Added / Ingestion Window
+                      </label>
+                      <select 
+                        value={filters.date_filter || ''} 
+                        onChange={e => updateFilter('date_filter', e.target.value)} 
+                        style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--card-border)', fontSize: 13, background: 'var(--main-bg)', outline: 'none' }}
+                      >
+                        <option value="">All Time / Any Date</option>
+                        <option value="today">Today / New Entries (&lt; 24h)</option>
+                        <option value="3d">Past 3 Days</option>
+                        <option value="7d">Past 7 Days</option>
+                        <option value="30d">Past 30 Days</option>
+                      </select>
                       </div>
                   </div>
                   
@@ -802,19 +1035,25 @@ export default function Recruiters() {
                   value={filters.state} 
                   onChange={val => updateFilter('state', val)}
                   options={STATE_OPTIONS}
-                  style={{ width: 145, height: 38 }}
+                  searchable={true}
+                  searchPlaceholder="Search 50 states..."
+                  style={{ width: 165, height: 38 }}
                 />
                 <CustomSelect 
                   value={filters.title} 
                   onChange={val => updateFilter('title', val)}
                   options={TITLE_OPTIONS}
-                  style={{ width: 165, height: 38 }}
+                  searchable={true}
+                  searchPlaceholder="Search specialties..."
+                  style={{ width: 180, height: 38 }}
                 />
                 <CustomSelect 
                   value={filters.company} 
                   onChange={val => updateFilter('company', val)}
-                  options={COMPANY_OPTIONS}
-                  style={{ width: 185, height: 38 }}
+                  options={companyOptions}
+                  searchable={true}
+                  searchPlaceholder="Search 50+ companies or type any..."
+                  style={{ width: 220, height: 38 }}
                 />
                 <CustomSelect 
                   value={filters.status} 
@@ -822,6 +1061,41 @@ export default function Recruiters() {
                   options={STATUS_OPTIONS}
                   style={{ width: 145, height: 38 }}
                 />
+
+                {/* Quick Date & Source Filters */}
+                <button
+                  onClick={() => updateFilter('date_filter', filters.date_filter === 'today' ? '' : 'today')}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    padding: '8px 14px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    background: filters.date_filter === 'today' ? 'rgba(16, 185, 129, 0.18)' : 'rgba(255, 255, 255, 0.04)',
+                    color: filters.date_filter === 'today' ? '#10b981' : 'var(--text-secondary)',
+                    border: filters.date_filter === 'today' ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid var(--card-border)'
+                  }}
+                  title="Filter to newly added candidates within the last 24 hours"
+                >
+                  <i className="ti ti-sparkles" style={{ fontSize: 13, color: filters.date_filter === 'today' ? '#10b981' : '#a1a1aa' }} />
+                  <span>Today's New Entries</span>
+                  {filters.date_filter === 'today' && <i className="ti ti-check" style={{ fontSize: 12 }} />}
+                </button>
+
+                <button
+                  onClick={() => updateFilter('data_source', filters.data_source === 'teams' ? '' : 'teams')}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    padding: '8px 14px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    background: filters.data_source === 'teams' ? 'rgba(99, 102, 241, 0.18)' : 'rgba(255, 255, 255, 0.04)',
+                    color: filters.data_source === 'teams' ? '#818cf8' : 'var(--text-secondary)',
+                    border: filters.data_source === 'teams' ? '1px solid rgba(99, 102, 241, 0.4)' : '1px solid var(--card-border)'
+                  }}
+                  title="Filter to candidates extracted from Microsoft Teams"
+                >
+                  <i className="ti ti-messages" style={{ fontSize: 13, color: filters.data_source === 'teams' ? '#818cf8' : '#a1a1aa' }} />
+                  <span>Teams Chat</span>
+                  {filters.data_source === 'teams' && <i className="ti ti-check" style={{ fontSize: 12 }} />}
+                </button>
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -899,9 +1173,9 @@ export default function Recruiters() {
           {/* Table */}
           <div className="card" style={{ overflow: 'hidden' }}>
             {isError ? (
-              <div style={{ padding: '16px 20px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, color: '#e41937', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ padding: '16px 20px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, color: 'var(--error, #E58D87)', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span>Failed to load recruiters. Please try again.</span>
-                <button onClick={() => refetch()} style={{ marginLeft: 'auto', background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.3)', color: '#e41937', borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontSize: 12 }}>Retry</button>
+                <button onClick={() => refetch()} style={{ marginLeft: 'auto', background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.3)', color: 'var(--error, #E58D87)', borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontSize: 12 }}>Retry</button>
               </div>
             ) : loading ? (
               <div style={{ padding: 120, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>

@@ -435,48 +435,10 @@ export default function Campaigns() {
   const preflightTimerRef = useRef(null);
   const validationTimerRef = useRef(null);
 
-  const [deliverability, setDeliverability] = useState({ deliverability_score: 100, spam_score: 0, rating: 'Optimal', badge_color: 'green', suggestions: [] });
-  
   // ── Powerhouse Outreach State: A/B Testing & Smart Timezone ──────────────────
   const [isABTest, setIsABTest] = useState(false);
   const [subjectB, setSubjectB] = useState('');
-  const [smartTimezone, setSmartTimezone] = useState(true);
-
-  const timezoneStats = useMemo(() => {
-    const counts = { ET: 0, CT: 0, MT: 0, PT: 0, other: 0 };
-    const ET_STATES = new Set(['CT','DE','FL','GA','ME','MD','MA','NH','NJ','NY','NC','OH','PA','RI','SC','VT','VA','WV','DC']);
-    const CT_STATES = new Set(['AL','AR','IL','IA','KS','KY','LA','MN','MS','MO','NE','ND','OK','SD','TN','TX','WI']);
-    const MT_STATES = new Set(['AZ','CO','ID','MT','NM','UT','WY']);
-    const PT_STATES = new Set(['CA','NV','OR','WA']);
-
-    (validatedRecipients.recipients || []).forEach(r => {
-      const st = (r.state || '').toUpperCase();
-      if (ET_STATES.has(st)) counts.ET++;
-      else if (CT_STATES.has(st)) counts.CT++;
-      else if (MT_STATES.has(st)) counts.MT++;
-      else if (PT_STATES.has(st)) counts.PT++;
-      else counts.other++;
-    });
-    return counts;
-  }, [validatedRecipients.recipients]);
-
-  useEffect(() => {
-    if (!subject?.trim() && !body?.trim()) {
-      setDeliverability({ deliverability_score: 100, spam_score: 0, rating: 'Optimal', badge_color: 'green', suggestions: [] });
-      return;
-    }
-    const timer = setTimeout(async () => {
-      try {
-        const res = await api.post('/campaigns/check-deliverability', { subject, body });
-        if (res?.data) {
-          setDeliverability(res.data);
-        }
-      } catch {
-        // Non-blocking
-      }
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [subject, body]);
+  const smartTimezone = true;
 
   const detectedVariables = useMemo(() => {
     const pattern = /\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g;
@@ -1845,83 +1807,6 @@ export default function Campaigns() {
                     <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, fontStyle: 'italic' }}>These will be filled with real recipient data when sent.</p>
                   </div>
                 )}
-
-                {/* DELIVERABILITY & SPAM GUARD */}
-                {(subject.trim().length > 0 || body.trim().length > 0) && (
-                  <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--card-border)', borderRadius: 6, padding: '10px 14px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: deliverability.suggestions?.length > 0 ? 6 : 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <ShieldCheck size={14} color={deliverability.badge_color === 'green' ? '#ffffff' : deliverability.badge_color === 'yellow' ? '#d4d4d8' : '#e41937'} />
-                        <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>Deliverability & Spam Guard</span>
-                      </div>
-                      <span style={{
-                        fontSize: 11,
-                        fontWeight: 700,
-                        padding: '2px 8px',
-                        borderRadius: 4,
-                        background: deliverability.badge_color === 'green' ? 'rgba(255, 255, 255, 0.08)' : deliverability.badge_color === 'yellow' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(239,68,68,0.12)',
-                        color: deliverability.badge_color === 'green' ? '#ffffff' : deliverability.badge_color === 'yellow' ? '#d4d4d8' : '#e41937'
-                      }}>
-                        {deliverability.rating} ({deliverability.deliverability_score}/100)
-                      </span>
-                    </div>
-                    {deliverability.suggestions?.length > 0 && (
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: 3, marginTop: 4 }}>
-                        {deliverability.suggestions.map((s, idx) => (
-                          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#d4d4d8' }}>
-                            <span>•</span>
-                            <span>{s}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* SMART OUTREACH POWERHOUSE (TIMEZONE & REPUTATION SHIELD) */}
-                <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--card-border)', borderRadius: 8, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <Clock size={15} style={{ color: '#a1a1aa' }} />
-                      <div>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>Prime-Time Timezone Dispatcher</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Target 8:45 AM local recipient morning window</div>
-                      </div>
-                    </div>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600, color: smartTimezone ? '#a1a1aa' : 'var(--text-muted)' }}>
-                      <input
-                        type="checkbox"
-                        checked={smartTimezone}
-                        onChange={e => setSmartTimezone(e.target.checked)}
-                        style={{ cursor: 'pointer' }}
-                      />
-                      {smartTimezone ? 'Active' : 'Disabled'}
-                    </label>
-                  </div>
-
-                  {smartTimezone && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, paddingTop: 6, borderTop: '1px solid var(--border)' }}>
-                      <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: 'rgba(161, 161, 170, 0.1)', color: '#d4d4d8', border: '1px solid rgba(161, 161, 170, 0.2)' }}>
-                        ET: {timezoneStats.ET} leads
-                      </span>
-                      <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: 'rgba(255, 255, 255, 0.08)', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.15)' }}>
-                        CT: {timezoneStats.CT} leads
-                      </span>
-                      <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: 'rgba(255, 255, 255, 0.06)', color: '#e4e4e7', border: '1px solid rgba(255, 255, 255, 0.12)' }}>
-                        MT: {timezoneStats.MT} leads
-                      </span>
-                      <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: 'rgba(255, 255, 255, 0.05)', color: '#d4d4d8', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                        PT: {timezoneStats.PT} leads
-                      </span>
-                    </div>
-                  )}
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingTop: 6, borderTop: '1px solid var(--border)', fontSize: 11, color: '#e4e4e7' }}>
-                    <ShieldCheck size={13} />
-                    <span><strong>Reputation Shield Armed:</strong> 2.0% bounce circuit breaker & automatic warm-up rate limits.</span>
-                  </div>
-                </div>
-
                 {/* SIGNATURE */}
                 <div>
                   <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Signature</label>

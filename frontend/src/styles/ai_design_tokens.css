@@ -1,71 +1,71 @@
 /**
  * TalentOpsAI — Semantic AI Design Tokens & Styles
- * 4-Color Strict Palette: 60% Black, 20% White (lines/text), 10% Crimson Red, 10% Grey.
+ * Palette: Graphite, Warm Ivory, Sage Green, and Muted Violet.
  */
 
 :root {
-  /* Semantic 60% Black Base & 10% Grey Surfaces */
-  --ai-bg-canvas: #000000;
-  --ai-bg-surface: #0a0a0a;
-  --ai-bg-surface-raised: #121212;
-  --ai-bg-surface-elevated: #18181b;
-  --ai-border-subtle: rgba(255, 255, 255, 0.12);
-  --ai-border-medium: rgba(255, 255, 255, 0.25);
-  --ai-border-focus: #e41937;
+  /* Semantic Graphite Base Surfaces */
+  --ai-bg-canvas: #101211;
+  --ai-bg-surface: #1B1F1C;
+  --ai-bg-surface-raised: #242925;
+  --ai-bg-surface-elevated: #282E29;
+  --ai-border-subtle: #343B35;
+  --ai-border-medium: #454E46;
+  --ai-border-focus: #B8D5A0;
 
   /* Standard Application System Variables */
-  --main-bg: #000000;
-  --panel-bg: #0a0a0a;
-  --card-bg: #121212;
-  --card-bg-elevated: #18181b;
-  --card-border: rgba(255, 255, 255, 0.12);
-  --card-border-strong: rgba(255, 255, 255, 0.28);
-  --text-primary: #ffffff;
-  --text-secondary: #f4f4f5;
-  --text-muted: #a1a1aa;
-  --accent-primary: #e41937;
-  --brand: #e41937;
-  --brand-strong: #fe063f;
+  --main-bg: #101211;
+  --panel-bg: #1B1F1C;
+  --card-bg: #1B1F1C;
+  --card-bg-elevated: #242925;
+  --card-border: #343B35;
+  --card-border-strong: #454E46;
+  --text-primary: #F1F0E8;
+  --text-secondary: #B0B7AE;
+  --text-muted: #929B91;
+  --accent-primary: #B8D5A0;
+  --brand: #B8D5A0;
+  --brand-strong: #C9E2B3;
 
-  /* Primary Brand & AI Accents - Signature Crimson Red */
-  --ai-primary-cyan: #e41937;
-  --ai-accent-violet: #fe063f;
-  --ai-accent-indigo: #e41937;
-  --ai-accent-gradient: linear-gradient(135deg, #e41937 0%, #fe063f 50%, #ffffff 100%);
-  --ai-accent-subtle-glow: rgba(228, 25, 55, 0.25);
+  /* Primary Brand & AI Accents - Sage Green & Muted Violet */
+  --ai-primary-cyan: #B8D5A0;
+  --ai-accent-violet: #C4B5D9;
+  --ai-accent-indigo: #B8D5A0;
+  --ai-accent-gradient: linear-gradient(135deg, #B8D5A0 0%, #C4B5D9 50%, #F1F0E8 100%);
+  --ai-accent-subtle-glow: rgba(184, 213, 160, 0.2);
 
   /* Semantic Data Provenance Status */
-  --ai-status-verified: #ffffff;
-  --ai-status-observed: #f4f4f5;
-  --ai-status-inferred: #d4d4d8;
-  --ai-status-derived: #a1a1aa;
-  --ai-status-predicted: #e41937;
-  --ai-status-unknown: #71717a;
-  --ai-status-danger: #e41937;
+  --ai-status-verified: #B8D5A0;
+  --ai-status-observed: #F1F0E8;
+  --ai-status-inferred: #C4B5D9;
+  --ai-status-derived: #B0B7AE;
+  --ai-status-predicted: #E6B875;
+  --ai-status-unknown: #929B91;
+  --ai-status-danger: #E58D87;
 
   /* Typography */
-  --ai-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --ai-font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --ai-font-mono: 'IBM Plex Mono', 'JetBrains Mono', monospace;
 }
 
 [data-theme='light'] {
-  --ai-bg-canvas: #000000;
-  --ai-bg-surface: #0a0a0a;
-  --ai-bg-surface-raised: #121212;
-  --ai-bg-surface-elevated: #18181b;
-  --ai-border-subtle: rgba(255, 255, 255, 0.12);
-  --ai-border-medium: rgba(255, 255, 255, 0.25);
-  --ai-border-focus: #e41937;
-  --ai-primary-cyan: #e41937;
-  --ai-accent-violet: #fe063f;
-  --ai-accent-indigo: #e41937;
-  --ai-accent-gradient: linear-gradient(135deg, #e41937 0%, #fe063f 50%, #ffffff 100%);
-  --ai-accent-subtle-glow: rgba(228, 25, 55, 0.25);
-  --ai-status-verified: #ffffff;
-  --ai-status-observed: #f4f4f5;
-  --ai-status-derived: #a1a1aa;
-  --ai-status-unknown: #71717a;
-  --ai-status-danger: #e41937;
+  --ai-bg-canvas: #f8fafc;
+  --ai-bg-surface: #ffffff;
+  --ai-bg-surface-raised: #f1f5f9;
+  --ai-bg-surface-elevated: #e2e8f0;
+  --ai-border-subtle: #e2e8f0;
+  --ai-border-medium: #cbd5e1;
+  --ai-border-focus: #16a34a;
+  --ai-primary-cyan: #16a34a;
+  --ai-accent-violet: #7c3aed;
+  --ai-accent-indigo: #16a34a;
+  --ai-accent-gradient: linear-gradient(135deg, #16a34a 0%, #7c3aed 50%, #0f172a 100%);
+  --ai-accent-subtle-glow: rgba(22, 163, 74, 0.15);
+  --ai-status-verified: #16a34a;
+  --ai-status-observed: #0f172a;
+  --ai-status-derived: #64748b;
+  --ai-status-unknown: #94a3b8;
+  --ai-status-danger: #dc2626;
 }
 
 /* Subtle AI Ambient Glow */
@@ -81,8 +81,8 @@
 }
 
 .ai-card:hover {
-  border-color: rgba(255, 255, 255, 0.28);
-  box-shadow: 0 4px 24px -6px rgba(228, 25, 55, 0.2);
+  border-color: var(--ai-border-medium);
+  box-shadow: 0 4px 24px -6px rgba(184, 213, 160, 0.15);
 }
 
 /* Gradient Header Text */
@@ -107,87 +107,45 @@
 }
 
 .ai-badge-verified {
-  background: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(184, 213, 160, 0.15);
+  color: #B8D5A0;
+  border-color: rgba(184, 213, 160, 0.35);
 }
 
 .ai-badge-observed {
-  background: rgba(255, 255, 255, 0.06);
-  color: #e4e4e7;
-  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(241, 240, 232, 0.1);
+  color: #F1F0E8;
+  border-color: rgba(241, 240, 232, 0.2);
 }
 
 .ai-badge-inferred {
-  background: rgba(255, 255, 255, 0.05);
-  color: #d4d4d8;
-  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(196, 181, 217, 0.15);
+  color: #C4B5D9;
+  border-color: rgba(196, 181, 217, 0.35);
 }
 
 .ai-badge-derived {
-  background: rgba(255, 255, 255, 0.04);
-  color: #a1a1aa;
-  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(176, 183, 174, 0.12);
+  color: #B0B7AE;
+  border-color: rgba(176, 183, 174, 0.25);
 }
 
 .ai-badge-predicted {
-  background: rgba(228, 25, 55, 0.15);
-  color: #ffffff;
-  border-color: rgba(228, 25, 55, 0.35);
+  background: rgba(230, 184, 117, 0.15);
+  color: #E6B875;
+  border-color: rgba(230, 184, 117, 0.35);
 }
 
 .ai-badge-unknown {
-  background: rgba(255, 255, 255, 0.03);
-  color: #71717a;
-  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(146, 155, 145, 0.1);
+  color: #929B91;
+  border-color: rgba(146, 155, 145, 0.2);
 }
 
 .ai-badge-danger {
-  background: rgba(228, 25, 55, 0.18);
-  color: #fe063f;
-  border-color: rgba(228, 25, 55, 0.4);
-}
-
-[data-theme='light'] .ai-badge-verified,
-html[data-theme='light'] .ai-badge-verified {
-  background: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.22);
-}
-
-[data-theme='light'] .ai-badge-observed,
-html[data-theme='light'] .ai-badge-observed {
-  background: rgba(255, 255, 255, 0.06);
-  color: #e4e4e7;
-  border-color: rgba(255, 255, 255, 0.14);
-}
-
-[data-theme='light'] .ai-badge-inferred,
-html[data-theme='light'] .ai-badge-inferred {
-  background: rgba(255, 255, 255, 0.05);
-  color: #d4d4d8;
-  border-color: rgba(255, 255, 255, 0.12);
-}
-
-[data-theme='light'] .ai-badge-derived,
-html[data-theme='light'] .ai-badge-derived {
-  background: rgba(255, 255, 255, 0.04);
-  color: #a1a1aa;
-  border-color: rgba(255, 255, 255, 0.1);
-}
-
-[data-theme='light'] .ai-badge-unknown,
-html[data-theme='light'] .ai-badge-unknown {
-  background: rgba(255, 255, 255, 0.03);
-  color: #71717a;
-  border-color: rgba(255, 255, 255, 0.08);
-}
-
-[data-theme='light'] .ai-badge-danger,
-html[data-theme='light'] .ai-badge-danger {
-  background: rgba(228, 25, 55, 0.18);
-  color: #fe063f;
-  border-color: rgba(228, 25, 55, 0.4);
+  background: rgba(229, 141, 135, 0.18);
+  color: #E58D87;
+  border-color: rgba(229, 141, 135, 0.4);
 }
 
 /* Subtle Animated Processing Indicator */
@@ -198,8 +156,8 @@ html[data-theme='light'] .ai-badge-danger {
   }
   50% {
     opacity: 1;
-    transform: scale(1.05);
-    filter: drop-shadow(0 0 10px rgba(228, 25, 55, 0.8));
+    transform: scale(1.03);
+    filter: drop-shadow(0 0 10px rgba(184, 213, 160, 0.6));
   }
 }
 

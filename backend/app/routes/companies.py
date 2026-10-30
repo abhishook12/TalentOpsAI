@@ -42,11 +42,14 @@ from .analytics import analytics_cache, DOMAIN_DISPLAY_NAMES
 @router.get("/")
 def get_companies(
     response: Response,
+    page: Optional[int] = Query(None, ge=1),
     skip: int = 0, 
     limit: int = Query(50, ge=1, le=100), 
     state: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
+    if page is not None:
+        skip = (page - 1) * limit
     cache_key = f"comp_list_{skip}_{limit}_{state or ''}"
     cached = analytics_cache.get(cache_key)
     if cached is not None:
@@ -83,6 +86,9 @@ def get_companies(
         {
             "company_id": r.company_id,
             "company_name": r.company_name,
+            "primary_domain": r.primary_domain,
+            "website": r.website,
+            "logo_url": r.logo_url,
             "location": r.location,
             "industry": r.industry,
             "state": r.state,

@@ -27,9 +27,16 @@ function ThemeSwitcher() {
       className="cc-icon-button"
       onClick={toggleTheme}
       title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-      aria-label="Toggle theme"
+      aria-label="Toggle light/dark theme"
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer',
+        color: 'var(--text-secondary)'
+      }}
     >
-      {theme === 'dark' ? <Sun size={19} /> : <Moon size={19} />}
+      {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
     </button>
   )
 }
@@ -62,6 +69,8 @@ const PAGE_NAMES = {
   '/extension-hub': 'Scout Extension Hub',
   '/admin/scout-contributors': 'Scout Contributors',
   '/admin/staging': 'Staging Pipeline',
+  '/admin/teams-harvest': 'Teams Live Stream',
+  '/admin/web-harvest': 'Web Harvesting',
 }
 
 function getSessionId() {
@@ -277,7 +286,7 @@ function AppShell() {
                   height: 6,
                   borderRadius: '50%',
                   background: 'var(--brand)',
-                  boxShadow: '0 0 6px rgba(228, 25, 55, 0.7)'
+                  boxShadow: '0 0 6px rgba(184, 213, 160, 0.7)'
                 }} />
                 <span>System Online</span>
                 <span style={{ opacity: 0.4 }}>•</span>
@@ -349,16 +358,16 @@ function AppShell() {
                   fontSize: '12px',
                   fontWeight: 500,
                   backgroundColor: dbConnected ? 'var(--bg-elevated)' : 'rgba(239, 68, 68, 0.12)',
-                  color: dbConnected ? 'var(--text-primary)' : '#e41937',
-                  border: dbConnected ? '1px solid var(--card-border)' : '1px solid rgba(228, 25, 55, 0.35)'
+                  color: dbConnected ? 'var(--text-primary)' : 'var(--danger)',
+                  border: dbConnected ? '1px solid var(--card-border)' : '1px solid rgba(229, 141, 135, 0.35)'
                 }}>
                   <span style={{
                     width: 6,
                     height: 6,
                     borderRadius: '50%',
-                    backgroundColor: dbConnected ? '#ffffff' : '#e41937',
+                    backgroundColor: dbConnected ? 'var(--brand)' : 'var(--danger)',
                     display: 'inline-block',
-                    boxShadow: dbConnected ? '0 0 6px rgba(255, 255, 255, 0.8)' : '0 0 6px rgba(228, 25, 55, 0.8)'
+                    boxShadow: dbConnected ? '0 0 6px rgba(184, 213, 160, 0.6)' : '0 0 6px rgba(229, 141, 135, 0.6)'
                   }} />
                   {dbConnected ? 'Database Connected' : 'Database Reconnecting...'}
                 </span>

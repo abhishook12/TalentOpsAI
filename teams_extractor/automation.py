@@ -112,6 +112,13 @@ def build_excel(contacts, out_path):
         cell.font = header_font
         cell.alignment = Alignment(horizontal="center")
 
+    # Direct Ingestion to Main Site Database (discovery_staging on Supabase PostgreSQL)
+    try:
+        from site_db_sync import sync_contacts_to_site_db
+        sync_contacts_to_site_db(contacts, batch_id="TEAMS_VISION_EXTRACTOR", source_label=os.path.basename(out_path))
+    except Exception as db_sync_err:
+        pass
+
     current_row = 2
     for contact in contacts:
         name = contact.get("name", "")

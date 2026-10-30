@@ -17,11 +17,11 @@ const queryClient = new QueryClient({
   },
 })
 
-const savedTheme = localStorage.getItem('theme')
-document.documentElement.setAttribute('data-theme', savedTheme || 'dark')
-if (!savedTheme) {
-  localStorage.setItem('theme', 'dark')
-}
+// Strict Mandate: Enforce Apple True Black and White text across entire site
+localStorage.setItem('theme', 'dark')
+document.documentElement.setAttribute('data-theme', 'dark')
+document.documentElement.classList.add('dark')
+document.documentElement.classList.remove('light')
 axios.defaults.withCredentials = true
 
 import { RouterProvider } from '@tanstack/react-router'

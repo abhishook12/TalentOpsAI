@@ -138,22 +138,32 @@ export function inferDomainFromName(name) {
 
 export function normalizeLogoDomain(domain, name) {
   let target = domain
-  if (!target || target === 'null' || target === 'n/a') {
+  if (!target || target === 'null' || target === 'n/a' || target === 'undefined') {
     target = inferDomainFromName(name)
   }
   if (!target) return null
-  const cleaned = String(target)
-    .trim()
-    .toLowerCase()
-    .replace(/\.dup\.\d+$/i, '')
-    .replace(/\.\.dup\.\d+$/i, '')
-    .replace(/\[duplicate\]\s*/gi, '')
-    // Aggressively split off any garbage text that got scraped into the DB (e.g. "url | user", "url; name", "url ... text")
-    .replace(/^https?:\/\//, '')
-    .replace(/^www\./, '')
-    .split('/')[0]
 
-  if (!cleaned || blockedLogoDomains.has(cleaned) || cleaned.includes('.dup.')) {
+  let cleaned = String(target).trim().toLowerCase()
+
+  // Aggressively split off scraped artifacts (e.g. "domain; username", "domain (notes)", "domain, extra")
+  cleaned = cleaned.split(/[\(\[\{;,\s|]+/)[0].trim()
+
+  // Strip protocol, www, and URL paths/queries
+  cleaned = cleaned.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0]
+
+  // Strip leading/trailing quotes, apostrophes, backticks, periods, colons
+  cleaned = cleaned.replace(/^[^\w]+|[^\w.-]+$/g, '').trim()
+
+  // Strip duplicate markers
+  cleaned = cleaned.replace(/\.?dup\.\d+$/i, '').replace(/\[duplicate\]/gi, '').trim()
+
+  // Match valid domain pattern
+  const domainMatch = cleaned.match(/([a-z0-9\-]+\.[a-z]{2,12})/i)
+  if (domainMatch) {
+    cleaned = domainMatch[1]
+  }
+
+  if (!cleaned || blockedLogoDomains.has(cleaned) || !cleaned.includes('.') || cleaned.includes('.dup.')) {
     return inferDomainFromName(name)
   }
 

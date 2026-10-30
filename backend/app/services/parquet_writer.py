@@ -153,13 +153,18 @@ class ParquetWriter:
                 df_updates = df_updates.drop_duplicates(subset=['recruiter_id'], keep='last')
                 con.register("df_updates", df_updates)
                 
+                col_types = {r[0]: r[1] for r in schema_info}
                 update_cols = set(df_updates.columns) - {'recruiter_id'}
                 select_parts = []
                 for c in base_cols:
                     if c == 'recruiter_id':
                         select_parts.append('b.recruiter_id')
                     elif c in update_cols:
-                        select_parts.append(f'COALESCE(u.{c}, b.{c}) AS {c}')
+                        target_t = col_types.get(c, 'VARCHAR')
+                        if target_t == 'DOUBLE' and c in ('repair_reason', 'raw_data', 'historical_company_id', 'company_domain_id', 'merged_into_id'):
+                            select_parts.append(f'COALESCE(TRY_CAST(u.{c} AS VARCHAR), TRY_CAST(b.{c} AS VARCHAR)) AS {c}')
+                        else:
+                            select_parts.append(f'COALESCE(TRY_CAST(u.{c} AS {target_t}), b.{c}) AS {c}')
                     else:
                         select_parts.append(f'b.{c}')
 

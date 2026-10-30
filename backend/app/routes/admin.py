@@ -4,7 +4,7 @@ All endpoints require a valid admin session (HttpOnly cookie set by /auth/login)
 """
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy import text, func
 from sqlalchemy.exc import ProgrammingError
 from typing import Optional
@@ -928,7 +928,7 @@ def admin_clear_cache():
 
 
 # ── 9. Read-only SQL console ──────────────────────────────────────────────────
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, ConfigDict
 
 class SqlQuery(BaseModel):
     sql: str
@@ -1229,16 +1229,31 @@ MOCK_SETTINGS = {
 
 from fastapi import Request
 
+class AdminSettingsUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    general_platformName: Optional[str] = Field(None, max_length=100)
+    general_timezone: Optional[str] = Field(None, max_length=50)
+    general_language: Optional[str] = Field(None, max_length=20)
+    auth_googleEnabled: Optional[bool] = None
+    auth_microsoftEnabled: Optional[bool] = None
+    auth_sessionTimeout: Optional[int] = Field(None, ge=5, le=1440)
+    email_smtpStatus: Optional[str] = Field(None, max_length=50)
+    email_defaultSender: Optional[str] = Field(None, max_length=200)
+    sec_rateLimits: Optional[int] = Field(None, ge=1, le=10000)
+    sec_ipWhitelist: Optional[str] = Field(None, max_length=1000)
+    sys_dataRetentionDays: Optional[int] = Field(None, ge=1, le=3650)
+
 @router.get("/settings")
 def get_admin_settings():
     return MOCK_SETTINGS
 
 @router.post("/settings")
-async def save_admin_settings(request: Request):
+def save_admin_settings(settings_in: AdminSettingsUpdate):
     global MOCK_SETTINGS
-    data = await request.json()
-    MOCK_SETTINGS.update(data)
-    return {"status": "ok", "message": "Settings saved"}
+    updates = settings_in.model_dump(exclude_unset=True)
+    MOCK_SETTINGS.update(updates)
+    return {"status": "ok", "message": "Settings saved", "updated_fields": list(updates.keys())}
 
 @router.get("/jobs")
 def get_background_jobs(db: Session = Depends(get_db)):

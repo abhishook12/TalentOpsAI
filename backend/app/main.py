@@ -28,7 +28,7 @@ from .config import (
     ENABLE_TIMEOUT_SWEEP,
     ENABLE_SYNC_MANAGER,
 )
-from .routes import recruiters, companies, vendors, candidates, submissions, analytics, admin, auth, actions, updates, ai, campaigns, harvester, users, visitor_analytics, notifications, bridge, accounts, extension, staging
+from .routes import recruiters, companies, vendors, candidates, submissions, analytics, admin, auth, actions, updates, ai, campaigns, harvester, users, visitor_analytics, notifications, bridge, accounts, extension, staging, system_windows
 from .database import get_db, engine, Base
 from .models import models, auth_models, staging_models, data_quality_models, extension_models, update_models, ai_models, knowledge_models
 from .create_indexes import create_performance_indexes
@@ -506,6 +506,8 @@ app.include_router(api_keys.router)
 from .routes import outlook_feedback
 app.include_router(outlook_feedback.router, prefix="/api")
 app.include_router(outlook_feedback.router)
+app.include_router(system_windows.router)
+app.include_router(system_windows.router, prefix="/api")
 
 
 

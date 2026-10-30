@@ -811,12 +811,28 @@ class ScoutDesktopApp:
                         "is_authenticated": app_ref.backend_client.is_authenticated(),
                     }
                     self.wfile.write(json.dumps(resp).encode("utf-8"))
+                elif "/open-window" in self.path or "/show-window" in self.path:
+                    self._send_cors(200)
+                    self.wfile.write(b'{"ok": true, "message": "Scout window opened"}')
+                    QTimer.singleShot(0, app_ref._show_main_window)
+                elif "/hide-window" in self.path:
+                    self._send_cors(200)
+                    self.wfile.write(b'{"ok": true, "message": "Scout window hidden"}')
+                    QTimer.singleShot(0, lambda: app_ref.main_window.hide())
                 else:
                     self._send_cors(404)
                     self.wfile.write(b'{"error": "not found"}')
 
             def do_POST(self):
-                if "/claim" in self.path:
+                if "/open-window" in self.path or "/show-window" in self.path:
+                    self._send_cors(200)
+                    self.wfile.write(b'{"ok": true, "message": "Scout window opened"}')
+                    QTimer.singleShot(0, app_ref._show_main_window)
+                elif "/hide-window" in self.path:
+                    self._send_cors(200)
+                    self.wfile.write(b'{"ok": true, "message": "Scout window hidden"}')
+                    QTimer.singleShot(0, lambda: app_ref.main_window.hide())
+                elif "/claim" in self.path:
                     try:
                         content_len = int(self.headers.get("Content-Length", 0))
                         body = self.rfile.read(content_len).decode("utf-8")
@@ -870,8 +886,13 @@ class ScoutDesktopApp:
         """
         logger.info("🚀 TalentOps Scout Desktop starting...")
         self.tray.show()
-        self.edge_handle.show()
-        self.main_window.show()
+        # Only show main window immediately if explicitly launched with --show/--open flag
+        # By default, runs silently in system tray so tasks run in background without desktop window popups
+        if "--show" in sys.argv or "--open" in sys.argv or os.environ.get("SCOUT_SHOW_WINDOW") == "1":
+            self.edge_handle.show()
+            self.main_window.show()
+        else:
+            logger.info("TalentOps Scout Desktop running in background (system tray).")
 
         # Step 0: Check for One-Click Installation Claim or Legacy Code
         claimed = self._check_and_consume_installation_claim()

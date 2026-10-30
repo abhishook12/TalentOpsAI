@@ -85,7 +85,7 @@ export default function CompanyModal({ company, onClose, onSave }) {
         </div>
 
         {error && (
-          <div style={{ padding: '10px 14px', background: 'rgba(239, 68, 68, 0.1)', color: '#e41937', borderRadius: 8, fontSize: 13 }}>
+          <div style={{ padding: '10px 14px', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--error, #E58D87)', borderRadius: 8, fontSize: 13 }}>
             <i className="ti ti-alert-circle" style={{ marginRight: 6 }} />{error}
           </div>
         )}

@@ -86,6 +86,40 @@ def get_users(
         "pages": math.ceil(total_count / limit) if limit > 0 else 1
     }
 
+@router.get("/profile")
+def get_current_user_profile(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request)
+):
+    """Returns the authenticated profile of the current active session user."""
+    return {
+        "id": current_user.id,
+        "email": current_user.email,
+        "first_name": current_user.first_name,
+        "last_name": current_user.last_name,
+        "company": current_user.company,
+        "country": current_user.country,
+        "role_name": current_user.role.name if current_user.role else "user",
+        "auth_provider": getattr(current_user, 'auth_provider', 'local'),
+        "status": current_user.status,
+        "avatar_url": current_user.avatar_url,
+        "job_title": getattr(current_user, 'job_title', None),
+        "department": getattr(current_user, 'department', None),
+        "phone": getattr(current_user, 'phone', None),
+        "mobile": getattr(current_user, 'mobile', None),
+        "work_email": getattr(current_user, 'work_email', None),
+        "alt_email": getattr(current_user, 'alt_email', None),
+        "timezone": getattr(current_user, 'timezone', None),
+        "address": getattr(current_user, 'address', None),
+        "linkedin_url": getattr(current_user, 'linkedin_url', None),
+        "website": getattr(current_user, 'website', None),
+        "default_sender_id": getattr(current_user, 'default_sender_id', None),
+        "default_reply_to": getattr(current_user, 'default_reply_to', None),
+        "signature_html": getattr(current_user, 'signature_html', None),
+        "created_at": current_user.created_at,
+    }
+
+
 @router.get("/{user_id}")
 def get_user(
     user_id: int,

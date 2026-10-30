@@ -653,8 +653,16 @@ def validate_human_name(raw_name: Optional[str]) -> Tuple[bool, Optional[str], O
         'sent', 'items', 'flagged', 'unread', 'subject', 'drafts', 'trash', 'junk',
         'folder', 'folders', 'distance', 'directions', 'transit', 'added', 'posted',
         'urgently', 'urgent', 'tell', 'tellme',
+        'new new', 'net new', 'lead approve', 'lead corrected',
+        'corporate email', 'personal email', 'mobile phone', 'work phone',
+        'direct phone', 'office phone', 'cell phone',
     }
-    if any(w in SYSTEM_NOISE_TOKENS for w in lower_words):
+    if any(w in SYSTEM_NOISE_TOKENS for w in lower_words) or lower in {
+        'new new', 'net new', 'lead approve', 'lead corrected',
+        'corporate email', 'personal email', 'work email', 'home email',
+        'corporate phone', 'personal phone', 'mobile phone', 'cell phone',
+        'work phone', 'direct phone', 'office phone',
+    }:
         return False, None, f"Name contains system or application noise ('{cleaned}')"
 
     # Reject email greetings, email sign-offs, email action verbs, and web navigation prefixes

@@ -2,6 +2,9 @@ import axios from 'axios'
 
 const resolveApiUrl = () => {
   if (typeof window !== 'undefined' && window.location?.hostname) {
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return `http://${window.location.hostname}:8000`
+    }
     if (window.location.hostname.includes('vercel.app')) {
       return '/api'
     }

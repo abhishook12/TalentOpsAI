@@ -41,35 +41,53 @@ def is_supervisor_running() -> bool:
     except OSError:
         return True
 
-def is_process_running(proc_name: str) -> bool:
+def is_process_running(proc_name) -> bool:
     """Checks if a process is active by executable image name."""
+    target_names = [p.lower() for p in proc_name] if isinstance(proc_name, (list, tuple)) else [proc_name.lower()]
     try:
         import psutil
-        proc_lower = proc_name.lower()
         for proc in psutil.process_iter(["name"]):
             try:
-                name = proc.info.get("name")
-                if name and name.lower() == proc_lower:
+                name = (proc.info.get("name") or "").lower()
+                if any(name == t or name == f"{t}.exe" or (t.endswith(".exe") and name == t) for t in target_names):
                     return True
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 pass
     except Exception as e:
         logger.warning(f"psutil check failed for {proc_name}: {e}")
         try:
-            res = subprocess.run(
-                ["tasklist", "/fi", f"IMAGENAME eq {proc_name}"],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            return proc_name.lower() in res.stdout.lower()
+            for t in target_names:
+                res = subprocess.run(
+                    ["tasklist", "/fi", f"IMAGENAME eq {t}"],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                if t in res.stdout.lower():
+                    return True
         except Exception:
             pass
     return False
 
-def ensure_application_running(app_name: str, exe_path: str, proc_name: str) -> bool:
+def resolve_teams_exe() -> str:
+    """Resolves the installed Microsoft Teams executable path."""
+    import glob
+    candidates = [
+        os.path.expandvars(r"%LOCALAPPDATA%\Microsoft\WindowsApps\ms-teams.exe"),
+        os.path.expandvars(r"%LOCALAPPDATA%\Microsoft\Teams\current\Teams.exe"),
+        r"C:\Program Files\WindowsApps\ms-teams.exe",
+    ]
+    winapps = glob.glob(r"C:\Program Files\WindowsApps\MSTeams_*\ms-teams.exe")
+    if winapps:
+        candidates.insert(0, winapps[0])
+    for c in candidates:
+        if os.path.exists(c):
+            return c
+    return candidates[0]
+
+def ensure_application_running(app_name: str, exe_path: str, proc_name) -> bool:
     """
-    Ensures that a desktop application (such as Vitel Global or Outlook) is running.
+    Ensures that a desktop application (such as Vitel Global, Outlook, or Teams) is running.
     If not already running, launches it safely via Windows Shell / detached process.
     If already running, logs status and does not spawn duplicate instances.
     """
@@ -109,6 +127,7 @@ def ensure_daily_work_apps():
     Ensures daily essential work applications are running:
     1. Vitel Global (Softphone / Dialing / SMS)
     2. Microsoft Outlook (Email / Calendar)
+    3. Microsoft Teams (Chat / Collaboration / Calls)
     """
     apps = [
         {
@@ -120,6 +139,11 @@ def ensure_daily_work_apps():
             "name": "Microsoft Outlook",
             "exe": r"C:\Program Files\Microsoft Office\root\Office16\OUTLOOK.EXE",
             "proc": "OUTLOOK.EXE",
+        },
+        {
+            "name": "Microsoft Teams",
+            "exe": resolve_teams_exe(),
+            "proc": ["ms-teams.exe", "ms-teams", "teams.exe", "teams"],
         },
     ]
 
@@ -182,7 +206,7 @@ def main():
     except Exception as e:
         logger.error(f"Error triggering daily Antigravity routine check: {e}", exc_info=True)
 
-    # 6. Ensure Daily Work Applications (Vitel Global & Outlook) are active
+    # 6. Ensure Daily Work Applications (Vitel Global, Outlook & Microsoft Teams) are active
     try:
         ensure_daily_work_apps()
     except Exception as e:

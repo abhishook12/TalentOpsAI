@@ -6,9 +6,14 @@ import time
 import logging
 from datetime import datetime, timezone
 
+from dotenv import load_dotenv
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
 
-DB_URL = "postgresql://postgres.qpetzpxmuofuepvrqedk:h2ejQHVen5i5lQkDSR9RaCoz@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres"
+load_dotenv(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.env')))
+DB_URL = os.getenv("DATABASE_URL") or os.getenv("SUPABASE_DATABASE_URL")
+if DB_URL and "+psycopg" in DB_URL:
+    DB_URL = DB_URL.replace("postgresql+psycopg://", "postgresql://")
 PARQUET_PATH = "C:/TalentOpsAI/backend/data/recruiters_full.parquet"
 TEMP_PARQUET_PATH = "C:/TalentOpsAI/backend/data/recruiters_full_temp.parquet"
 
@@ -69,25 +74,54 @@ def sync():
             
         logging.info(f"Found {len(rows)} recently updated recruiters. Applying delta...")
         
+        import json
         df_updates = pd.DataFrame(rows, columns=parquet_columns)
+        for str_col in ['alternate_emails', 'alternate_phones', 'raw_data', 'repair_reason', 'metadata_json', 'notes', 'tags', 'missing_fields']:
+            if str_col in df_updates.columns:
+                df_updates[str_col] = df_updates[str_col].apply(
+                    lambda x: json.dumps(x) if isinstance(x, (list, dict)) else (str(x) if x is not None and not pd.isna(x) and str(x).lower() != 'nan' else None)
+                )
+        for num_col in ['quality_score', 'trust_score', 'completeness_score', 'report_count']:
+            if num_col in df_updates.columns:
+                df_updates[num_col] = pd.to_numeric(df_updates[num_col], errors='coerce')
         pg_conn.close()
         
         # 3. Apply updates to Parquet file
         logging.info("Loading Parquet into local memory...")
-        con.execute(f"CREATE TABLE master AS SELECT * FROM read_parquet('{PARQUET_PATH}')")
+        con.execute(f"""
+            CREATE TABLE master AS SELECT * REPLACE (
+                CAST(alternate_emails AS VARCHAR) AS alternate_emails, 
+                CAST(alternate_phones AS VARCHAR) AS alternate_phones,
+                CAST(raw_data AS VARCHAR) AS raw_data,
+                CAST(repair_reason AS VARCHAR) AS repair_reason,
+                CAST(quality_score AS DOUBLE) AS quality_score,
+                CAST(trust_score AS DOUBLE) AS trust_score
+            ) FROM read_parquet('{PARQUET_PATH}')
+        """)
         
         logging.info("Deleting old rows...")
         con.execute("DELETE FROM master WHERE recruiter_id IN (SELECT recruiter_id FROM df_updates)")
         
         logging.info("Inserting updated rows...")
-        con.execute("INSERT INTO master SELECT * FROM df_updates")
+        cols_sql = ', '.join(parquet_columns)
+        con.execute(f"INSERT INTO master ({cols_sql}) SELECT * FROM df_updates")
         
         logging.info("Writing updated dataset to new Parquet file...")
         con.execute(f"COPY master TO '{TEMP_PARQUET_PATH}' (FORMAT PARQUET)")
         
         logging.info("Replacing old Parquet file...")
         con.close()
-        os.replace(TEMP_PARQUET_PATH, PARQUET_PATH)
+        replaced = False
+        for attempt in range(6):
+            try:
+                os.replace(TEMP_PARQUET_PATH, PARQUET_PATH)
+                replaced = True
+                break
+            except (PermissionError, OSError) as pe:
+                if attempt < 5:
+                    time.sleep(0.6)
+                else:
+                    raise pe
         
         logging.info("Incremental Sync successfully completed!")
         

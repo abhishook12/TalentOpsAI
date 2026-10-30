@@ -114,10 +114,21 @@ class UniversalIngestionFunnel:
         source_url = (staged.source_url or "").strip()
         page_title = (staged.source_page_title or "").strip()
 
-        if not raw_name or len(raw_name) < 2 or raw_name.lower() in ("unknown", "n/a", "none", "null"):
+        GATE1_NOISE_NAMES = {
+            "unknown", "n/a", "none", "null", "new new", "net new",
+            "corporate email", "personal email", "mobile phone", "work phone",
+            "cell phone", "direct phone", "office phone", "corporate phone", "personal phone",
+            "link corporate email", "link personal email", "link mobile phone",
+        }
+        if (
+            not raw_name
+            or len(raw_name) < 2
+            or raw_name.lower() in GATE1_NOISE_NAMES
+            or raw_name.lower().startswith(('lead approve', 'lead corrected'))
+        ):
             staged.processing_status = "rejected"
             staged.decision = "REJECT_GATE_1_NOISE"
-            staged.decision_reason = "Gate 1: Empty or invalid placeholder name"
+            staged.decision_reason = "Gate 1: Empty or invalid placeholder/noise name"
             staged.processed_at = now_utc
             self.telemetry["gate_1_noise_dropped"] += 1
             return {"gate": 1, "status": "REJECTED", "reason": staged.decision_reason}
@@ -213,7 +224,8 @@ class UniversalIngestionFunnel:
         email_confidence = staged.quality_score or 75
 
         # Check existing email
-        if raw_email and not raw_email.endswith('@unknown.com') and not raw_email.endswith('@noemail.talentops'):
+        BLOCKED_DOMAINS = ('@unknown.com', '@noemail.talentops', '@example.com', '@test.com', '@placeholder.com')
+        if raw_email and not any(raw_email.endswith(d) for d in BLOCKED_DOMAINS):
             # Existing email: probe deliverability
             try:
                 probe = smtp_prober.probe_mailbox(raw_email)
@@ -222,8 +234,14 @@ class UniversalIngestionFunnel:
                     email_confidence = 100
                     self.telemetry["gate_5_smtp_verified"] += 1
                 elif probe.smtp_code == 550:
-                    email_status = "BOUNCED"
-                    self.telemetry["gate_5_bounced_rejected"] += 1
+                    msg_lower = (probe.smtp_message or "").lower()
+                    is_ip_policy_block = any(term in msg_lower for term in ('pbl', 'spamhaus', 'zen', 'rbl', 'policy', 'blacklist', 'blocklist', 'listed by', 'barracuda', 'sorbs', 'dnsbl', 'reputation', 'access denied', 'service unavailable'))
+                    if is_ip_policy_block:
+                        email_status = "MX_VERIFIED"
+                        email_confidence = 85
+                    else:
+                        email_status = "BOUNCED"
+                        self.telemetry["gate_5_bounced_rejected"] += 1
                 else:
                     email_status = "SYNTAX_VALID"
             except Exception:
@@ -252,7 +270,7 @@ class UniversalIngestionFunnel:
         # ══════════════════════════════════════════════════════════════════════
         # GATE 6: ACTIONABLE CONTACT INTELLIGENCE GATE
         # ══════════════════════════════════════════════════════════════════════
-        has_real_email = bool(raw_email and '@' in raw_email and not raw_email.endswith('@unknown.com') and not raw_email.endswith('@noemail.talentops') and email_status != "BOUNCED")
+        has_real_email = bool(raw_email and '@' in raw_email and not any(raw_email.endswith(d) for d in BLOCKED_DOMAINS) and email_status != "BOUNCED")
         has_linkedin = bool(staged.raw_linkedin and 'linkedin.com/in/' in staged.raw_linkedin.lower())
         has_phone = bool(staged.raw_phone and len(staged.raw_phone.strip()) >= 7)
 
@@ -281,10 +299,19 @@ class UniversalIngestionFunnel:
             clean_dom = raw_email.split("@")[1]
 
         if not company and cand_company:
+            dom = clean_dom if clean_dom and clean_dom not in ('unknown.com', 'linkedin.com', 'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com') else None
+            if not dom:
+                name_slug = re.sub(r'[^a-zA-Z0-9]', '', cand_company.lower())
+                if len(name_slug) >= 3:
+                    dom = f"{name_slug}.com"
+            logo = f"https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://{dom}&size=128" if dom else f"https://ui-avatars.com/api/?name={cand_company[:2].upper()}&background=1B1F1C&color=B8D5A0&size=128"
             company = Company(
                 company_name=cand_company,
                 normalized_company_name=cand_company.lower().strip(),
-                primary_domain=clean_dom if clean_dom not in ('unknown.com', 'linkedin.com') else None,
+                canonical_name=cand_company,
+                primary_domain=dom,
+                website=f"https://www.{dom}" if dom else None,
+                logo_url=logo,
             )
             db.add(company)
             db.flush()
@@ -293,16 +320,26 @@ class UniversalIngestionFunnel:
 
         # Check existing recruiter
         existing_recruiter = None
-        if has_real_email and raw_email:
+        target_email = (raw_email or "").strip().lower()
+        if has_real_email and target_email:
             existing_recruiter = db.query(Recruiter).filter(
-                sqlfunc.lower(Recruiter.email) == raw_email.lower()
+                (sqlfunc.lower(sqlfunc.trim(Recruiter.email)) == target_email) |
+                (sqlfunc.lower(sqlfunc.trim(Recruiter.email2)) == target_email)
             ).first()
 
         if not existing_recruiter and company:
             existing_recruiter = db.query(Recruiter).filter(
-                sqlfunc.lower(Recruiter.recruiter_name) == raw_name.lower(),
+                sqlfunc.lower(sqlfunc.trim(Recruiter.recruiter_name)) == raw_name.lower().strip(),
                 Recruiter.company_id == company.company_id
             ).first()
+
+        # Parse metadata_json for alternative channels (email2..4, phone2..4)
+        m_dict = {}
+        if staged.metadata_json:
+            try:
+                m_dict = json.loads(staged.metadata_json)
+            except Exception:
+                pass
 
         if existing_recruiter:
             # Non-destructive enrichment
@@ -313,14 +350,20 @@ class UniversalIngestionFunnel:
             if not existing_recruiter.phone and staged.raw_phone:
                 existing_recruiter.phone = staged.raw_phone
                 fields_enriched.append("phone")
-            if not existing_recruiter.linkedin and staged.raw_linkedin:
-                existing_recruiter.linkedin = staged.raw_linkedin
+            if not getattr(existing_recruiter, 'phone2', None) and m_dict.get('phone2'):
+                existing_recruiter.phone2 = m_dict.get('phone2')
+                fields_enriched.append("phone2")
+            if not existing_recruiter.linkedin and staged.raw_linkedin and 'linkedin.com' in staged.raw_linkedin.lower():
+                existing_recruiter.linkedin = staged.raw_linkedin[:255]
                 fields_enriched.append("linkedin")
             if has_real_email and (not existing_recruiter.email or existing_recruiter.email.endswith('@unknown.com')):
                 existing_recruiter.email = raw_email
                 existing_recruiter.email_status = email_status
                 existing_recruiter.email_confidence = email_confidence
                 fields_enriched.append("email_smtp_verified")
+            if not getattr(existing_recruiter, 'email2', None) and m_dict.get('email2'):
+                existing_recruiter.email2 = m_dict.get('email2')
+                fields_enriched.append("email2")
 
             staged.processing_status = "enriched"
             staged.decision = "ENRICHED_EXISTING"
@@ -330,11 +373,11 @@ class UniversalIngestionFunnel:
             return {"gate": 7, "status": "ENRICHED", "recruiter_id": existing_recruiter.recruiter_id}
 
         else:
-            # New recruiter requires deliverable non-null corporate email
+            # Actionable Contact Intelligence Gate: Master DB recruiters table requires non-null deliverable email
             if not has_real_email or not raw_email:
                 staged.processing_status = "review"
                 staged.decision = "REVIEW_GATE_6_NO_EMAIL"
-                staged.decision_reason = f"Gate 6: New candidate '{raw_name}' lacks deliverable corporate email. Held in Review."
+                staged.decision_reason = f"Gate 6: Candidate '{raw_name}' lacks deliverable corporate email. Staged with contact info in DiscoveryStaging."
                 staged.processed_at = now_utc
                 self.telemetry["gate_6_contact_held_review"] += 1
                 return {"gate": 6, "status": "HELD_REVIEW", "reason": staged.decision_reason}
@@ -350,18 +393,42 @@ class UniversalIngestionFunnel:
                     pass
 
             final_email = raw_email
+            src = "teams" if ("teams" in (staged.extraction_source or "").lower() or "teams" in (staged.batch_id or "").lower()) else f"universal_funnel:{staged.extraction_source or 'harvest'}"
+
+            # Final sanity check: ensure email is not already in Master DB
+            final_email_clean = (final_email or "").strip().lower()
+            existing_by_final_email = db.query(Recruiter).filter(
+                sqlfunc.lower(sqlfunc.trim(Recruiter.email)) == final_email_clean
+            ).first() if final_email_clean else None
+
+            if existing_by_final_email:
+                if staged.raw_phone and not existing_by_final_email.phone:
+                    existing_by_final_email.phone = staged.raw_phone
+                staged.processing_status = "enriched"
+                staged.decision = "ENRICHED_EXISTING"
+                staged.decision_reason = f"Gate 7: Enriched recruiter #{existing_by_final_email.recruiter_id} on final email match"
+                staged.processed_at = now_utc
+                self.telemetry["gate_7_enriched_existing"] += 1
+                return {"gate": 7, "status": "ENRICHED", "recruiter_id": existing_by_final_email.recruiter_id}
+
             new_recruiter = Recruiter(
-                recruiter_name=raw_name,
-                title=cand_title,
+                recruiter_name=raw_name[:240] if raw_name else None,
+                title=cand_title[:490] if cand_title else None,
                 company_id=company.company_id if company else None,
-                email=final_email,
-                phone=staged.raw_phone,
-                linkedin=staged.raw_linkedin,
-                location=raw_loc or None,
-                state=state_abbr,
+                email=final_email_clean,
+                phone=staged.raw_phone[:30] if staged.raw_phone else None,
+                email2=m_dict.get("email2"),
+                phone2=m_dict.get("phone2"),
+                email3=m_dict.get("email3"),
+                phone3=m_dict.get("phone3"),
+                email4=m_dict.get("email4"),
+                phone4=m_dict.get("phone4"),
+                linkedin=(staged.raw_linkedin[:255] if staged.raw_linkedin and 'linkedin.com' in staged.raw_linkedin.lower() else None),
+                location=raw_loc[:490] if raw_loc else None,
+                state=state_abbr[:2] if state_abbr else None,
                 email_status=email_status if final_email else "UNVERIFIED",
                 email_confidence=email_confidence if final_email else 0,
-                data_source=f"universal_funnel:{staged.extraction_source or 'harvest'}",
+                data_source=src,
                 notes=f"Auto-harvested via Ingestion Funnel on {now_utc.strftime('%Y-%m-%d')}",
             )
             db.add(new_recruiter)
@@ -380,6 +447,8 @@ class UniversalIngestionFunnel:
                 "company_id": new_recruiter.company_id,
                 "email": new_recruiter.email,
                 "phone": new_recruiter.phone,
+                "email2": new_recruiter.email2,
+                "phone2": new_recruiter.phone2,
                 "linkedin": new_recruiter.linkedin,
                 "location": raw_loc or None,
                 "state": state_abbr,
@@ -387,7 +456,7 @@ class UniversalIngestionFunnel:
                 "email_confidence": new_recruiter.email_confidence,
                 "data_source": new_recruiter.data_source,
                 "notes": new_recruiter.notes,
-                "quality_score": email_confidence,
+                "quality_score": email_confidence if final_email else 80,
                 "completeness_score": 85,
                 "is_active": True,
                 "created_at": now_utc.isoformat(),
@@ -577,6 +646,15 @@ class UniversalIngestionFunnel:
             except Exception as e:
                 logger.error("Error processing record #%s through Funnel: %s", staged.id, e)
                 db.rollback()
+                try:
+                    failed_staged = db.query(DiscoveryStaging).filter(DiscoveryStaging.id == staged.id).first()
+                    if failed_staged:
+                        failed_staged.processing_status = 'held_review'
+                        failed_staged.decision = 'ERROR'
+                        failed_staged.decision_reason = str(e)[:200]
+                        db.commit()
+                except Exception:
+                    db.rollback()
                 continue
 
         db.commit()

@@ -5,7 +5,7 @@
 ; Persistent user state (%LOCALAPPDATA%\TalentOpsAI\Scout\) is strictly preserved across updates and uninstalls.
 
 #define MyAppName "TalentOps Scout"
-#define MyAppVersion "2.9.3"
+#define MyAppVersion "2.14.1"
 #define MyAppPublisher "TalentOps AI"
 #define MyAppURL "https://talentopsai-1.onrender.com"
 #define MyAppExeName "TalentOpsScout.exe"

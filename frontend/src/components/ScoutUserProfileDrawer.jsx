@@ -442,7 +442,7 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
                     if (src === 'ZoomInfo') { srcColor = '#ffffff'; srcBg = 'rgba(255, 255, 255, 0.08)'; }
                     else if (src === 'LinkedIn') { srcColor = '#ffffff'; srcBg = 'rgba(255, 255, 255, 0.08)'; }
                     else if (src === 'Apollo') { srcColor = '#e4e4e7'; srcBg = 'rgba(255, 255, 255, 0.08)'; }
-                    else if (src === 'Microsoft Teams' || src === 'TEAMS') { srcColor = '#d4d4d8'; srcBg = 'rgba(255, 255, 255, 0.06)'; }
+                    else if (src === 'Microsoft Teams' || src === 'TEAMS' || src === 'teams_uia_background') { srcColor = '#d4d4d8'; srcBg = 'rgba(255, 255, 255, 0.06)'; }
                     else if (src === 'Google Chat' || src === 'GOOGLE_CHAT') { srcColor = '#ffffff'; srcBg = 'rgba(255, 255, 255, 0.08)'; }
                     else if (src === 'Slack' || src === 'SLACK') { srcColor = '#e4e4e7'; srcBg = 'rgba(255, 255, 255, 0.08)'; }
                     else if (src === 'Indeed') { srcColor = '#e4e4e7'; srcBg = 'rgba(255, 255, 255, 0.06)'; }

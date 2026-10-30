@@ -104,7 +104,14 @@ def _split_loose_values(value):
     text = str(value).strip()
     if not text:
         return []
-    return [part.strip() for part in re.split(r"[,\n;|]+", text) if part.strip()]
+    if text.startswith("[") and text.endswith("]"):
+        try:
+            parsed = json.loads(text)
+            if isinstance(parsed, (list, tuple, set)):
+                return _split_loose_values(parsed)
+        except Exception:
+            pass
+    return [part.strip().strip("'\"[]") for part in re.split(r"[,\n;|]+", text) if part.strip().strip("'\"[]")]
 
 
 def _collect_text_values(value):
@@ -137,11 +144,19 @@ def _dedupe_values(values, normalizer):
 
 
 def _normalize_email(value):
-    return str(value).strip().lower() if value else ""
+    if not value:
+        return ""
+    clean = str(value).strip().strip("'\"[]()<>,;").lower()
+    if clean.endswith("@noemail.talentops") or clean.endswith("@unknown.com"):
+        return ""
+    return clean if "@" in clean else ""
 
 
 def _normalize_phone(value):
-    return re.sub(r"[^\d+]+", "", str(value)).strip() if value else ""
+    if not value:
+        return ""
+    clean = str(value).strip().strip("'\"[]()<>,;")
+    return re.sub(r"[^\d+]+", "", clean).strip()
 
 
 def _search_quality_tier(record):
@@ -269,51 +284,91 @@ def _extract_phones_from_text(values):
     return _dedupe_values(matches, lambda item: re.sub(r"\D+", "", _normalize_phone(item)))
 
 
+def _get_rec_val(record, key, default=None):
+    if isinstance(record, dict):
+        return record.get(key, default)
+    return getattr(record, key, default)
+
 def _collect_all_contacts(record):
-    raw = _parse_json_blob(getattr(record, "raw_data", None)) or {}
-    metadata = _parse_json_blob(getattr(record, "metadata_json", None)) or {}
+    raw = _parse_json_blob(_get_rec_val(record, "raw_data")) or {}
+    metadata = _parse_json_blob(_get_rec_val(record, "metadata_json")) or {}
     source_texts = _collect_text_values(raw) + _collect_text_values(metadata)
 
     direct_emails = [
-        getattr(record, "email", None),
-        getattr(record, "email2", None),
-        getattr(record, "email3", None),
-        getattr(record, "email4", None),
+        _get_rec_val(record, "email"),
+        _get_rec_val(record, "email2"),
+        _get_rec_val(record, "email3"),
+        _get_rec_val(record, "email4"),
     ]
     direct_phones = [
-        getattr(record, "phone", None),
-        getattr(record, "phone2", None),
-        getattr(record, "phone3", None),
-        getattr(record, "phone4", None),
+        _get_rec_val(record, "phone"),
+        _get_rec_val(record, "phone2"),
+        _get_rec_val(record, "phone3"),
+        _get_rec_val(record, "phone4"),
     ]
 
     metadata_emails = (
-        _split_loose_values(getattr(record, "alternate_emails", None))
+        _split_loose_values(_get_rec_val(record, "alternate_emails"))
         + _split_loose_values(metadata.get("all_emails"))
         + _split_loose_values(metadata.get("extra_emails"))
     )
     metadata_phones = (
-        _split_loose_values(getattr(record, "alternate_phones", None))
+        _split_loose_values(_get_rec_val(record, "alternate_phones"))
         + _split_loose_values(metadata.get("all_phones"))
         + _split_loose_values(metadata.get("extra_phones"))
     )
 
     all_emails = _dedupe_values(
-        [value for value in direct_emails + metadata_emails + _extract_emails_from_text(source_texts) if value],
+        [str(value).strip().strip("'\"[]()<>,;") for value in direct_emails + metadata_emails + _extract_emails_from_text(source_texts) if value and str(value).strip().strip("'\"[]()<>,;")],
         _normalize_email,
     )
     all_phones = _dedupe_values(
-        [value for value in direct_phones + metadata_phones + _extract_phones_from_text(source_texts) if value],
+        [str(value).strip().strip("'\"[]()<>,;") for value in direct_phones + metadata_phones + _extract_phones_from_text(source_texts) if value and str(value).strip().strip("'\"[]()<>,;")],
         lambda item: re.sub(r"\D+", "", _normalize_phone(item)),
     )
     return all_emails, all_phones
 
 def serialize_recruiter(r):
     all_emails, all_phones = _collect_all_contacts(r)
+    all_emails = [e for e in all_emails if e and not e.endswith("@noemail.talentops") and not e.endswith("@unknown.com")]
+    email_val = r.email if not (r.email and (r.email.endswith("@noemail.talentops") or r.email.endswith("@unknown.com"))) else (all_emails[0] if all_emails else None)
+
+    comp_obj = getattr(r, "company", None)
+    c_name = (comp_obj.company_name if comp_obj and getattr(comp_obj, "company_name", None) else None) or getattr(r, "company_name", None)
+    c_dom = getattr(comp_obj, "primary_domain", None) if comp_obj else None
+    if not c_dom and r.email and '@' in str(r.email):
+        d_part = str(r.email).split('@')[-1].strip().lower()
+        if d_part not in ('gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com', 'icloud.com', 'comcast.net', 'sbcglobal.net'):
+            c_dom = d_part
+    if c_dom:
+        c_dom = re.sub(r"[^\w.-]+", "", str(c_dom).lower().split(";")[0].split(",")[0].split("(")[0].strip())
+        m_dom = re.search(r'([a-z0-9\-]+(?:\.[a-z0-9\-]+)*\.[a-z]{2,12})', c_dom)
+        if m_dom:
+            c_dom = m_dom.group(1)
+
+    c_logo = getattr(comp_obj, "logo_url", None) if comp_obj else None
+    if c_logo:
+        c_logo = re.sub(r"['\"]", "", str(c_logo).strip())
+        if not c_logo.startswith('http') or "'" in c_logo or '"' in c_logo:
+            c_logo = None
+    if not c_logo and c_dom:
+        c_logo = f"https://www.google.com/s2/favicons?domain={c_dom}&sz=128"
+
+    company_payload = {
+        "company_id": r.company_id,
+        "company_name": c_name or "Company",
+        "canonical_name": getattr(comp_obj, "canonical_name", None) or c_name or "Company",
+        "primary_domain": c_dom,
+        "logo_url": c_logo,
+        "website": getattr(comp_obj, "website", None) or (f"https://www.{c_dom}" if c_dom else None),
+        "location": getattr(comp_obj, "location", None) or r.location,
+        "state": getattr(comp_obj, "state", None) or r.state,
+    } if (c_name or c_dom or r.company_id) else None
+
     return {
         "recruiter_id": r.recruiter_id,
         "recruiter_name": r.recruiter_name,
-        "email": r.email,
+        "email": email_val,
         "phone": r.phone,
         "email2": r.email2,
         "phone2": r.phone2,
@@ -332,13 +387,15 @@ def serialize_recruiter(r):
         "metadata_json": r.__dict__.get("metadata_json"),
         "raw_data": r.__dict__.get("raw_data"),
         "company_id": r.company_id,
-        "company_name": r.company.company_name if hasattr(r, "company") and r.company else None,
-        "company_domain": getattr(r.company, "primary_domain", None) if hasattr(r, "company") and r.company else (r.email.split('@')[-1].lower() if (r.email and '@' in r.email and r.email.split('@')[-1].lower() not in ('gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com', 'icloud.com')) else None),
-        "logo_url": getattr(r.company, "logo_url", None) if hasattr(r, "company") and r.company and r.company.logo_url else (f"https://logos.hunter.io/{r.email.split('@')[-1].lower()}" if (r.email and '@' in r.email and r.email.split('@')[-1].lower() not in ('gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com', 'icloud.com')) else None),
+        "company_name": c_name,
+        "company_domain": c_dom,
+        "logo_url": c_logo,
+        "company": company_payload,
         "location": r.location if r.location else (r.company.location if hasattr(r, "company") and r.company else None),
         "state": r.state,
         "normalized_city": getattr(r, "normalized_city", None),
-        "completeness_score": getattr(r, "completeness_score", 0),
+        "quality_score": getattr(r, "quality_score", 95) or 95,
+        "completeness_score": getattr(r, "completeness_score", 90) or 90,
         "needs_review": getattr(r, "needs_review", False),
         "review_reason": getattr(r, "review_reason", None),
         "location_confidence": getattr(r, "location_confidence", "high"),
@@ -621,35 +678,58 @@ def search_recruiters(
 
     formatted = []
     for row in results:
-        comp = companies_dict.get(row.get('company_id'))
-        
-        # 1. Infer domain from email or pg
+        cid_val = row.get('company_id')
+        comp = None
+        if cid_val is not None:
+            try:
+                comp = companies_dict.get(int(float(cid_val)))
+            except (ValueError, TypeError):
+                comp = companies_dict.get(cid_val)
+
+        # 1. Resolve company domain: Prioritize verified company record over raw email
+        comp_primary_domain = None
+        if comp and comp.primary_domain:
+            comp_primary_domain = re.sub(r"[^\w.-]+", "", str(comp.primary_domain).lower().split(';')[0].split(',')[0].strip())
+            m_d = re.search(r'([a-z0-9\-]+(?:\.[a-z0-9\-]+)*\.[a-z]{2,12})', comp_primary_domain)
+            if m_d:
+                comp_primary_domain = m_d.group(1)
+
+        raw_key = str(row.get('company_id')) if row.get('company_id') is not None else None
+        store_domain = recruiter_store.get_company_domain(raw_key) if raw_key else None
+        pg_logo = select_logo_domain(comp.website, comp.email_pattern) if comp else None
+
         rec_domain = None
         email_val = row.get('email')
         if email_val and '@' in str(email_val):
             d = str(email_val).split('@')[-1].strip().lower()
             if d and d not in FREE_EMAIL_PROVIDERS:
                 rec_domain = d
-        
-        # 1. Infer domain from email, pg, or recruiter_store company_overall
-        raw_key = str(row.get('company_id')) if row.get('company_id') is not None else None
-        store_domain = recruiter_store.get_company_domain(raw_key) if raw_key else None
-        pg_logo = select_logo_domain(comp.website, comp.email_pattern) if comp else None
-        company_domain = rec_domain or pg_logo or store_domain
-        
-        # 2. Resolve company name
-        if company_domain and company_domain in DOMAIN_DISPLAY_NAMES:
+
+        company_domain = comp_primary_domain or pg_logo or store_domain or rec_domain
+
+        # 2. Resolve company name: Prioritize official company name or row company name
+        c_name = None
+        if comp and comp.company_name and comp.company_name not in ('Unknown Company', 'None', 'null'):
+            c_name = comp.company_name
+        elif row.get('company_name') and row.get('company_name') not in ('Unknown Company', 'None', 'null'):
+            c_name = row.get('company_name')
+        elif company_domain and company_domain in DOMAIN_DISPLAY_NAMES:
             c_name = DOMAIN_DISPLAY_NAMES[company_domain]
         elif company_domain:
             c_name = infer_company_from_domain(company_domain)
-        elif comp and comp.company_name:
-            c_name = comp.company_name
         elif raw_key and not raw_key.isdigit():
             c_name = raw_key
         else:
-            c_name = "Unknown Company" if raw_key and raw_key.isdigit() else (raw_key or "Unknown Company")
+            c_name = "Company"
 
-        logo_url = (comp.logo_url if comp and comp.logo_url else None) or (f"https://logos.hunter.io/{company_domain}" if company_domain else None)
+        # 3. Resolve logo URL: Prioritize official company logo with Google Favicon CDN fallback
+        logo_url = getattr(comp, 'logo_url', None) if comp else None
+        if logo_url:
+            logo_url = str(logo_url).strip().replace('"', '').replace("'", "")
+            if not logo_url.startswith('http'):
+                logo_url = None
+        if not logo_url and company_domain:
+            logo_url = f"https://www.google.com/s2/favicons?domain={company_domain}&sz=128"
 
         comp_data = {
             "company_id": comp.company_id if comp else row.get("company_id"),
@@ -844,6 +924,7 @@ def get_recruiters(
     email_inference_status: Optional[str] = None,
     source_job_id: Optional[str] = None,
     data_source: Optional[str] = None,
+    date_filter: Optional[str] = None,
     sort_by: Optional[str] = "created_at",
     sort_desc: Optional[bool] = True,
     db: Session = Depends(get_db),
@@ -851,7 +932,7 @@ def get_recruiters(
 ):
     # Cache ALL recruiter list queries aggressively
     data_version = recruiter_store.data_version
-    cache_key = f"rec_list_duckdb_{data_version}_{page}_{limit}_{search or ''}_{state or ''}_{metro_hub or ''}_{company_id or ''}_{company_key or ''}_{sort_by}_{sort_desc}_{needs_review}_{has_phone}_{is_active}_{is_deliverable}_{specialization_sector or ''}_{seniority_level or ''}_{timezone_code or ''}_{company_scale or ''}_{data_source or ''}"
+    cache_key = f"rec_list_duckdb_{data_version}_{page}_{limit}_{search or ''}_{state or ''}_{metro_hub or ''}_{company_id or ''}_{company_key or ''}_{company or ''}_{title or ''}_{sort_by}_{sort_desc}_{needs_review}_{has_phone}_{is_active}_{is_deliverable}_{specialization_sector or ''}_{seniority_level or ''}_{timezone_code or ''}_{company_scale or ''}_{data_source or ''}_{date_filter or ''}"
     cached = analytics_cache.get(cache_key)
     if cached is not None:
         return cached
@@ -877,6 +958,7 @@ def get_recruiters(
         needs_review=needs_review,
         email_status=email_inference_status,
         data_source=data_source,
+        date_filter=date_filter,
         sort_by=sort_by,
         sort_desc=sort_desc
     )
@@ -934,38 +1016,7 @@ def get_recruiters(
                 pg_recs = pg_query.all()
                 results = []
                 for r in pg_recs:
-                    meta = {}
-                    if getattr(r, "metadata_json", None) and isinstance(r.metadata_json, str) and r.metadata_json.startswith("{"):
-                        try:
-                            meta = json.loads(r.metadata_json)
-                        except Exception:
-                            pass
-                    rec_dict = {
-                        "recruiter_id": r.recruiter_id,
-                        "recruiter_name": r.recruiter_name,
-                        "email": r.email if not (r.email and r.email.endswith("@noemail.talentops")) else None,
-                        "phone": r.phone,
-                        "linkedin": r.linkedin,
-                        "specialization": r.title or r.specialization or "Recruiter / Talent Lead",
-                        "title": r.title or r.specialization or "Recruiter / Talent Lead",
-                        "company_id": r.company_id,
-                        "company_name": r.company.company_name if r.company else None,
-                        "location": r.location,
-                        "state": r.state or (r.location[-2:].upper() if r.location and len(r.location) >= 2 else "US"),
-                        "skills": meta.get("skills", []),
-                        "experience_history": meta.get("experience_history", []),
-                        "education": meta.get("education"),
-                        "about_summary": meta.get("about_summary"),
-                        "is_open_to_work": bool(meta.get("is_open_to_work", False)),
-                        "is_hiring": bool(meta.get("is_hiring", False)),
-                        "pronouns": meta.get("pronouns"),
-                        "quality_score": 95,
-                        "completeness_score": 90,
-                        "is_active": r.is_active,
-                        "created_at": str(r.created_at) if r.created_at else None,
-                        "data_source": r.data_source or "postgresql_roster",
-                    }
-                    results.append(rec_dict)
+                    results.append(serialize_recruiter(r))
         elif not skip_pg_merge and search:
             q_like = f"%{str(search).strip().lower()}%"
             search_filter = or_(
@@ -978,86 +1029,56 @@ def get_recruiters(
             if pg_query:
                 pg_recs = pg_query.all()
                 for r in reversed(pg_recs):
-                    meta = {}
-                    if getattr(r, "metadata_json", None) and isinstance(r.metadata_json, str) and r.metadata_json.startswith("{"):
-                        try:
-                            meta = json.loads(r.metadata_json)
-                        except Exception:
-                            pass
-                    rec_dict = {
-                        "recruiter_id": r.recruiter_id,
-                        "recruiter_name": r.recruiter_name,
-                        "email": r.email if not (r.email and r.email.endswith("@noemail.talentops")) else None,
-                        "phone": r.phone,
-                        "linkedin": r.linkedin,
-                        "specialization": r.title or r.specialization or "Recruiter / Talent Lead",
-                        "title": r.title or r.specialization or "Recruiter / Talent Lead",
-                        "company_id": r.company_id,
-                        "company_name": r.company.company_name if r.company else None,
-                        "location": r.location,
-                        "state": r.state or (r.location[-2:].upper() if r.location and len(r.location) >= 2 else "US"),
-                        "skills": meta.get("skills", []),
-                        "experience_history": meta.get("experience_history", []),
-                        "education": meta.get("education"),
-                        "about_summary": meta.get("about_summary"),
-                        "is_open_to_work": bool(meta.get("is_open_to_work", False)),
-                        "is_hiring": bool(meta.get("is_hiring", False)),
-                        "pronouns": meta.get("pronouns"),
-                        "quality_score": 95,
-                        "completeness_score": 90,
-                        "is_active": r.is_active,
-                        "created_at": str(r.created_at) if r.created_at else None,
-                        "data_source": r.data_source or "extension",
-                    }
+                    rec_dict = serialize_recruiter(r)
                     if not any(str(x.get("recruiter_id")) == str(r.recruiter_id) for x in results):
                         results.insert(0, rec_dict)
                         total_count += 1
         elif not skip_pg_merge and page == 1:
             source_filter = or_(
-                Recruiter.data_source.in_(['extension', 'extension_staged', 'visual_capture', 'parquet_canonical', 'manual', 'scout', 'staging_batch_intelligence', 'postgresql_roster']),
+                Recruiter.data_source.in_(['extension', 'extension_staged', 'visual_capture', 'parquet_canonical', 'manual', 'scout', 'staging_batch_intelligence', 'postgresql_roster', 'teams', 'universal_funnel:teams_uia_background', 'universal_funnel:teams_extractor']),
+                Recruiter.data_source.ilike('%teams%'),
                 Recruiter.data_source == None
             )
+            if data_source:
+                if data_source.lower() == "teams":
+                    pg_filters.append(Recruiter.data_source.ilike('%teams%'))
+                else:
+                    pg_filters.append(Recruiter.data_source == data_source)
+            if date_filter:
+                from datetime import datetime as dt_cls, timezone as tz_cls, timedelta as td_cls
+                now_u = dt_cls.now(tz_cls.utc)
+                df = date_filter.lower().strip()
+                if df in ("today", "24h", "1d"):
+                    cutoff = now_u - td_cls(hours=24)
+                    pg_filters.append(Recruiter.created_at >= cutoff)
+                elif df in ("3d", "3days"):
+                    cutoff = now_u - td_cls(days=3)
+                    pg_filters.append(Recruiter.created_at >= cutoff)
+                elif df in ("7d", "week", "7days"):
+                    cutoff = now_u - td_cls(days=7)
+                    pg_filters.append(Recruiter.created_at >= cutoff)
+                elif df in ("30d", "month", "30days"):
+                    cutoff = now_u - td_cls(days=30)
+                    pg_filters.append(Recruiter.created_at >= cutoff)
             pg_query = db.query(Recruiter).options(joinedload(Recruiter.company)).filter(and_(source_filter, *pg_filters)).order_by(Recruiter.recruiter_id.desc()).limit(50)
             if pg_query:
                 pg_recs = pg_query.all()
                 for r in reversed(pg_recs):
-                    meta = {}
-                    if getattr(r, "metadata_json", None) and isinstance(r.metadata_json, str) and r.metadata_json.startswith("{"):
-                        try:
-                            meta = json.loads(r.metadata_json)
-                        except Exception:
-                            pass
-                    rec_dict = {
-                        "recruiter_id": r.recruiter_id,
-                        "recruiter_name": r.recruiter_name,
-                        "email": r.email if not (r.email and r.email.endswith("@noemail.talentops")) else None,
-                        "phone": r.phone,
-                        "linkedin": r.linkedin,
-                        "specialization": r.title or r.specialization or "Recruiter / Talent Lead",
-                        "title": r.title or r.specialization or "Recruiter / Talent Lead",
-                        "company_id": r.company_id,
-                        "company_name": r.company.company_name if r.company else None,
-                        "location": r.location,
-                        "state": r.state or (r.location[-2:].upper() if r.location and len(r.location) >= 2 else "US"),
-                        "skills": meta.get("skills", []),
-                        "experience_history": meta.get("experience_history", []),
-                        "education": meta.get("education"),
-                        "about_summary": meta.get("about_summary"),
-                        "is_open_to_work": bool(meta.get("is_open_to_work", False)),
-                        "is_hiring": bool(meta.get("is_hiring", False)),
-                        "pronouns": meta.get("pronouns"),
-                        "quality_score": 95,
-                        "completeness_score": 90,
-                        "is_active": r.is_active,
-                        "created_at": str(r.created_at) if r.created_at else None,
-                        "data_source": r.data_source or "extension",
-                    }
+                    rec_dict = serialize_recruiter(r)
                     if not any(str(x.get("recruiter_id")) == str(r.recruiter_id) for x in results):
                         results.insert(0, rec_dict)
                         total_count += 1
     except Exception as e:
         logger.warning("Error merging live PostgreSQL recruiters: %s", e)
 
+    for item in results:
+        if isinstance(item, dict):
+            if not item.get("all_phones"):
+                _, all_p = _collect_all_contacts(item)
+                item["all_phones"] = all_p
+            if not item.get("all_emails"):
+                all_e, _ = _collect_all_contacts(item)
+                item["all_emails"] = [e for e in all_e if e and not e.endswith("@noemail.talentops") and not e.endswith("@unknown.com")]
     response.headers["X-Total-Count"] = str(total_count)
     
     import math
@@ -1159,6 +1180,14 @@ def get_recruiters(
             "phone4": r.get("phone4"),
             "alternate_emails": r.get("alternate_emails"),
             "alternate_phones": r.get("alternate_phones"),
+            "all_emails": (
+                r.get("all_emails") if r.get("all_emails") else (
+                    [e for e in _collect_all_contacts(r)[0] if e and not e.endswith("@noemail.talentops") and not e.endswith("@unknown.com")]
+                )
+            ),
+            "all_phones": (
+                r.get("all_phones") if r.get("all_phones") else _collect_all_contacts(r)[1]
+            ),
             "linkedin": r.get("linkedin"),
             "specialization": r.get("specialization"),
             "notes": r.get("notes"),
@@ -1769,6 +1798,8 @@ class ExportRecruitersPayload(BaseModel):
     recruiter_ids: Optional[List[int]] = None
     search: Optional[str] = None
     state: Optional[str] = None
+    city: Optional[str] = None
+    company: Optional[str] = None
     company_key: Optional[str] = None
     specialization: Optional[str] = None
     has_phone: Optional[bool] = None
@@ -1808,7 +1839,7 @@ def export_recruiters_endpoint(
     csv_content = recruiter_store.export_recruiters_csv(
         search=payload.search,
         state=payload.state,
-        company_key=payload.company_key,
+        company_key=payload.company_key or payload.company,
         specialization=payload.specialization,
         has_phone=payload.has_phone,
         recruiter_ids=payload.recruiter_ids,

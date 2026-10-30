@@ -1,6 +1,6 @@
 from datetime import timezone
 import datetime
-from sqlalchemy import Column, Integer, String, Boolean, Numeric, Date, Text, ForeignKey, TIMESTAMP, JSON, DateTime, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Boolean, Numeric, Date, Text, ForeignKey, TIMESTAMP, JSON, DateTime, UniqueConstraint, event
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from ..database import Base
@@ -113,6 +113,35 @@ class Company(Base):
     email_patterns = relationship("CompanyEmailPattern", backref="company", cascade="all, delete-orphan")
     phones         = relationship("RecruiterPhone", backref="company_ref", cascade="all, delete-orphan")
     locations      = relationship("RecruiterLocation", backref="company_ref", cascade="all, delete-orphan")
+
+
+@event.listens_for(Company, "before_insert")
+def auto_populate_company_logo(mapper, connection, target):
+    """Permanent autonomous listener: guarantees company logo and website are always populated."""
+    import re
+    if not target.logo_url or str(target.logo_url).strip() == "":
+        dom = None
+        if target.primary_domain:
+            dom = str(target.primary_domain).strip().lower()
+        elif target.website:
+            clean = re.sub(r'^https?://', '', str(target.website).strip().lower())
+            clean = re.sub(r'^www\.', '', clean).split('/')[0].split(':')[0]
+            if '.' in clean:
+                dom = clean
+        if not dom and target.company_name:
+            c_name = re.sub(r'[^a-zA-Z0-9]', '', str(target.company_name).lower())
+            if len(c_name) >= 3 and not c_name.isdigit():
+                dom = f"{c_name}.com"
+        
+        if dom:
+            if not target.primary_domain:
+                target.primary_domain = dom
+            if not target.website:
+                target.website = f"https://{dom}"
+            target.logo_url = f"https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://{dom}&size=128"
+            if not target.logo_source:
+                target.logo_source = "auto_system_listener"
+
 
 
 class Vendor(Base):

@@ -51,7 +51,7 @@ ROUTINE_CHECK_PROMPT = (
     "4. Autonomous Background Engines: Verify the status of the Engine Immunity Sentinel, WebHarvest crawler, "
     "and Night Sweeper loops.\n"
     "5. Deliverability & Corporate Email Gate: Verify the 5-phase Corporate Email Intelligence Gate and Scout dual-sync status.\n"
-    "6. Desktop Workstation Tools: Verify Vitel Global (Softphone/Dialer) and Microsoft Outlook are running and ready.\n"
+    "6. Desktop Workstation Tools: Verify Vitel Global (Softphone/Dialer), Microsoft Outlook, and Microsoft Teams are running and ready.\n"
     "7. Summary & Report: Provide an executive health checklist and flag any issues or anomalies that require user attention."
 )
 
@@ -288,7 +288,7 @@ def trigger_daily_antigravity_routine_check(force: bool = False, source: str = "
             "conversation_id": cid,
         }
 
-    # 1. Ensure Antigravity desktop app and daily work apps (Vitel Global, Outlook) are open
+    # 1. Ensure Antigravity desktop app and daily work apps (Vitel Global, Outlook, Microsoft Teams) are open
     launch_antigravity()
     try:
         from autostart_talentops import ensure_daily_work_apps

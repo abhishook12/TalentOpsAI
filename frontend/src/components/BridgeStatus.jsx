@@ -36,7 +36,7 @@ export default function BridgeStatus({ onStatusChange, compact = false }) {
   if (loading && !status) {
     return (
       <div className="flex items-center gap-2 text-xs text-[#8e8e99] py-2 px-3 bg-[#141419] border border-[#22222a] rounded-lg">
-        <Loader2 className="w-3.5 h-3.5 animate-spin text-[#fe063f]" />
+        <Loader2 className="w-3.5 h-3.5 animate-spin text-[#B8D5A0]" />
         Checking Outlook Bridge connection...
       </div>
     );
@@ -50,10 +50,10 @@ export default function BridgeStatus({ onStatusChange, compact = false }) {
         <div className={`flex items-center justify-between px-3.5 py-2 rounded-lg border text-xs ${
           isHealthy
             ? 'bg-white/10 border-white/20 text-white'
-            : 'bg-white/5 border-white/15 text-[#e41937]'
+            : 'bg-[#E58D87]/10 border-[#E58D87]/25 text-[#E58D87]'
         }`}>
           <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${isHealthy ? 'bg-white text-black animate-pulse' : 'bg-[#e41937]'}`} />
+            <div className={`w-2 h-2 rounded-full ${isHealthy ? 'bg-[#B8D5A0] animate-pulse' : 'bg-[#E58D87]'}`} />
             <span className="font-bold">{isHealthy ? 'Bridge Online & Healthy' : 'Bridge Offline'}</span>
             <span className="text-[#8e8e99] text-[11px] hidden sm:inline">
               — {isHealthy ? 'Local COM dispatch active' : 'Launch local bridge to send emails'}

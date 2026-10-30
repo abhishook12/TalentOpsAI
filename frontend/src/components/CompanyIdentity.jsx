@@ -45,11 +45,18 @@ export const CompanyIdentity = memo(function CompanyIdentity({
   
   if (cleanDomain && !failedDomains.has(cleanDomain)) {
     const urls = []
-    if (logo_url) urls.push(logo_url)
-    // Tier 1: Hunter.io — high-res PNG logos
-    urls.push(`https://logos.hunter.io/${cleanDomain}`)
-    // Tier 2: Google Favicon CDN (ultra-fast global edge cache, single fallback)
+    if (logo_url) {
+      const cleanLogo = String(logo_url).trim().replace(/^['"`]+|['"`]+$/g, '')
+      if (cleanLogo && cleanLogo.startsWith('http') && !cleanLogo.includes("'") && !cleanLogo.includes('"')) {
+        urls.push(cleanLogo)
+      }
+    }
+    // Tier 1: Google S2 Favicon CDN (ultra-reliable global edge cache, crisp 128px)
+    urls.push(`https://www.google.com/s2/favicons?domain=${cleanDomain}&sz=${Math.max(logoSize * 2, 64)}`)
+    // Tier 2: Google Favicon v2 (gstatic)
     urls.push(`https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://${cleanDomain}&size=${Math.max(logoSize * 2, 64)}`)
+    // Tier 3: Hunter.io — high-res PNG logos
+    urls.push(`https://logos.hunter.io/${cleanDomain}`)
     
     const uniqueUrls = [...new Set(urls)]
     if (errorLevel < uniqueUrls.length) {

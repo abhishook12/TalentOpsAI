@@ -372,8 +372,14 @@ class SmtpProber:
                     mailbox_exists = True
                     confidence_delta = 25  # Strong positive signal
             elif code in (550, 551, 552, 553):
-                mailbox_exists = False
-                confidence_delta = -40  # Strong negative signal — mailbox rejected
+                msg_lower = (smtp_message or "").lower()
+                is_ip_policy_block = any(term in msg_lower for term in ('pbl', 'spamhaus', 'zen', 'rbl', 'policy', 'blacklist', 'blocklist', 'listed by', 'barracuda', 'sorbs', 'dnsbl', 'reputation', 'access denied', 'service unavailable'))
+                if is_ip_policy_block:
+                    mailbox_exists = False
+                    confidence_delta = 0  # Inconclusive: sender IP policy block, not recipient mailbox rejection
+                else:
+                    mailbox_exists = False
+                    confidence_delta = -40  # Strong negative signal — mailbox rejected
             elif code in (450, 451, 452):
                 is_greylisted = True
                 confidence_delta = 0  # Inconclusive — greylisting or rate limiting

@@ -91,7 +91,7 @@ export default function CampaignProgress({ campaignId, onStatusChange }) {
   const isPaused = data.status === 'paused';
 
   return (
-    <div className="p-6 bg-[#121212] border border-[#22222a] rounded-xl flex flex-col gap-6 text-white">
+    <div className="p-6 rounded-xl flex flex-col gap-6 text-white" style={{ background: "var(--panel-bg, #1B1F1C)", border: "1px solid var(--card-border, #343B35)" }}>
       {/* Top Header Strip */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-3.5">
@@ -99,8 +99,8 @@ export default function CampaignProgress({ campaignId, onStatusChange }) {
             isCompleted
               ? 'bg-white/10 border-white/30 text-white'
               : isPaused
-              ? 'bg-white/10 border-white/25 text-[#e41937]'
-              : 'bg-[#e41937]/15 border-[#e41937]/50/30 text-[#fe063f]'
+              ? 'bg-white/10 border-white/25 text-[var(--warning)]'
+              : 'bg-[var(--brand)]/15 border-[var(--brand)]/30 text-[var(--brand)]'
           }`}>
             {isCompleted ? (
               <CheckCircle2 className="w-5 h-5" />
@@ -119,8 +119,8 @@ export default function CampaignProgress({ campaignId, onStatusChange }) {
                 isCompleted
                   ? 'bg-white/10 text-white border-white/25'
                   : isPaused
-                  ? 'bg-white/10 text-[#e41937] border-white/20'
-                  : 'bg-[#e41937]/15 text-[#fe063f] border-[#e41937]/50/25 animate-pulse'
+                  ? 'bg-white/10 text-[var(--warning)] border-[var(--card-border)]'
+                  : 'bg-[var(--brand)]/15 text-[var(--brand)] border-[var(--brand)]/30 animate-pulse'
               }`}>
                 {data.status || 'Active'}
               </span>
@@ -141,7 +141,7 @@ export default function CampaignProgress({ campaignId, onStatusChange }) {
             <button
               onClick={handlePause}
               disabled={actionLoading}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#202026] hover:bg-[#282830] text-[#e41937] border border-white/15 text-xs font-semibold transition cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--bg-elevated)] hover:bg-[var(--hover-bg)] text-[var(--warning)] border border-[var(--card-border)] text-xs font-semibold transition cursor-pointer"
             >
               <Pause className="w-3.5 h-3.5" /> Pause
             </button>
@@ -150,7 +150,7 @@ export default function CampaignProgress({ campaignId, onStatusChange }) {
             <button
               onClick={handleResume}
               disabled={actionLoading}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#e41937] text-white hover:bg-[#e41937] text-white text-white text-xs font-semibold shadow-md shadow-[#e41937]/20 transition cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--brand)] text-[#101211] hover:brightness-105 text-xs font-semibold shadow-md transition cursor-pointer"
             >
               <Play className="w-3.5 h-3.5" /> Resume
             </button>
@@ -206,9 +206,9 @@ export default function CampaignProgress({ campaignId, onStatusChange }) {
         <div className="p-3.5 rounded-xl bg-[#141419] border border-[#27272a] flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold text-[#8e8e99] uppercase tracking-wider">In-Flight</span>
-            <Loader2 className="w-4 h-4 text-[#fe063f] animate-spin" />
+            <Loader2 className="w-4 h-4 text-[var(--accent-secondary)] animate-spin" />
           </div>
-          <div className="text-2xl font-black text-[#fe063f] mt-2">{data.sending || 0}</div>
+          <div className="text-2xl font-black text-[var(--accent-secondary)] mt-2">{data.sending || 0}</div>
           <div className="text-[10px] text-[#71717a] mt-0.5">Currently sending</div>
         </div>
 
@@ -216,9 +216,9 @@ export default function CampaignProgress({ campaignId, onStatusChange }) {
         <div className="p-3.5 rounded-xl bg-[#141419] border border-[#27272a] flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold text-[#8e8e99] uppercase tracking-wider">Pending</span>
-            <Clock className="w-4 h-4 text-[#e41937]" />
+            <Clock className="w-4 h-4 text-[var(--warning)]" />
           </div>
-          <div className="text-2xl font-black text-[#e41937] mt-2">{data.pending || (data.total - data.sent - data.failed)}</div>
+          <div className="text-2xl font-black text-[var(--warning)] mt-2">{data.pending || (data.total - data.sent - data.failed)}</div>
           <div className="text-[10px] text-[#71717a] mt-0.5">Remaining in queue</div>
         </div>
 
@@ -226,10 +226,10 @@ export default function CampaignProgress({ campaignId, onStatusChange }) {
         <div className="p-3.5 rounded-xl bg-[#141419] border border-[#27272a] flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold text-[#8e8e99] uppercase tracking-wider">Bounced / Failed</span>
-            <XCircle className="w-4 h-4 text-[#fe063f]" />
+            <XCircle className="w-4 h-4 text-[var(--error)]" />
           </div>
-          <div className="text-2xl font-black text-[#fe063f] mt-2">{data.failed || data.bounced || 0}</div>
-          <div className="text-[10px] text-[#fe063f]/80 mt-0.5">
+          <div className="text-2xl font-black text-[var(--accent-secondary)] mt-2">{data.failed || data.bounced || 0}</div>
+          <div className="text-[10px] text-[var(--error)]/80 mt-0.5">
             {data.bounced > 0 ? `${data.bounced} NDR bounces detected` : 'Quarantined'}
           </div>
         </div>

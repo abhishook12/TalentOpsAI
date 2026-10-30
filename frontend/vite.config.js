@@ -32,7 +32,8 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router') || id.includes('@tanstack/react-router')) return 'react-vendor'
+            if (id.includes('lucide-react')) return 'icons-vendor'
+            if (id.includes('/node_modules/react/') || id.includes('/node_modules/react-dom/') || id.includes('/node_modules/scheduler/') || id.includes('@tanstack/react-router') || id.includes('react-router')) return 'react-vendor'
             if (id.includes('recharts') || id.includes('d3-')) return 'charts-vendor'
             if (id.includes('@tiptap') || id.includes('prosemirror') || id.includes('tiptap')) return 'editor-vendor'
             if (id.includes('framer-motion')) return 'animation-vendor'

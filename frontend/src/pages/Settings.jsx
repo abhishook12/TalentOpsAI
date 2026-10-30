@@ -429,34 +429,26 @@ export default function Settings() {
                 </div>
                 
                 <div style={{ padding: 32 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 24 }}>
-                    {['light', 'dark', 'system'].map(t => (
-                      <button 
-                        key={t}
-                        type="button"
-                        onClick={() => setTheme(t)}
-                        style={{ 
-                          padding: 24, 
-                          borderRadius: 8, 
-                          border: '2px solid',
-                          borderColor: (t === currentTheme || (t === 'system' && !localStorage.getItem('theme'))) ? 'var(--text-primary)' : 'var(--card-border)',
-                          background: 'var(--bg-base)',
-                          color: 'var(--text-primary)',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          gap: 16,
-                          textTransform: 'capitalize',
-                          fontWeight: 500,
-                          fontSize: 14
-                        }}>
-                        <div style={{ width: 48, height: 48, borderRadius: '50%', background: (t === currentTheme) ? 'var(--text-primary)' : 'var(--bg-panel)', border: '1px solid var(--card-border)', display: 'grid', placeItems: 'center', color: (t === currentTheme) ? 'var(--main-bg)' : 'var(--text-secondary)' }}>
-                          <Globe size={24} />
-                        </div>
-                        {t} Theme
-                      </button>
-                    ))}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 24 }}>
+                    <div style={{
+                      padding: 24,
+                      borderRadius: 8,
+                      border: '2px solid rgba(255, 255, 255, 0.3)',
+                      background: '#000000',
+                      color: '#ffffff',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 16,
+                      fontWeight: 600,
+                      fontSize: 14
+                    }}>
+                      <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#121214', border: '1px solid rgba(255, 255, 255, 0.2)', display: 'grid', placeItems: 'center', color: '#ffffff' }}>
+                        <Globe size={24} />
+                      </div>
+                      Apple Dark (True Black & White)
+                      <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 400 }}>System default permanently enabled</span>
+                    </div>
                   </div>
                 </div>
               </div>

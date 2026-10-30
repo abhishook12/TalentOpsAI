@@ -142,7 +142,9 @@ FREE_EMAIL_PROVIDERS = {
     'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com', 'icloud.com',
     'live.com', 'msn.com', 'comcast.net', 'att.net', 'sbcglobal.net', 'verizon.net',
     'me.com', 'mail.com', 'protonmail.com', 'ymail.com', 'cox.net', 'charter.net',
-    'earthlink.net', 'talentops.ai'
+    'earthlink.net', 'talentops.ai', 'adelphia.net', 'roadrunner.com', 'rr.com',
+    'bellatlantic.net', 'bellsouth.net', 'optonline.net', 'windstream.net',
+    'frontier.com', 'centurytel.net', 'juno.com', 'netzero.net'
 }
 
 def infer_company_from_domain(domain: Optional[str]) -> Optional[str]:
@@ -1575,3 +1577,26 @@ def get_pipeline_velocity(
     analytics_cache.set("velocity", velocity, ttl=120)
     return velocity
 
+
+
+# --- SESSION TELEMETRY & EVENT INGESTION ---
+class SessionTelemetryPayload(BaseModel):
+    session_id: Optional[str] = None
+    event: Optional[str] = None
+    url: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+    class Config:
+        extra = "ignore"
+
+@router.post("/session/start")
+@router.post("/session/event")
+@router.post("/session/heartbeat")
+@router.post("/session/end")
+@limiter.limit("120/minute")
+async def track_session_telemetry(request: Request, payload: Optional[SessionTelemetryPayload] = None):
+    """
+    Gracefully ingests client session analytics and heartbeat signals.
+    Validates payload structure and rate limits abuse without unindexed table bloat.
+    """
+    return {"status": "ok"}

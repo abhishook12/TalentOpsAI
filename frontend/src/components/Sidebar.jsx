@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link as NavLink, useLocation } from '@tanstack/react-router'
 import api, { clearStoredToken } from '../services/api'
-import { LayoutDashboard, Activity, Users, Map, BarChart2, Search, Eye, Radar, LogOut, ShieldCheck, Settings, UserCircle, HeartPulse, UserCog, Server, Shield, Mail, Layers, Laptop, Globe } from 'lucide-react'
+import { LayoutDashboard, Activity, Users, Map, BarChart2, Search, Eye, Radar, LogOut, ShieldCheck, Settings, UserCircle, HeartPulse, UserCog, Server, Shield, Mail, Layers, Laptop, Globe, MessageSquare } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 export default function Sidebar() {
@@ -59,9 +59,10 @@ export default function Sidebar() {
   const adminNav = [
     { isGroupHeader: true, label: 'Administration' },
     { to: '/admin', label: 'Overview', icon: LayoutDashboard },
+    { to: '/admin/teams-harvest', label: 'Teams Live Stream', icon: MessageSquare, badge: 'LIVE', badgeVariant: 'teams' },
     { to: '/admin/scout-contributors', label: 'Scout Contributors', icon: Users },
     { to: '/admin/staging', label: 'Staging Pipeline', icon: Layers },
-    { to: '/admin/web-harvest', label: 'Web Harvesting Engine', icon: Globe, badge: '24/7', badgeVariant: 'webharvest' },
+    { to: '/admin/web-harvest', label: 'Web Harvesting', icon: Globe, badge: '24/7', badgeVariant: 'webharvest' },
     { to: '/sentinel', label: 'Data Quality', icon: HeartPulse },
     { to: '/review-queue', label: 'Review Queue', icon: Search },
     { to: '/mailintel', label: 'Mail Intel', icon: Mail },
@@ -131,17 +132,17 @@ export default function Sidebar() {
         </div>
       </div>
 
-      <nav style={{ flex: 1, minHeight: 0, padding: '0 10px 20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <nav style={{ flex: 1, minHeight: 0, padding: '0 12px 20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 3 }}>
         {nav.map((item, index) => {
           if (item.isGroupHeader) {
             return (
               <div key={`header-${index}`} style={{
                 color: 'var(--text-muted)',
-                fontSize: 11.5,
+                fontSize: 11,
                 fontWeight: 600,
                 textTransform: 'uppercase',
-                letterSpacing: '0.04em',
-                padding: '18px 12px 6px',
+                letterSpacing: '0.06em',
+                padding: '22px 12px 6px',
               }}>
                 {item.label}
               </div>
@@ -161,12 +162,16 @@ export default function Sidebar() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 12,
-                padding: '9px 12px',
+                minHeight: 38,
+                padding: '8px 12px',
                 borderRadius: 6,
                 textDecoration: 'none',
-                color: active ? '#ffffff' : 'var(--text-secondary)',
+                outline: 'none',
+                boxShadow: 'none',
+                border: 'none',
+                color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
                 background: active ? 'var(--sidebar-active-bg)' : 'transparent',
-                fontSize: 14,
+                fontSize: 13.5,
                 fontWeight: active ? 600 : 500,
                 position: 'relative',
                 transition: 'background 0.15s ease, color 0.15s ease'
@@ -174,7 +179,7 @@ export default function Sidebar() {
               onMouseEnter={(event) => {
                 if (active) return
                 event.currentTarget.style.background = 'var(--hover-bg)'
-                event.currentTarget.style.color = '#ffffff'
+                event.currentTarget.style.color = 'var(--text-primary)'
               }}
               onMouseLeave={(event) => {
                 if (active) return
@@ -194,19 +199,19 @@ export default function Sidebar() {
                   borderRadius: '0 3px 3px 0'
                 }} />
               )}
-              <Icon size={18} strokeWidth={active ? 2.2 : 1.8} style={{ color: active ? 'var(--brand)' : 'inherit', flexShrink: 0 }} />
+              <Icon size={17} strokeWidth={active ? 2.2 : 1.8} style={{ color: active ? 'var(--brand)' : 'var(--text-secondary)', flexShrink: 0 }} />
               <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
               {item.badge && (
                 <div style={{
                   background: item.badgeVariant === 'pending' || item.badgeVariant === 'danger' || (typeof item.badge === 'number' && item.badge > 0)
-                    ? 'rgba(239, 68, 68, 0.16)'
-                    : 'rgba(228, 25, 55, 0.14)',
+                    ? 'rgba(230, 184, 117, 0.16)'
+                    : 'rgba(184, 213, 160, 0.14)',
                   color: item.badgeVariant === 'pending' || item.badgeVariant === 'danger' || (typeof item.badge === 'number' && item.badge > 0)
-                    ? '#e41937'
-                    : '#e41937',
+                    ? 'var(--warning)'
+                    : 'var(--brand)',
                   border: item.badgeVariant === 'pending' || item.badgeVariant === 'danger' || (typeof item.badge === 'number' && item.badge > 0)
-                    ? '1px solid rgba(228, 25, 55, 0.35)'
-                    : '1px solid rgba(228, 25, 55, 0.35)',
+                    ? '1px solid rgba(230, 184, 117, 0.35)'
+                    : '1px solid rgba(184, 213, 160, 0.35)',
                   fontSize: '11px',
                   fontWeight: 600,
                   padding: '2px 7px',
@@ -223,7 +228,7 @@ export default function Sidebar() {
       </nav>
 
       <div style={{
-        padding: '16px 20px',
+        padding: '20px 16px',
         borderTop: '1px solid var(--sidebar-border)',
         flexShrink: 0,
       }}>

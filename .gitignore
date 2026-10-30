@@ -162,3 +162,8 @@ backend/scripts/
 /frontend/check_both_sites.cjs
 backend/app/sheet_harvest_state.json
 
+
+*.cjs
+/patch_*.*
+teams_extractor/supervisor_status.json
+teams_extractor/patch_*.py

@@ -779,6 +779,7 @@ class RecruiterStore:
         needs_review: Optional[bool] = None,
         email_status: Optional[str] = None,
         data_source: Optional[str] = None,
+        date_filter: Optional[str] = None,
         sort_by: str = "created_at",
         sort_desc: bool = True,
     ) -> Tuple[List[Dict[str, Any]], int]:
@@ -851,10 +852,10 @@ class RecruiterStore:
 
         if comp_candidates:
             if len(comp_candidates) == 1:
-                where_clauses.append("company_id = ?")
+                where_clauses.append("LOWER(COALESCE(CAST(company_id AS VARCHAR), '')) = LOWER(?)")
                 params.append(comp_candidates[0])
             else:
-                ph = " OR ".join(["company_id = ?"] * len(comp_candidates))
+                ph = " OR ".join(["LOWER(COALESCE(CAST(company_id AS VARCHAR), '')) = LOWER(?)"] * len(comp_candidates))
                 where_clauses.append(f"({ph})")
                 params.extend(comp_candidates)
 
@@ -900,8 +901,32 @@ class RecruiterStore:
             params.append(email_status)
 
         if data_source:
-            where_clauses.append("data_source = ?")
-            params.append(data_source)
+            if data_source.lower() == "teams":
+                where_clauses.append("(LOWER(CAST(data_source AS VARCHAR)) LIKE '%teams%' OR LOWER(CAST(data_source AS VARCHAR)) LIKE '%msteams%')")
+            else:
+                where_clauses.append("data_source = ?")
+                params.append(data_source)
+
+        if date_filter:
+            df = date_filter.lower().strip()
+            from datetime import datetime as dt_cls, timezone as tz_cls, timedelta as td_cls
+            now_u = dt_cls.now(tz_cls.utc)
+            if df in ("today", "24h", "1d"):
+                cutoff = (now_u - td_cls(hours=24)).strftime('%Y-%m-%d %H:%M:%S')
+                where_clauses.append("TRY_CAST(created_at AS TIMESTAMP) >= CAST(? AS TIMESTAMP)")
+                params.append(cutoff)
+            elif df in ("3d", "3days"):
+                cutoff = (now_u - td_cls(days=3)).strftime('%Y-%m-%d %H:%M:%S')
+                where_clauses.append("TRY_CAST(created_at AS TIMESTAMP) >= CAST(? AS TIMESTAMP)")
+                params.append(cutoff)
+            elif df in ("7d", "week", "7days"):
+                cutoff = (now_u - td_cls(days=7)).strftime('%Y-%m-%d %H:%M:%S')
+                where_clauses.append("TRY_CAST(created_at AS TIMESTAMP) >= CAST(? AS TIMESTAMP)")
+                params.append(cutoff)
+            elif df in ("30d", "month", "30days"):
+                cutoff = (now_u - td_cls(days=30)).strftime('%Y-%m-%d %H:%M:%S')
+                where_clauses.append("TRY_CAST(created_at AS TIMESTAMP) >= CAST(? AS TIMESTAMP)")
+                params.append(cutoff)
 
         where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
 
@@ -939,6 +964,9 @@ class RecruiterStore:
         if total_count is None:
             count_sql = f"SELECT COUNT(*) FROM recruiters WHERE {where_sql}"
             total_count = cur.execute(count_sql, params).fetchone()[0]
+
+        if total_count == 0:
+            return [], 0
 
         # Sort
         valid_sorts = {

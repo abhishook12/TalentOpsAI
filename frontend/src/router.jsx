@@ -239,6 +239,12 @@ const webHarvestAdminRoute = createRoute({
   component: lazyComponent(() => import('./pages/admin/WebHarvestAdmin')),
 })
 
+const teamsHarvestAdminRoute = createRoute({
+  getParentRoute: () => adminLayoutRoute,
+  path: '/admin/teams-harvest',
+  component: lazyComponent(() => import('./pages/admin/TeamsHarvestAdmin')),
+})
+
 const scoutContributorsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/scout/contributors',
@@ -346,6 +352,7 @@ const routeTree = rootRoute.addChildren([
     stagingPipelineRoute,
     scoutContributorsAdminRoute,
     webHarvestAdminRoute,
+    teamsHarvestAdminRoute,
   ]),
   notFoundRoute
 ])

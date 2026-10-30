@@ -1,5 +1,5 @@
 import React from 'react';
-import { Laptop, Globe, FileSpreadsheet, UserCheck, Sparkles, UploadCloud } from 'lucide-react';
+import { Laptop, Globe, FileSpreadsheet, UserCheck, Sparkles, UploadCloud, MessageSquare } from 'lucide-react';
 import { classifyCandidateSource, SOURCE_TYPES } from '../../utils/sourceProvenance';
 
 /**
@@ -8,6 +8,7 @@ import { classifyCandidateSource, SOURCE_TYPES } from '../../utils/sourceProvena
  * - Desktop Scout captures
  * - Web Harvester extractions
  * - Bulk Uploads / Spreadsheets
+ * - Microsoft Teams Ingestions
  * - Manual entries
  */
 export default function SourceProvenanceBadge({
@@ -29,6 +30,8 @@ export default function SourceProvenanceBadge({
         return <Globe className={iconSize} />;
       case SOURCE_TYPES.BULK_UPLOAD:
         return <FileSpreadsheet className={iconSize} />;
+      case SOURCE_TYPES.TEAMS:
+        return <MessageSquare className={iconSize} />;
       case SOURCE_TYPES.MANUAL:
       default:
         return <UserCheck className={iconSize} />;

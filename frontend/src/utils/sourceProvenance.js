@@ -12,6 +12,7 @@ export const SOURCE_TYPES = {
   SCOUT: 'SCOUT',
   WEB_HARVESTER: 'WEB_HARVESTER',
   BULK_UPLOAD: 'BULK_UPLOAD',
+  TEAMS: 'TEAMS',
   MANUAL: 'MANUAL',
 };
 
@@ -30,6 +31,23 @@ export function classifyCandidateSource(rawSource) {
   }
 
   const s = rawSource.trim().toLowerCase();
+
+  // 0. Teams Chat / Desktop Ingestion
+  if (
+    s.includes('teams') ||
+    s.includes('msteams')
+  ) {
+    return {
+      type: SOURCE_TYPES.TEAMS,
+      label: 'Microsoft Teams',
+      shortLabel: 'Teams Chat',
+      tag: 'TEAMS',
+      description: 'Extracted live from Microsoft Teams group chat background stream',
+      badgeClass: 'bg-indigo-950/60 text-indigo-300 border-indigo-700/50',
+      iconType: 'messages',
+      raw: rawSource,
+    };
+  }
 
   // 1. Web Harvester / Web Intelligence Pipelines
   if (

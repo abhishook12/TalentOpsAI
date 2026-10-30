@@ -264,20 +264,20 @@ export default function Login() {
             </Link>
           </div>
 
-          <button type="button" onClick={handleSubmit} className="w-full h-11 border-none rounded-lg bg-[#e41937] text-white text-sm font-semibold cursor-pointer transition-all flex items-center justify-center hover:not-disabled:bg-[#fe063f] hover:not-disabled:shadow-[0_0_20px_rgba(228,25,55,0.45)] disabled:opacity-40 disabled:cursor-not-allowed shadow-md" disabled={!isFormValid || isAuthenticating}>
+          <button type="button" onClick={handleSubmit} className="w-full h-11 border-none rounded-lg bg-[#B8D5A0] text-[#101211] text-sm font-bold cursor-pointer transition-all flex items-center justify-center hover:not-disabled:bg-[#a6c88b] hover:not-disabled:shadow-[0_0_20px_rgba(184,213,160,0.35)] disabled:opacity-40 disabled:cursor-not-allowed shadow-md" disabled={!isFormValid || isAuthenticating}>
             {isAuthenticating ? (
               <div className="flex items-center gap-2 text-white">
                 <i className="ti ti-loader animate-spin text-white" />
                 <span className="text-white font-semibold">{getAuthStatusText()}</span>
               </div>
             ) : (
-              <span className="text-white font-semibold">Sign In</span>
+              <span className="text-[#101211] font-bold">Sign In</span>
             )}
           </button>
 
           {isAuthenticating && authElapsed >= 3 && (
             <div className="p-3 rounded-lg bg-white/5 border border-white/15 text-zinc-300 text-xs flex items-center gap-2.5 animate-fadeIn leading-relaxed">
-              <i className="ti ti-loader-2 animate-spin text-sm text-[#e41937] shrink-0" />
+              <i className="ti ti-loader-2 animate-spin text-sm text-[#B8D5A0] shrink-0" />
               <div className="flex-1">
                 {authElapsed < 12 
                   ? 'Connecting to secure cloud instance...'

@@ -224,7 +224,7 @@ export default function DownloadScout() {
 
   // Dynamic Release Info from Authoritative DB Registry (Defaults match exact v2.11.0 build)
   const [releaseInfo, setReleaseInfo] = useState({
-    version: '2.11.0',
+    version: '2.14.1',
     extractor_version: '4.8.0',
     download_url: 'https://qpetzpxmuofuepvrqedk.supabase.co/storage/v1/object/public/data-assets/TalentOpsScoutSetup.exe',
     size_bytes: 50084798,
@@ -790,6 +790,72 @@ export default function DownloadScout() {
                       ? 'Active & Streaming'
                       : (myDeviceData?.devices?.length > 0 ? 'Device Paired (Standby)' : 'Not Connected')}
                   </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const res = await api.post('/system-windows/scout/show');
+                        if (res.data?.status === 'ok') {
+                          toast.success('Desktop Scout window opened on screen!');
+                        } else {
+                          toast.error(res.data?.message || 'Could not reach Desktop Scout');
+                        }
+                      } catch (err) {
+                        toast.error('Desktop Scout not running locally or unreachable');
+                      }
+                    }}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      background: 'rgba(184, 213, 160, 0.12)',
+                      border: '1px solid rgba(184, 213, 160, 0.35)',
+                      color: 'var(--brand, #b8d5a0)',
+                      padding: '7px 12px',
+                      borderRadius: 6,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                    title="Bring Desktop Scout companion window to screen"
+                  >
+                    <Monitor size={14} />
+                    Open Window
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const res = await api.post('/system-windows/scout/hide');
+                        if (res.data?.status === 'ok') {
+                          toast.success('Desktop Scout minimized to tray');
+                        } else {
+                          toast.error(res.data?.message || 'Could not reach Desktop Scout');
+                        }
+                      } catch (err) {
+                        toast.error('Desktop Scout not running locally or unreachable');
+                      }
+                    }}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid var(--border, #343b35)',
+                      color: 'var(--text-secondary, #b0b7ae)',
+                      padding: '7px 12px',
+                      borderRadius: 6,
+                      fontSize: 12,
+                      fontWeight: 500,
+                      cursor: 'pointer'
+                    }}
+                    title="Minimize Desktop Scout to system tray"
+                  >
+                    <EyeOff size={14} />
+                    Hide to Tray
+                  </button>
                 </div>
               </div>
             </div>

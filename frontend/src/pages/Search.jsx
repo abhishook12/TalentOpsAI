@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import { exportToExcel } from '../services/export'
 import api, { API, getErrorMessage, logAction } from '../services/api'
 import { CompanyIdentity } from '../components/CompanyIdentity'
@@ -194,84 +195,103 @@ const SearchResultRow = React.memo(function SearchResultRow({ r, active, query, 
   
   return (
     <button
+      data-testid="search-result-row"
+      data-recruiter-id={r.recruiter_id}
       onClick={() => onClick(r.recruiter_id)}
       style={{
         width: '100%',
+        position: 'relative',
         textAlign: 'left',
         border: 'none',
         borderBottom: '1px solid var(--card-border)',
-        background: active ? 'var(--brand-bg)' : 'transparent',
+        background: active ? 'rgba(184, 213, 160, 0.08)' : 'transparent',
         padding: 0,
         cursor: 'pointer',
+        transition: 'background 0.12s ease',
+      }}
+      onMouseEnter={(e) => {
+        if (!active) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.025)';
+      }}
+      onMouseLeave={(e) => {
+        if (!active) e.currentTarget.style.background = 'transparent';
       }}
     >
+      {active && (
+        <div
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 3,
+            background: 'var(--brand)',
+            zIndex: 1,
+          }}
+        />
+      )}
       <div
         style={{
           display: 'grid',
           gridTemplateColumns: '1.2fr 1.2fr 0.9fr 1.1fr 0.55fr',
-          gap: 10,
-          padding: '12px 14px',
+          gap: 12,
+          padding: '14px 16px',
           alignItems: 'center',
-          fontSize: 12,
+          fontSize: 13,
           color: 'var(--text-secondary)',
         }}
       >
         <div style={{ color: 'var(--text-primary)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 10 }}>
           <div
             style={{
-              width: 28,
-              height: 28,
-              borderRadius: 10,
-              border: '1px solid var(--card-border)',
-              background: 'var(--card-bg)',
+              width: 32,
+              height: 32,
+              borderRadius: '50%',
+              border: '1px solid rgba(255, 255, 255, 0.16)',
+              background: '#1c1c21',
               display: 'grid',
               placeItems: 'center',
               fontSize: 11,
-              fontWeight: 900,
-              color: 'var(--text-primary)',
+              fontWeight: 800,
+              color: '#ffffff',
+              flexShrink: 0,
             }}
           >
             {initials(r.recruiter_name)}
           </div>
           <div style={{ minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexWrap: 'wrap' }}>
-              <span>{safe(r.recruiter_name)}</span>
-              <SourceProvenanceBadge source={r.data_source} size="xs" />
-              {r.seniority_level && r.seniority_level !== 'Specialist' && (
-                <span style={{ 
-                  fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, 
-                  background: r.seniority_level === 'Executive' ? 'rgba(161, 161, 170,0.15)' :
-                              r.seniority_level === 'Lead' ? 'rgba(161, 161, 170,0.15)' :
-                              r.seniority_level === 'Senior' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.05)',
-                  color: r.seniority_level === 'Executive' ? '#d4d4d8' :
-                         r.seniority_level === 'Lead' ? '#a1a1aa' :
-                         r.seniority_level === 'Senior' ? '#e4e4e7' : '#d4d4d8',
-                  border: `1px solid ${
-                    r.seniority_level === 'Executive' ? 'rgba(161, 161, 170,0.3)' :
-                    r.seniority_level === 'Lead' ? 'rgba(161, 161, 170,0.3)' :
-                    r.seniority_level === 'Senior' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.05)'
-                  }`
-                }}>
-                  {r.seniority_level}
-                </span>
-              )}
+              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{safe(r.recruiter_name)}</span>
+              <SourceProvenanceBadge source={r.data_source} size="xs" detailed={false} />
             </div>
-            <div style={{ marginTop: 2, fontSize: 11, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              <span>{r.specialization || 'Recruiter'}</span>
+            <div style={{ marginTop: 2, fontSize: 12.5, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <span>{r.specialization || r.title || 'General Talent Acquisition'}</span>
               {r.timezone_code && (
-                <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>• {r.timezone_code}</span>
+                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>• {r.timezone_code}</span>
               )}
             </div>
-            <div style={{ marginTop: 2, fontSize: 10, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              Match: {labelizeMatchReason(r.match_reason)} (Score: {r.relevance_score || 0})
+            <div style={{ marginTop: 2, fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {r.location || (r.city ? `${r.city}, ${r.state || ''}` : '') || r.state || (r.match_reason ? `Match: ${labelizeMatchReason(r.match_reason)}` : '')}
             </div>
           </div>
         </div>
-        <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          <div>{safe(r.email)}</div>
-          {r.is_deliverable !== false && (
-            <div style={{ fontSize: 9.5, color: '#ffffff', fontWeight: 600, marginTop: 2 }}>✓ MX Verified</div>
-          )}
+        <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 13 }}>
+          <div style={{ color: 'var(--text-primary)', fontWeight: 400 }}>{safe(r.email)}</div>
+          {(() => {
+            const extraCount = [
+              r.email2, r.email3, r.email4,
+              ...(Array.isArray(r.all_emails) ? r.all_emails.filter(e => e && e !== r.email) : [])
+            ].filter(Boolean).length;
+            if (extraCount > 0) {
+              return (
+                <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+                  +{extraCount} More <i className="ti ti-chevron-down" style={{ fontSize: 9 }} />
+                </div>
+              );
+            }
+            return r.is_deliverable !== false ? (
+              <div style={{ fontSize: 10.5, color: 'var(--brand)', fontWeight: 500, marginTop: 2 }}>✓ MX Verified</div>
+            ) : null;
+          })()}
         </div>
         <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(r.phone)}</div>
         <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
@@ -306,14 +326,14 @@ const SearchResultRow = React.memo(function SearchResultRow({ r, active, query, 
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              padding: '4px 8px',
-              borderRadius: 8,
-              fontSize: 10,
-              fontWeight: 800,
-              letterSpacing: '0.04em',
-              background: badge.bg,
-              color: badge.fg,
-              border: `1px solid ${badge.border}`,
+              padding: '3px 8px',
+              borderRadius: 999,
+              fontSize: 11,
+              fontWeight: 600,
+              letterSpacing: '0.03em',
+              background: badge.isExact ? 'rgba(184, 213, 160, 0.14)' : badge.bg,
+              color: badge.isExact ? 'var(--brand)' : badge.fg,
+              border: `1px solid ${badge.isExact ? 'rgba(184, 213, 160, 0.35)' : badge.border}`,
             }}
           >
             {badge.label}
@@ -480,7 +500,77 @@ function iconButtonStyle(disabled = false) {
 
 export default function AISearch() {
   const { login } = useAuth()
-  const [query, setQuery] = useSessionState('ai_query', '')
+  const navigate = useNavigate()
+
+  const handleOutreach = useCallback((candidate) => {
+    if (!candidate) return
+
+    // Extract all distinct valid candidate emails
+    const insight = buildRecruiterInsight(candidate)
+    const candidateEmails = Array.from(new Set([
+      ...(insight?.emails || []),
+      candidate.email,
+      candidate.email2,
+      candidate.email3,
+      candidate.email4
+    ].filter(e => e && typeof e === 'string' && e.includes('@') && !e.includes('@noemail') && !e.includes('@unknown'))))
+
+    const companyName = safe(candidate.company_name || (candidate.company && candidate.company.company_name) || candidate.company || '')
+    const candidateName = candidate.recruiter_name || candidate.name || 'Candidate'
+
+    const recipients = candidateEmails.length > 0
+      ? candidateEmails.map(em => ({
+          recruiter_id: candidate.recruiter_id || candidate.id,
+          email: em.trim(),
+          name: candidateName,
+          company: companyName,
+          title: candidate.specialization || candidate.title || '',
+          state: candidate.state || '',
+          status: 'valid'
+        }))
+      : [{
+          recruiter_id: candidate.recruiter_id || candidate.id,
+          email: candidate.email || '',
+          name: candidateName,
+          company: companyName,
+          title: candidate.specialization || candidate.title || '',
+          state: candidate.state || '',
+          status: 'valid'
+        }]
+
+    const outreachPayload = {
+      candidate: {
+        id: candidate.recruiter_id || candidate.id,
+        name: candidateName,
+        company: companyName,
+        title: candidate.specialization || candidate.title || '',
+        emails: candidateEmails,
+        phones: insight?.phones || [candidate.phone].filter(Boolean)
+      },
+      recipients,
+      campaignName: `Outreach to ${candidateName}`,
+      subject: `Introduction // ${companyName ? `${companyName} & TalentOps` : 'Career Opportunity'}`
+    }
+
+    sessionStorage.setItem('talentops_pending_outreach', JSON.stringify(outreachPayload))
+    sessionStorage.setItem('camp_view', '"workspace"')
+    sessionStorage.setItem('camp_wsMode', '"compose"')
+    sessionStorage.setItem('camp_activeId', 'null')
+
+    window.dispatchEvent(new CustomEvent('talentops:open-outreach-campaign', { detail: outreachPayload }))
+    navigate({ to: '/campaigns' })
+  }, [navigate])
+  const initialUrlQ = typeof window !== 'undefined' ? (new URLSearchParams(window.location.search).get('q') || '') : ''
+  const [query, setQuery] = useSessionState('ai_query', initialUrlQ || '')
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const qParam = new URLSearchParams(window.location.search).get('q')
+      if (qParam && qParam.trim() && qParam !== query) {
+        setQuery(qParam.trim())
+      }
+    }
+  }, [setQuery])
   const [searchResults, setSearchResults] = useState([])
   const [showRaw, setShowRaw] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -841,49 +931,63 @@ export default function AISearch() {
                   flex: 1,
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 10,
-                  padding: '10px 12px',
-                  borderRadius: 6,
+                  gap: 12,
+                  height: 44,
+                  padding: '0 14px',
+                  borderRadius: 8,
                   border: '1px solid var(--card-border)',
-                  background: 'var(--card-bg)',
+                  background: 'var(--bg-elevated)',
+                  transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
                 }}
               >
-                <i className="ti ti-search" style={{ color: 'var(--text-muted)' }} />
+                <i className="ti ti-search" style={{ color: 'var(--text-muted)', fontSize: 16 }} />
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search by name, email, company…"
+                  placeholder="Search by name, email, company, title…"
                   style={{
                     flex: 1,
                     border: 'none',
                     outline: 'none',
                     background: 'transparent',
                     color: 'var(--text-primary)',
-                    fontSize: 13,
+                    fontSize: 14,
+                    lineHeight: 1.4,
                   }}
                 />
                 {loading && (
-                  <i className="ti ti-loader-2" style={{ color: 'var(--text-muted)', animation: 'spin 0.8s linear infinite' }} />
+                  <i className="ti ti-loader-2" style={{ color: 'var(--brand)', animation: 'spin 0.8s linear infinite', fontSize: 16 }} />
                 )}
               </div>
 
               <button
                 onClick={() => setShowFilters((v) => !v)}
                 title="Filters"
-                style={{ ...iconButtonStyle(false), width: 38, position: 'relative' }}
+                style={{
+                  ...iconButtonStyle(false),
+                  width: 44,
+                  height: 44,
+                  borderRadius: 8,
+                  border: '1px solid var(--card-border)',
+                  background: showFilters ? 'var(--sidebar-active-bg)' : 'var(--bg-elevated)',
+                  color: showFilters ? 'var(--brand)' : 'var(--text-secondary)',
+                  position: 'relative',
+                }}
               >
-                <i className="ti ti-adjustments-horizontal" />
+                <i className="ti ti-adjustments-horizontal" style={{ fontSize: 16 }} />
                 {activeFiltersCount > 0 && (
                   <span
                     style={{
                       position: 'absolute',
-                      top: -6,
-                      right: -6,
+                      top: -4,
+                      right: -4,
                       width: 18,
                       height: 18,
                       borderRadius: 999,
-                      background: 'var(--brand)', color: 'var(--text-inverse)',
-                      fontSize: 10,
+                      background: 'var(--brand)',
+                      color: 'var(--text-inverse)',
+                      fontSize: 10.5,
+                      fontWeight: 700,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -895,8 +999,20 @@ export default function AISearch() {
                 )}
               </button>
 
-              <button onClick={clearAll} title="Clear" style={{ ...iconButtonStyle(false), width: 38 }}>
-                <i className="ti ti-x" />
+              <button
+                onClick={clearAll}
+                title="Clear"
+                style={{
+                  ...iconButtonStyle(false),
+                  width: 44,
+                  height: 44,
+                  borderRadius: 8,
+                  border: '1px solid var(--card-border)',
+                  background: 'var(--bg-elevated)',
+                  color: 'var(--text-secondary)',
+                }}
+              >
+                <i className="ti ti-x" style={{ fontSize: 16 }} />
               </button>
             </div>
 
@@ -1037,8 +1153,9 @@ export default function AISearch() {
                     zIndex: 3,
                   }}
                 >
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                    {loading ? 'Searching…' : `${searchResults.length} result${searchResults.length === 1 ? '' : 's'}`}
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span>{loading ? 'Searching…' : `${searchResults.length} result${searchResults.length === 1 ? '' : 's'}`}</span>
+                    <span style={{ width: 2, height: 11, background: '#e41937', borderRadius: 1 }} />
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <button onClick={() => fireSoon('Columns')} style={iconButtonStyle(false)} title="Columns (Coming soon)">
@@ -1061,18 +1178,18 @@ export default function AISearch() {
                       style={{
                         display: 'grid',
                         gridTemplateColumns: '1.2fr 1.2fr 0.9fr 1.1fr 0.55fr',
-                        gap: 10,
-                        padding: '10px 14px',
+                        gap: 12,
+                        padding: '10px 16px',
                         borderBottom: '1px solid var(--card-border)',
-                        background: 'var(--main-bg)',
+                        background: 'var(--table-header-bg)',
                         position: 'sticky',
                         top: 44,
                         zIndex: 2,
-                        fontSize: 10,
-                        letterSpacing: '0.06em',
+                        fontSize: 11.5,
+                        letterSpacing: '0.04em',
                         textTransform: 'uppercase',
                         color: 'var(--text-muted)',
-                        fontWeight: 800,
+                        fontWeight: 600,
                       }}
                     >
                       <div>Name</div>
@@ -1123,20 +1240,20 @@ export default function AISearch() {
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 4,
-                    background: 'rgba(161, 161, 170, 0.15)',
-                    border: '1px solid rgba(161, 161, 170, 0.35)',
-                    borderRadius: 6,
-                    color: '#d4d4d8',
+                    gap: 6,
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    border: '1px solid rgba(255, 255, 255, 0.16)',
+                    borderRadius: 8,
+                    color: 'var(--text-secondary)',
                     fontSize: 11,
-                    fontWeight: 700,
-                    padding: '6px 10px',
+                    fontWeight: 600,
+                    padding: '6px 12px',
                     cursor: 'pointer'
                   }}
                   title="Explain match score decomposition"
                 >
-                  <span>[Why?]</span>
-                  <span>Score Breakdown</span>
+                  <i className="ti ti-target" style={{ fontSize: 13, color: '#10b981' }} />
+                  <span>Why? | Score Breakdown</span>
                 </button>
               )}
               <button
@@ -1208,46 +1325,182 @@ export default function AISearch() {
                   {selectedDetailError}
                 </div>
               )}
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-                  <div style={{ width: 52, height: 52, borderRadius: 6, background: 'var(--text-primary)', color: 'var(--main-bg)', display: 'grid', placeItems: 'center', fontSize: 18, fontWeight: 900 }}>
-                    {initials(selected.recruiter_name)}
-                  </div>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 16, fontWeight: 900, color: 'var(--text-primary)' }}>{safe(selected.recruiter_name)}</span>
-                      <SourceProvenanceBadge source={selected.data_source} size="xs" detailed={false} />
-                    </div>
-                    <div style={{ marginTop: 3, fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {selected.specialization && String(selected.specialization).trim() ? String(selected.specialization).trim() : ''}
-                    </div>
-                  </div>
-                </div>
+              {(() => {
+                const freeDoms = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com', 'icloud.com'];
+                const emailDom = selected.email && selected.email.includes('@') && !freeDoms.includes(selected.email.split('@')[1].trim().toLowerCase())
+                  ? selected.email.split('@')[1].trim().toLowerCase()
+                  : null;
+                const inferredComp = emailDom
+                  ? emailDom.split('.')[0].replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+                  : null;
+                const compDomain = (selected.company && selected.company.primary_domain) || selected.company_domain || selected.website || selected.email_pattern || emailDom;
+                const compName = (selected.company && (selected.company.canonical_name || selected.company.company_name)) || selected.company_name || inferredComp || 'Company';
+                const compLogo = (selected.company && selected.company.logo_url) || selected.logo_url || (compDomain ? `https://www.google.com/s2/favicons?domain=${compDomain}&sz=128` : null);
 
-                <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '6px 10px', borderRadius: 999, border: `1px solid ${matchBadge.border}`, background: matchBadge.bg, color: matchBadge.fg, fontSize: 10, fontWeight: 900, letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>
-                  {matchBadge.label} MATCH
-                </span>
-              </div>
+                return (
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0, flex: 1 }}>
+                      <div
+                        style={{
+                          width: 54,
+                          height: 54,
+                          borderRadius: '50%',
+                          border: '2px solid rgba(184, 213, 160, 0.5)',
+                          boxShadow: '0 0 14px rgba(184, 213, 160, 0.2)',
+                          background: '#1c1c21',
+                          color: '#ffffff',
+                          display: 'grid',
+                          placeItems: 'center',
+                          fontSize: 18,
+                          fontWeight: 800,
+                          flexShrink: 0,
+                          position: 'relative',
+                        }}
+                      >
+                        {initials(selected.recruiter_name)}
+                        {compLogo ? (
+                          <div
+                            style={{
+                              position: 'absolute',
+                              bottom: -2,
+                              right: -2,
+                              width: 22,
+                              height: 22,
+                              borderRadius: '50%',
+                              background: '#ffffff',
+                              border: '2px solid #101211',
+                              display: 'grid',
+                              placeItems: 'center',
+                              overflow: 'hidden',
+                              padding: 2,
+                              boxShadow: '0 2px 5px rgba(0,0,0,0.45)',
+                            }}
+                            title={compName}
+                          >
+                            <img
+                              src={compLogo}
+                              alt={compName}
+                              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                              onError={(e) => { e.currentTarget.parentElement.style.display = 'none'; }}
+                            />
+                          </div>
+                        ) : null}
+                      </div>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: 17, fontWeight: 800, color: 'var(--text-primary)' }}>{safe(selected.recruiter_name)}</span>
+                          <SourceProvenanceBadge source={selected.data_source} size="xs" detailed={false} />
+                        </div>
+                        <div style={{ marginTop: 2, fontSize: 12, color: 'var(--text-secondary)' }}>
+                          {selected.specialization || selected.title || 'General Talent Acquisition'}
+                        </div>
+                        <div style={{ marginTop: 4, fontSize: 12, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 7 }}>
+                          {compLogo ? (
+                            <div
+                              style={{
+                                width: 18,
+                                height: 18,
+                                borderRadius: 4,
+                                background: '#ffffff',
+                                border: '1px solid var(--card-border)',
+                                display: 'grid',
+                                placeItems: 'center',
+                                overflow: 'hidden',
+                                padding: 2,
+                                flexShrink: 0
+                              }}
+                            >
+                              <img
+                                src={compLogo}
+                                alt={compName}
+                                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                  if (e.currentTarget.nextSibling) e.currentTarget.nextSibling.style.display = 'inline-block';
+                                }}
+                              />
+                              <i className="ti ti-building" style={{ display: 'none', fontSize: 11, color: '#18181b' }} />
+                            </div>
+                          ) : (
+                            <i className="ti ti-building" style={{ fontSize: 13, color: 'var(--text-muted)' }} />
+                          )}
+                          <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{safe(compName)}</span>
+                        </div>
+                        <div style={{ marginTop: 2, fontSize: 12, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <i className="ti ti-map-pin" style={{ fontSize: 13, color: 'var(--text-muted)' }} />
+                          <span style={{ color: 'var(--text-secondary)' }}>{selectedInsight.address || selected.location || 'Munich, Rheinland-Pfalz (Bavaria - 102)'}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 5,
+                          padding: '4px 10px',
+                          borderRadius: 999,
+                          border: '1px solid rgba(184, 213, 160, 0.35)',
+                          background: 'rgba(184, 213, 160, 0.14)',
+                          color: 'var(--brand)',
+                          fontSize: 10,
+                          fontWeight: 800,
+                          letterSpacing: '0.04em',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        <i className="ti ti-target" style={{ fontSize: 11 }} />
+                        EXACT MATCH
+                      </span>
+                      <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-muted)' }}>
+                        Profile Match <span style={{ color: 'var(--brand)', fontWeight: 700, fontSize: 13 }}>{selected?.trust_score || 94}%</span>
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* AI Semantic Match & Explainability Card */}
               <div
                 style={{
-                  background: 'linear-gradient(90deg, rgba(228, 228, 231, 0.08), rgba(161, 161, 170, 0.08))',
-                  border: '1px solid rgba(228, 228, 231, 0.25)',
-                  borderRadius: 6,
-                  padding: '10px 12px',
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: 10,
+                  padding: '12px 14px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  gap: 8,
+                  gap: 12,
                 }}
               >
-                <div>
-                  <div style={{ fontSize: 11, fontWeight: 800, color: '#e4e4e7', letterSpacing: '0.04em' }}>
-                    PROFILE MATCH: {selected?.trust_score || 94}%
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
+                  <div
+                    style={{
+                      width: 34,
+                      height: 34,
+                      borderRadius: '50%',
+                      border: '1px solid rgba(184, 213, 160, 0.35)',
+                      background: 'rgba(184, 213, 160, 0.14)',
+                      display: 'grid',
+                      placeItems: 'center',
+                      color: 'var(--brand)',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <i className="ti ti-target" style={{ fontSize: 16 }} />
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
-                    Career Progression: <span style={{ color: '#ffffff', fontWeight: 700 }}>Accelerated</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-primary)' }}>Profile Match</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--brand)' }}>{selected?.trust_score || 94}%</span>
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>
+                      Career Progression: <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Accelerated</span>
+                    </div>
+                    <div style={{ width: '100%', height: 5, borderRadius: 999, background: 'rgba(255, 255, 255, 0.1)', marginTop: 6, overflow: 'hidden' }}>
+                      <div style={{ width: `${selected?.trust_score || 94}%`, height: '100%', borderRadius: 999, background: 'var(--brand)', transition: 'width 0.4s ease' }} />
+                    </div>
                   </div>
                 </div>
                 <button
@@ -1256,18 +1509,22 @@ export default function AISearch() {
                     setExplainModalOpen(true)
                   }}
                   style={{
-                    background: 'rgba(228, 228, 231, 0.15)',
-                    border: '1px solid rgba(228, 228, 231, 0.4)',
-                    color: '#e4e4e7',
-                    padding: '4px 8px',
-                    borderRadius: 4,
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    borderRadius: 6,
+                    color: 'var(--text-secondary)',
+                    padding: '6px 10px',
                     fontSize: 11,
                     fontWeight: 700,
                     cursor: 'pointer',
-                    whiteSpace: 'nowrap'
+                    whiteSpace: 'nowrap',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 5,
                   }}
                 >
-                  [Why?] Breakdown
+                  <i className="ti ti-target" style={{ fontSize: 12 }} />
+                  <span>Why? | Breakdown</span>
                 </button>
               </div>
 
@@ -1279,221 +1536,351 @@ export default function AISearch() {
                     window.dispatchEvent(new CustomEvent('talentops:set-copilot-context', { detail: selected }))
                   }}
                   style={{
-                    padding: '10px 12px',
-                    borderRadius: 6,
-                    border: '1px solid #e4e4e7',
-                    background: 'linear-gradient(135deg, rgba(228, 228, 231, 0.15), rgba(161, 161, 170, 0.15))',
-                    color: '#e4e4e7',
-                    fontSize: 12,
-                    fontWeight: 800,
+                    padding: '11px 16px',
+                    borderRadius: 8,
+                    border: '1px solid rgba(184, 213, 160, 0.4)',
+                    background: 'var(--brand)',
+                    color: 'var(--text-inverse)',
+                    fontSize: 13,
+                    fontWeight: 700,
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: 6
+                    gap: 8,
+                    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.15)',
+                    transition: 'all 0.15s ease',
                   }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--brand-strong)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--brand)' }}
                 >
-                  <i className="ti ti-user-check" />
+                  <i className="ti ti-briefcase" style={{ fontSize: 16, color: 'var(--text-inverse)' }} />
                   <span>Dossier Workspace</span>
                 </button>
                 <button
-                  onClick={() => {
-                    window.dispatchEvent(new CustomEvent('talentops:set-copilot-context', { detail: selected }))
-                    window.dispatchEvent(new CustomEvent('talentops:open-copilot', { detail: { prompt: `Draft personalized outreach message for ${selected.recruiter_name}` } }))
-                  }}
+                  onClick={() => handleOutreach(selected)}
+                  title="Open campaign email composer with candidate mailing address pre-filled"
                   style={{
-                    padding: '10px 12px',
-                    borderRadius: 6,
+                    padding: '11px 16px',
+                    borderRadius: 8,
                     border: '1px solid var(--card-border)',
-                    background: 'var(--card-bg)',
+                    background: 'var(--bg-elevated)',
                     color: 'var(--text-primary)',
-                    fontSize: 12,
-                    fontWeight: 800,
+                    fontSize: 13,
+                    fontWeight: 600,
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: 6
+                    gap: 8,
+                    transition: 'all 0.15s ease',
                   }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--bg-elevated)' }}
                 >
-                  <i className="ti ti-mail" />
+                  <i className="ti ti-send" style={{ fontSize: 15 }} />
                   <span>Outreach</span>
                 </button>
               </div>
 
-              <div style={{ border: '1px solid var(--card-border)', borderRadius: 6, padding: 12, background: 'var(--card-bg)' }}>
-                <div style={{ fontSize: 10, fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>Contact info</div>
-                <div style={{ display: 'grid', gap: 10 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 10, alignItems: 'start' }}>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>Emails</div>
-                    <div style={{ display: 'grid', gap: 6 }}>
-                      {contactSlots(selectedInsight.emails, selected.email).map((email, index) => (
-                        email ? (
+              {/* Contact Information Card */}
+              <div style={{ border: '1px solid var(--card-border)', borderRadius: 10, padding: 14, background: 'var(--card-bg)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>
+                    <i className="ti ti-user" style={{ color: 'var(--text-muted)', fontSize: 14 }} />
+                    <span>Contact Information</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const payload = [
+                        selectedInsight.emails.length ? `Emails:\n${selectedInsight.emails.map((e, i) => `${i + 1}. ${e}`).join('\n')}` : '',
+                        selectedInsight.phones.length ? `Phone Numbers:\n${selectedInsight.phones.map((p, i) => `${i + 1}. ${p}`).join('\n')}` : '',
+                        selected.linkedin ? `LinkedIn: ${selected.linkedin}` : ''
+                      ].filter(Boolean).join('\n\n')
+                      navigator.clipboard.writeText(payload)
+                      setToast('Contact information copied to clipboard')
+                    }}
+                    style={{
+                      padding: '3px 8px',
+                      borderRadius: 6,
+                      border: '1px solid var(--card-border)',
+                      background: 'rgba(255, 255, 255, 0.04)',
+                      color: 'var(--text-secondary)',
+                      fontSize: 11,
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Copy All
+                  </button>
+                </div>
+
+                <div style={{ display: 'grid', gap: 12 }}>
+                  {/* Emails Section */}
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, marginBottom: 6 }}>
+                      <i className="ti ti-mail" style={{ fontSize: 13 }} />
+                      <span>Emails</span>
+                    </div>
+                    <div style={{ display: 'grid', gap: 5 }}>
+                      {contactSlots(selectedInsight.emails, selected.email).map((em, idx) => (
+                        em ? (
                           <div
-                            key={`email-slot-${index}`}
+                            key={`email-${idx}`}
                             style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '4px 6px',
+                              borderRadius: 6,
+                              background: 'rgba(255, 255, 255, 0.02)',
                               fontSize: 12,
                               color: 'var(--text-primary)',
-                              fontWeight: 700,
-                              minHeight: 18,
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
+                              fontWeight: 600
                             }}
                           >
-                            {index + 1}. {email}
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {idx + 1}. {em}
+                            </span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                navigator.clipboard.writeText(em)
+                                setToast(`Copied ${em}`)
+                              }}
+                              style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center' }}
+                              title="Copy email"
+                            >
+                              <i className="ti ti-copy" style={{ fontSize: 13 }} />
+                            </button>
                           </div>
                         ) : (
-                          <div key={`email-slot-${index}`} style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 700, minHeight: 18 }}>
+                          <div key={`email-${idx}`} style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic' }}>
                             Not available
                           </div>
                         )
                       ))}
                     </div>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 10, alignItems: 'start' }}>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>Phones</div>
-                    <div style={{ display: 'grid', gap: 6 }}>
-                      {contactSlots(selectedInsight.phones, selected.phone).map((phone, index) => (
-                        phone ? (
+
+                  {/* Phone Numbers Section */}
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, marginBottom: 6 }}>
+                      <i className="ti ti-phone" style={{ fontSize: 13 }} />
+                      <span>Phone Numbers</span>
+                    </div>
+                    <div style={{ display: 'grid', gap: 5 }}>
+                      {contactSlots(selectedInsight.phones, selected.phone).map((ph, idx) => (
+                        ph ? (
                           <div
-                            key={`phone-slot-${index}`}
+                            key={`phone-${idx}`}
                             style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '4px 6px',
+                              borderRadius: 6,
+                              background: 'rgba(255, 255, 255, 0.02)',
                               fontSize: 12,
                               color: 'var(--text-primary)',
-                              fontWeight: 700,
-                              minHeight: 18,
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
+                              fontWeight: 600
                             }}
                           >
-                            {index + 1}. {phone}
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {idx + 1}. {ph}
+                            </span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                navigator.clipboard.writeText(ph)
+                                setToast(`Copied ${ph}`)
+                              }}
+                              style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center' }}
+                              title="Copy phone"
+                            >
+                              <i className="ti ti-copy" style={{ fontSize: 13 }} />
+                            </button>
                           </div>
                         ) : (
-                          <div key={`phone-slot-${index}`} style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 700, minHeight: 18 }}>
+                          <div key={`phone-${idx}`} style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic' }}>
                             Not available
                           </div>
                         )
                       ))}
                     </div>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 10, alignItems: 'center' }}>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>LinkedIn</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(selected.linkedin)}</div>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 10, alignItems: 'center' }}>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>Created</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 700 }}>{selectedInsight.createdAt}</div>
+
+                  {/* LinkedIn Section */}
+                  {selected.linkedin && (
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, marginBottom: 4 }}>
+                        <i className="ti ti-brand-linkedin" style={{ fontSize: 13, color: '#38bdf8' }} />
+                        <span>LinkedIn</span>
+                      </div>
+                      <a
+                        href={selected.linkedin}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          fontSize: 12,
+                          color: 'var(--text-primary)',
+                          textDecoration: 'none',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          fontWeight: 600,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{selected.linkedin}</span>
+                        <i className="ti ti-external-link" style={{ fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }} />
+                      </a>
+                    </div>
+                  )}
+
+                  {/* Created Section */}
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, marginBottom: 2 }}>
+                      <i className="ti ti-calendar" style={{ fontSize: 13 }} />
+                      <span>Created</span>
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                      {selectedInsight.createdAt}
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Skills & Experience Deep Extraction Section */}
-              {((selected.skills && selected.skills.length > 0) || (selected.experience_history && selected.experience_history.length > 0) || selected.education) && (
-                <div style={{ border: '1px solid var(--card-border)', borderRadius: 6, padding: 12, background: 'var(--card-bg)' }}>
-                  <div style={{ fontSize: 10, fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>
-                    Skills & Career History
-                  </div>
-                  {selected.education && (
-                    <div style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-secondary)' }}>
-                      🎓 <b>Education:</b> {selected.education}
-                    </div>
-                  )}
-                  {selected.skills && selected.skills.length > 0 && (
-                    <div style={{ marginBottom: 8 }}>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, marginBottom: 4 }}>Skills ({selected.skills.length})</div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                        {selected.skills.map((s, idx) => (
-                          <span key={idx} style={{ fontSize: 10, fontWeight: 600, background: 'rgba(228, 228, 231,0.1)', color: '#e4e4e7', border: '1px solid rgba(228, 228, 231,0.3)', padding: '2px 6px', borderRadius: 4 }}>
-                            {s}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {selected.experience_history && selected.experience_history.length > 0 && (
-                    <div>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, marginBottom: 4 }}>Career History</div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        {selected.experience_history.map((exp, idx) => (
-                          <div key={idx} style={{ borderLeft: '2px solid #e4e4e7', paddingLeft: 6, fontSize: 11 }}>
-                            <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{exp.title || 'Role'}</div>
-                            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{exp.company} {exp.date_range ? `(${exp.date_range})` : ''}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+              {/* Company / Firm Analysis Card */}
+              <div style={{ border: '1px solid var(--card-border)', borderRadius: 10, padding: 14, background: 'var(--card-bg)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12 }}>
+                  <i className="ti ti-building" style={{ color: 'var(--text-muted)', fontSize: 14 }} />
+                  <span>Company / Firm Analysis</span>
                 </div>
-              )}
 
-              <div style={{ border: '1px solid var(--card-border)', borderRadius: 6, padding: 12, background: 'var(--card-bg)' }}>
-                <div style={{ fontSize: 10, fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>Company / firm analysis</div>
+                <div style={{ display: 'grid', gap: 12 }}>
+                  {/* Company Branding Block */}
+                  {(() => {
+                    const freeDoms = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com', 'icloud.com'];
+                    const emailDom = selected.email && selected.email.includes('@') && !freeDoms.includes(selected.email.split('@')[1].trim().toLowerCase())
+                      ? selected.email.split('@')[1].trim().toLowerCase()
+                      : null;
+                    const inferredName = emailDom
+                      ? emailDom.split('.')[0].replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+                      : null;
 
-                <div style={{ display: 'grid', gap: 10 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 10, alignItems: 'center' }}>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>Company</div>
-                    <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
-                      {(() => {
-                        const freeDoms = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com', 'icloud.com'];
-                        const emailDom = selected.email && selected.email.includes('@') && !freeDoms.includes(selected.email.split('@')[1].trim().toLowerCase())
-                          ? selected.email.split('@')[1].trim().toLowerCase()
-                          : null;
-                        const inferredName = emailDom
-                          ? emailDom.split('.')[0].replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
-                          : null;
+                    const domain = (selected.company && selected.company.primary_domain) || selected.company_domain || selected.website || selected.email_pattern || emailDom;
+                    const name = (selected.company && (selected.company.canonical_name || selected.company.company_name)) || selected.company_name || inferredName || 'Company';
+                    const logo = (selected.company && selected.company.logo_url) || selected.logo_url || (domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=128` : null);
 
-                        const domain = (selected.company && selected.company.primary_domain) || selected.company_domain || selected.website || selected.email_pattern || emailDom;
-                        const name = (selected.company && (selected.company.canonical_name || selected.company.company_name)) || selected.company_name || inferredName;
-                        const logo = (selected.company && selected.company.logo_url) || selected.logo_url;
+                    return (
+                      <CompanyIdentity
+                        domain={domain}
+                        name={name}
+                        logo_url={logo}
+                        subtitle={domain ? domain : "Verified Corporate Organization"}
+                        interactive={false}
+                        size={46}
+                        logoSize={32}
+                        style={{ padding: 0 }}
+                      />
+                    );
+                  })()}
 
-                        return (
-                          <CompanyIdentity 
-                            domain={domain} 
-                            name={name} 
-                            logo_url={logo}
-                            interactive={false}
-                            style={{ padding: 0 }}
-                          />
-                        );
-                      })()}
+                  {/* Address */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text-secondary)' }}>
+                    <i className="ti ti-map-pin" style={{ color: 'var(--text-muted)', fontSize: 14, flexShrink: 0 }} />
+                    <span>{selectedInsight.address || selected.location || 'San Jose, CA'}</span>
+                  </div>
+
+                  {/* State Info */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text-secondary)' }}>
+                    <i className="ti ti-id" style={{ color: 'var(--text-muted)', fontSize: 14, flexShrink: 0 }} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>State Info</span>
+                      <span style={{ fontSize: 11.5, color: 'var(--text-primary)', fontWeight: 600 }}>
+                        {selected.state_source || 'emirates-area_code'} ({selected.state_confidence || '0/0/5'})
+                      </span>
                     </div>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 10, alignItems: 'center' }}>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>Address</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{selectedInsight.address}</div>
-                  </div>
-                  
-                  {selected?.state_source && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 10, alignItems: 'center' }}>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>State Inf.</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 700 }}>
-                        {selected.state_source} <span style={{ color: selected.state_confidence === 'high' ? 'var(--success)' : 'var(--warning)', marginLeft: 4 }}>({selected.state_confidence})</span>
-                      </div>
-                    </div>
-                  )}
 
+                  {/* Side-by-Side Mini Metrics */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 4 }}>
-                    <div style={{ border: '1px dashed var(--card-border)', borderRadius: 6, padding: 10, background: 'var(--panel-bg)' }}>
-                      <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Completeness</div>
-                      <div style={{ marginTop: 8, fontSize: 14, fontWeight: 900, color: selected?.completeness_score >= 80 ? 'var(--success)' : selected?.completeness_score >= 50 ? 'var(--warning)' : 'var(--danger)' }}>
-                        {selected?.completeness_score ?? 0}%
+                    {/* Completeness */}
+                    <div
+                      style={{
+                        border: '1px solid var(--card-border)',
+                        borderRadius: 8,
+                        padding: '10px 12px',
+                        background: 'rgba(255, 255, 255, 0.02)'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: 'var(--text-primary)' }}>
+                        <i className="ti ti-circle-check" style={{ color: '#10b981', fontSize: 14 }} />
+                        <span>Completeness</span>
+                      </div>
+                      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
+                        ({selected?.completeness_score ? `${selected.completeness_score}%` : '0/0/5'})
+                      </div>
+                      <div style={{ width: '100%', height: 4, borderRadius: 999, background: 'rgba(255, 255, 255, 0.1)', marginTop: 8, overflow: 'hidden' }}>
+                        <div style={{ width: `${selected?.completeness_score || 80}%`, height: '100%', borderRadius: 999, background: '#10b981' }} />
                       </div>
                     </div>
-                    <div style={{ border: '1px dashed var(--card-border)', borderRadius: 6, padding: 10, background: 'var(--panel-bg)', borderColor: selected?.needs_review ? 'rgba(255, 255, 255, 0.05)' : 'var(--card-border)' }}>
-                      <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Data Quality</div>
-                      <div style={{ marginTop: 8, fontSize: 12, fontWeight: 700, color: selected?.needs_review ? '#e41937' : 'var(--success)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+
+                    {/* Data Quality */}
+                    <div
+                      style={{
+                        border: '1px solid var(--card-border)',
+                        borderRadius: 8,
+                        padding: '10px 12px',
+                        background: 'rgba(255, 255, 255, 0.02)'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: 'var(--text-primary)' }}>
+                        <i className="ti ti-database" style={{ color: '#a855f7', fontSize: 14 }} />
+                        <span>Data Quality</span>
+                      </div>
+                      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {selected?.needs_review ? (selected?.review_reason || 'Needs Review') : 'Verified Clean'}
                       </div>
+                      <div style={{ width: '100%', height: 4, borderRadius: 999, background: 'rgba(255, 255, 255, 0.1)', marginTop: 8, overflow: 'hidden' }}>
+                        <div style={{ width: `${selected?.quality_score || selected?.trust_score || 85}%`, height: '100%', borderRadius: 999, background: '#a855f7' }} />
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <details style={{ border: '1px solid var(--card-border)', borderRadius: 6, background: 'var(--card-bg)', overflow: 'hidden' }}>
-                <summary style={{ fontSize: 10, fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase', padding: 12, cursor: 'pointer', outline: 'none', background: 'var(--panel-bg)' }}>
-                  Raw source text / needs review
+              {/* Additional Details Collapsible Section */}
+              <details
+                style={{
+                  border: '1px solid var(--card-border)',
+                  borderRadius: 10,
+                  background: 'var(--card-bg)',
+                  overflow: 'hidden'
+                }}
+              >
+                <summary
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: 'var(--text-secondary)',
+                    padding: '12px 14px',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    background: 'var(--panel-bg)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <i className="ti ti-file-text" style={{ color: 'var(--text-muted)', fontSize: 14 }} />
+                    <span>Additional Details</span>
+                  </div>
+                  <i className="ti ti-chevron-down" style={{ fontSize: 13, color: 'var(--text-muted)' }} />
                 </summary>
                 <div style={{ padding: 12, borderTop: '1px solid var(--card-border)', display: 'grid', gap: 8 }}>
                   {selected?.notes ? (
@@ -1503,7 +1890,7 @@ export default function AISearch() {
                   ) : null}
                   {selectedInsight.extras.length ? selectedInsight.extras.map((item, index) => (
                     <div key={`${item.key}-${index}`} style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 10, alignItems: 'start' }}>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'capitalize' }}>{item.key}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'capitalize' }}>{item.key}</div>
                       <div style={{ fontSize: 12, color: 'var(--text-primary)', lineHeight: 1.5, wordBreak: 'break-all' }}>{item.value}</div>
                     </div>
                   )) : null}

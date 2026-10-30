@@ -87,12 +87,9 @@ export default function AdminTerminal() {
   // Admin Command Center is designed for dark mode; keep the theme consistent on this route.
   const prevThemeRef = useRef(null)
   useEffect(() => {
-    const prev = document.documentElement.getAttribute('data-theme') || 'dark'
-    prevThemeRef.current = prev
     document.documentElement.setAttribute('data-theme', 'dark')
-    return () => {
-      if (prevThemeRef.current) document.documentElement.setAttribute('data-theme', prevThemeRef.current)
-    }
+    document.documentElement.classList.add('dark')
+    return () => {}
   }, [])
 
   const [stats, setStats] = useState(null)

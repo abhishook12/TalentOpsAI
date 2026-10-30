@@ -678,7 +678,7 @@ export default function Directory() {
                       {(() => {
                         const count = company.recruiter_count || 0;
                         if (count >= 500) {
-                          return <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 6px', borderRadius: 4, background: 'rgba(228, 25, 55, 0.15)', color: '#e41937', border: '1px solid rgba(228, 25, 55, 0.3)', whiteSpace: 'nowrap' }}>Enterprise</span>;
+                          return <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 6px', borderRadius: 4, background: 'rgba(184, 213, 160, 0.15)', color: 'var(--brand)', border: '1px solid rgba(184, 213, 160, 0.3)', whiteSpace: 'nowrap' }}>Enterprise</span>;
                         } else if (count >= 50) {
                           return <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 6px', borderRadius: 4, background: 'rgba(255, 255, 255, 0.08)', color: 'var(--text-primary)', border: '1px solid var(--card-border)', whiteSpace: 'nowrap' }}>Mid-Market</span>;
                         } else {

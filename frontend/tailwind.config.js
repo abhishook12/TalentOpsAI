@@ -11,18 +11,32 @@ export default {
         black: "#000000",
         white: "#ffffff",
         brand: {
-          DEFAULT: "#e41937",
-          glow: "#fe063f",
-          subtle: "rgba(228, 25, 55, 0.15)",
-          border: "rgba(228, 25, 55, 0.35)",
-          dark: "#331219"
+          DEFAULT: "#B8D5A0",
+          glow: "#C9E2B3",
+          subtle: "rgba(184, 213, 160, 0.15)",
+          border: "rgba(184, 213, 160, 0.35)",
+          dark: "#1B1F1C"
         },
         "brand-red": {
-          DEFAULT: "#e41937",
-          glow: "#fe063f",
-          subtle: "rgba(228, 25, 55, 0.15)",
-          border: "rgba(228, 25, 55, 0.35)",
-          dark: "#331219"
+          DEFAULT: "#E58D87",
+          glow: "#FCA5A5",
+          subtle: "rgba(229, 141, 135, 0.15)",
+          border: "rgba(229, 141, 135, 0.35)",
+          dark: "#2A1817"
+        },
+        "brand-sage": {
+          DEFAULT: "#B8D5A0",
+          glow: "#C9E2B3",
+          subtle: "rgba(184, 213, 160, 0.15)",
+          border: "rgba(184, 213, 160, 0.35)",
+          dark: "#1B1F1C"
+        },
+        "brand-violet": {
+          DEFAULT: "#C4B5D9",
+          glow: "#D8CCE8",
+          subtle: "rgba(196, 181, 217, 0.15)",
+          border: "rgba(196, 181, 217, 0.35)",
+          dark: "#1F1B24"
         },
         grey: {
           900: "#121212",
@@ -100,11 +114,12 @@ export default {
         "lg": "24px"
       },
       "fontFamily": {
-        "body-lg": ["Geist", "sans-serif"],
-        "body-md": ["Geist", "sans-serif"],
-        "headline-md": ["Geist", "sans-serif"],
-        "headline-lg": ["Geist", "sans-serif"],
-        "display-lg": ["Geist", "sans-serif"],
+        "sans": ["-apple-system", "BlinkMacSystemFont", "\"SF Pro Display\"", "\"SF Pro Text\"", "\"SF Pro\"", "\"Helvetica Neue\"", "Helvetica", "Arial", "sans-serif"],
+        "body-lg": ["-apple-system", "BlinkMacSystemFont", "\"SF Pro Display\"", "\"SF Pro Text\"", "sans-serif"],
+        "body-md": ["-apple-system", "BlinkMacSystemFont", "\"SF Pro Text\"", "\"SF Pro Display\"", "sans-serif"],
+        "headline-md": ["-apple-system", "BlinkMacSystemFont", "\"SF Pro Display\"", "sans-serif"],
+        "headline-lg": ["-apple-system", "BlinkMacSystemFont", "\"SF Pro Display\"", "sans-serif"],
+        "display-lg": ["-apple-system", "BlinkMacSystemFont", "\"SF Pro Display\"", "sans-serif"],
         "label-sm": ["JetBrains Mono", "monospace"],
         "label-md": ["JetBrains Mono", "monospace"]
       },

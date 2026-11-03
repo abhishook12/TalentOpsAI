@@ -7,7 +7,6 @@ import time
 import asyncio
 import functools
 import re
-import pandas as pd
 
 from fastapi import APIRouter, Depends, Query, Request, Response, HTTPException
 from pydantic import BaseModel

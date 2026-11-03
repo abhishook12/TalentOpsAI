@@ -94,7 +94,7 @@ def _parse_json_blob(value):
 
 
 def _split_loose_values(value):
-    if not value:
+    if not value or value == "0.0" or value == 0 or value == 0.0:
         return []
     if isinstance(value, (list, tuple, set)):
         values = []
@@ -102,7 +102,7 @@ def _split_loose_values(value):
             values.extend(_split_loose_values(item))
         return values
     text = str(value).strip()
-    if not text:
+    if not text or text.lower() in ("0.0", "0", "none", "null", "nan", "[]"):
         return []
     if text.startswith("[") and text.endswith("]"):
         try:
@@ -111,7 +111,7 @@ def _split_loose_values(value):
                 return _split_loose_values(parsed)
         except Exception:
             pass
-    return [part.strip().strip("'\"[]") for part in re.split(r"[,\n;|]+", text) if part.strip().strip("'\"[]")]
+    return [part.strip().strip("'\"[]") for part in re.split(r"[,\n;|]+", text) if part.strip().strip("'\"[]") and part.strip().strip("'\"[]").lower() not in ("0.0", "0", "none", "null", "nan")]
 
 
 def _collect_text_values(value):
@@ -323,7 +323,7 @@ def _collect_all_contacts(record):
         _normalize_email,
     )
     all_phones = _dedupe_values(
-        [str(value).strip().strip("'\"[]()<>,;") for value in direct_phones + metadata_phones + _extract_phones_from_text(source_texts) if value and str(value).strip().strip("'\"[]()<>,;")],
+        [str(value).strip().strip("'\"[]()<>,;") for value in direct_phones + metadata_phones + _extract_phones_from_text(source_texts) if value and str(value).strip().strip("'\"[]()<>,;") and len(re.sub(r"\D+", "", str(value))) >= 7 and str(value).strip() not in ("0.0", "0", "nan", "null", "None")],
         lambda item: re.sub(r"\D+", "", _normalize_phone(item)),
     )
     return all_emails, all_phones
@@ -969,12 +969,18 @@ def get_recruiters(
         pg_query = None
         
         # Build strict scope filters so extension recruiters NEVER leak into unrelated companies or states
-        from .analytics import _get_pg_company_directory_index
-        pg_idx = _get_pg_company_directory_index(db)
+        eff_company = company_key or company
+        if company_id is None and not eff_company:
+            # Skip building the 35k company index when no company filter is applied
+            pg_idx = None
+        else:
+            from .analytics import _get_pg_company_directory_index
+            pg_idx = _get_pg_company_directory_index(db)
         pg_filters = []
         skip_pg_merge = False
-        eff_company = company_key or company
-        if company_id is not None:
+        if pg_idx is None:
+            pass  # Global search across all recruiters without company restriction
+        elif company_id is not None:
             if company_id in pg_idx["counts_all"]:
                 pg_filters.append(Recruiter.company_id == company_id)
             else:

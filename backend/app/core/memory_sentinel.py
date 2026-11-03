@@ -92,11 +92,11 @@ class MemorySentinel:
         )
         # Default container memory ceiling (Render free/starter is 512MB)
         self.default_limit_bytes = int(os.getenv("CONTAINER_MEMORY_LIMIT_MB", "512")) * 1024 * 1024
-        # Warning threshold (75% of limit, e.g. 384 MB on 512MB container)
-        self.warning_threshold_ratio = float(os.getenv("MEMORY_WARNING_RATIO", "0.75"))
+        # Proactive threshold (65% on Render = 332MB, 75% on desktop)
+        self.warning_threshold_ratio = float(os.getenv("MEMORY_WARNING_RATIO", "0.65" if self.is_render else "0.75"))
         self._running = False
         self._thread: Optional[threading.Thread] = None
-        self._interval = 25.0  # Check every 25 seconds
+        self._interval = 5.0 if self.is_render else 15.0  # Rapid 5s watchdog on Render
         self._last_stats: Dict[str, Any] = {}
         self._trims_performed = 0
 
@@ -171,7 +171,8 @@ class MemorySentinel:
             try:
                 from ..services.recruiter_store import recruiter_store
                 if recruiter_store._conn:
-                    recruiter_store._conn.execute("PRAGMA max_memory='48MB';")
+                    recruiter_store._conn.execute("CHECKPOINT;")
+                    recruiter_store._conn.execute("PRAGMA max_memory='32MB';")
             except Exception:
                 pass
 

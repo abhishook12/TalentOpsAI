@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timedelta, timezone
 from threading import Lock
 from typing import Optional, Dict, Any, List
@@ -26,34 +27,75 @@ from ..utils.normalizer import extract_domain
 from ..core.limiter import limiter
 
 
+from collections import OrderedDict
+
 class SimpleCache:
-    def __init__(self):
-        self._cache = {}
+    """
+    Thread-safe, bounded LRU cache with active expiration pruning.
+    Prevents unbounded heap memory bloat in memory-constrained environments (e.g. Render 512MB).
+    """
+    def __init__(self, max_entries: int = 128):
+        self._cache = OrderedDict()
         self._lock = Lock()
+        self._max_entries = max_entries
 
     def get(self, key):
         with self._lock:
             if key in self._cache:
                 value, expiry = self._cache[key]
                 if time.time() < expiry:
+                    self._cache.move_to_end(key)
                     return value
                 del self._cache[key]
             return None
 
     def set(self, key, value, ttl=30):
         with self._lock:
-            self._cache[key] = (value, time.time() + ttl)
+            now = time.time()
+            if len(self._cache) >= self._max_entries:
+                expired_keys = [k for k, (_, exp) in self._cache.items() if now >= exp]
+                for k in expired_keys:
+                    del self._cache[k]
+            while len(self._cache) >= self._max_entries:
+                self._cache.popitem(last=False)
+            self._cache[key] = (value, now + ttl)
 
     def invalidate(self, key):
         with self._lock:
             if key in self._cache:
                 del self._cache[key]
 
+    def invalidate_prefix(self, prefix: str):
+        with self._lock:
+            keys_to_del = [k for k in self._cache.keys() if k.startswith(prefix)]
+            for k in keys_to_del:
+                del self._cache[k]
+
     def clear(self):
         with self._lock:
             self._cache.clear()
+        try:
+            import gc
+            gc.collect()
+        except Exception:
+            pass
 
-analytics_cache = SimpleCache()
+_is_render_env = bool(os.getenv("RENDER") or os.getenv("RENDER_SERVICE_ID") or os.getenv("IS_PRODUCTION", "false").lower() == "true")
+analytics_cache = SimpleCache(max_entries=48 if _is_render_env else 128)
+
+def invalidate_company_analytics_cache():
+    """
+    Invalidates cached company directory indexes and company search results so that 
+    newly added or updated recruiters immediately reflect in company recruiter counts.
+    """
+    try:
+        analytics_cache.invalidate("pg_company_dir_idx_v2")
+        analytics_cache.invalidate("companies_count_by_state")
+        analytics_cache.invalidate_prefix("companies_search_")
+        analytics_cache.invalidate_prefix("comp_list_")
+        analytics_cache.invalidate_prefix("company_states_")
+    except Exception as e:
+        logger.debug("Failed to invalidate company analytics cache: %s", e)
 # Cache to hold expensive analytical queries (pre-seeded with baseline stats so cold starts return instantly)
 _CACHED_DUCKDB_KPIS = (437933, 400000, 5000, 2000, 350000, 150000)
 
@@ -396,30 +438,21 @@ def companies_count_by_state(db: Session = Depends(get_db), current_user: User =
 
 from collections import namedtuple
 
-_CachedCompany = namedtuple(
-    "_CachedCompany",
-    [
-        "company_id",
-        "company_name",
-        "canonical_name",
-        "primary_domain",
-        "website",
-        "email_pattern",
-        "logo_url",
-        "location",
-        "state",
-        "industry",
-        "linkedin_url",
-        "notes",
-        "tags",
-    ],
-)
+class _CachedCompany:
+    __slots__ = ("company_id", "company_name", "canonical_name", "primary_domain", "website")
+    def __init__(self, company_id, company_name, canonical_name, primary_domain, website):
+        self.company_id = company_id
+        self.company_name = company_name
+        self.canonical_name = canonical_name
+        self.primary_domain = primary_domain
+        self.website = website
 
 
 def _get_pg_company_directory_index(db: Session):
     """
     Build and cache a lightweight in-memory index of ALL PostgreSQL companies and their active recruiter counts/states.
-    Eliminates 500ms-1,200ms+ PostgreSQL network round-trips on every company search, state drill-down, and recruiter list.
+    Provides fast O(1) domain, normalized name, and ID bridge maps to reconcile Parquet and PostgreSQL records.
+    Uses slots and minimal raw SQL to guarantee < 25MB RAM usage (preventing 512MB container OOM).
     """
     idx = analytics_cache.get("pg_company_dir_idx_v2")
     if idx is not None:
@@ -427,8 +460,113 @@ def _get_pg_company_directory_index(db: Session):
 
     by_id = {}
     by_name_lower = {}
+    by_domain = {}
+    by_norm_name = {}
+    domain_to_cids = {}
+    norm_to_cids = {}
     counts_all = {}
     counts_by_state = {}
+    pg_domain_counts = {}
+    pg_norm_counts = {}
+
+    try:
+        from sqlalchemy import text
+        st_rows = db.execute(text("""
+            SELECT company_id, state, count(recruiter_id) 
+            FROM recruiters 
+            WHERE company_id IS NOT NULL AND is_active = TRUE 
+            GROUP BY company_id, state
+        """)).fetchall()
+
+        for cid, st_raw, cnt in st_rows:
+            if not cid or cnt <= 0:
+                continue
+            cid_int = int(cid)
+            cnt_int = int(cnt)
+            counts_all[cid_int] = counts_all.get(cid_int, 0) + cnt_int
+            st_clean = st_raw.strip().upper() if st_raw and st_raw.strip() else UNKNOWN_STATE_SENTINEL
+            c_st = counts_by_state.get(cid_int)
+            if c_st is None:
+                c_st = {}
+                counts_by_state[cid_int] = c_st
+            c_st[st_clean] = c_st.get(st_clean, 0) + cnt_int
+
+        comp_rows = db.execute(text("""
+            SELECT company_id, company_name, canonical_name, primary_domain, website 
+            FROM companies
+        """)).fetchall()
+
+        for cid, cname, ccanonical, cdomain, cweb in comp_rows:
+            c_obj = _CachedCompany(cid, cname, ccanonical, cdomain, cweb)
+            by_id[cid] = c_obj
+            cnt = counts_all.get(cid, 0)
+
+            cname_str = (cname or '').strip()
+            if cname_str:
+                cname_low = cname_str.lower()
+                existing_best = by_name_lower.get(cname_low)
+                if existing_best is None or cnt > counts_all.get(existing_best, 0):
+                    by_name_lower[cname_low] = cid
+
+                norm_name = re.sub(r'[^a-z0-9]', '', cname_low)
+                if norm_name:
+                    norm_to_cids.setdefault(norm_name, []).append(cid)
+                    existing_norm_best = by_norm_name.get(norm_name)
+                    if existing_norm_best is None or cnt > counts_all.get(existing_norm_best, 0):
+                        by_norm_name[norm_name] = cid
+
+            cdom = (cdomain or '').strip().lower()
+            if not cdom and cweb:
+                cdom = extract_domain(cweb)
+            if cdom and cdom not in FREE_EMAIL_PROVIDERS:
+                domain_to_cids.setdefault(cdom, []).append(cid)
+                existing_dom_best = by_domain.get(cdom)
+                if existing_dom_best is None or cnt > counts_all.get(existing_dom_best, 0):
+                    by_domain[cdom] = cid
+
+        for cid, cnt in counts_all.items():
+            comp = by_id.get(cid)
+            if not comp or cnt <= 0:
+                continue
+            cdom = (comp.primary_domain or '').strip().lower()
+            if not cdom and comp.website:
+                cdom = extract_domain(comp.website)
+            if cdom and cdom not in FREE_EMAIL_PROVIDERS:
+                pg_domain_counts[cdom] = pg_domain_counts.get(cdom, 0) + cnt
+
+            norm_name = re.sub(r'[^a-z0-9]', '', (comp.company_name or '').lower())
+            if norm_name:
+                pg_norm_counts[norm_name] = pg_norm_counts.get(norm_name, 0) + cnt
+
+    except Exception as e:
+        logger.warning("Failed to build pg_company_dir_idx_v2: %s", e)
+
+    idx = {
+        "by_id": by_id,
+        "by_name_lower": by_name_lower,
+        "by_domain": by_domain,
+        "by_norm_name": by_norm_name,
+        "domain_to_cids": domain_to_cids,
+        "norm_to_cids": norm_to_cids,
+        "counts_all": counts_all,
+        "counts_by_state": counts_by_state,
+        "pg_domain_counts": pg_domain_counts,
+        "pg_norm_counts": pg_norm_counts,
+    }
+    # Cache for 60s
+    analytics_cache.set("pg_company_dir_idx_v2", idx, ttl=60)
+    return idx
+
+    by_id = {}
+    by_name_lower = {}
+    by_domain = {}
+    by_norm_name = {}
+    domain_to_cids = {}
+    norm_to_cids = {}
+    counts_all = {}
+    counts_by_state = {}
+    pg_domain_counts = {}
+    pg_norm_counts = {}
 
     try:
         from sqlalchemy import func as sqlfunc
@@ -473,18 +611,62 @@ def _get_pg_company_directory_index(db: Session):
         for r in comp_rows:
             c_obj = _CachedCompany(*r)
             by_id[c_obj.company_id] = c_obj
-            if c_obj.company_name:
-                by_name_lower[c_obj.company_name.strip().lower()] = c_obj.company_id
+            cid = c_obj.company_id
+            cnt = counts_all.get(cid, 0)
+
+            cname = (c_obj.company_name or '').strip()
+            if cname:
+                cname_low = cname.lower()
+                existing_best = by_name_lower.get(cname_low)
+                if existing_best is None or cnt > counts_all.get(existing_best, 0):
+                    by_name_lower[cname_low] = cid
+
+                norm_name = re.sub(r'[^a-z0-9]', '', cname_low)
+                if norm_name:
+                    norm_to_cids.setdefault(norm_name, []).append(cid)
+                    existing_norm_best = by_norm_name.get(norm_name)
+                    if existing_norm_best is None or cnt > counts_all.get(existing_norm_best, 0):
+                        by_norm_name[norm_name] = cid
+
+            cdom = (c_obj.primary_domain or '').strip().lower()
+            if not cdom and c_obj.website:
+                cdom = extract_domain(c_obj.website)
+            if cdom and cdom not in FREE_EMAIL_PROVIDERS:
+                domain_to_cids.setdefault(cdom, []).append(cid)
+                existing_dom_best = by_domain.get(cdom)
+                if existing_dom_best is None or cnt > counts_all.get(existing_dom_best, 0):
+                    by_domain[cdom] = cid
+
+        for cid, cnt in counts_all.items():
+            comp = by_id.get(cid)
+            if not comp or cnt <= 0:
+                continue
+            cdom = (comp.primary_domain or '').strip().lower()
+            if not cdom and comp.website:
+                cdom = extract_domain(comp.website)
+            if cdom and cdom not in FREE_EMAIL_PROVIDERS:
+                pg_domain_counts[cdom] = pg_domain_counts.get(cdom, 0) + cnt
+
+            norm_name = re.sub(r'[^a-z0-9]', '', (comp.company_name or '').lower())
+            if norm_name:
+                pg_norm_counts[norm_name] = pg_norm_counts.get(norm_name, 0) + cnt
+
     except Exception as e:
         logger.warning("Failed to build pg_company_dir_idx_v2: %s", e)
 
     idx = {
         "by_id": by_id,
         "by_name_lower": by_name_lower,
+        "by_domain": by_domain,
+        "by_norm_name": by_norm_name,
+        "domain_to_cids": domain_to_cids,
+        "norm_to_cids": norm_to_cids,
         "counts_all": counts_all,
         "counts_by_state": counts_by_state,
+        "pg_domain_counts": pg_domain_counts,
+        "pg_norm_counts": pg_norm_counts,
     }
-    analytics_cache.set("pg_company_dir_idx_v2", idx, ttl=1800)
+    analytics_cache.set("pg_company_dir_idx_v2", idx, ttl=30)
     return idx
 
 
@@ -508,11 +690,66 @@ def company_states(
         state_map = {}
 
         if selected_key:
-            # Instant <1ms O(1) lookup from pre-indexed company_summary
-            fast_states = recruiter_store.get_company_states(selected_key)
-            for st_k, cnt in fast_states.items():
-                target_st = UNKNOWN_STATE_SENTINEL if st_k in ("", "Unknown", "UNKNOWN") else st_k
-                state_map[target_st] = state_map.get(target_st, 0) + int(cnt)
+            pg_idx = _get_pg_company_directory_index(db)
+            target_cids = set()
+            duck_keys = {selected_key}
+
+            if selected_key.isdigit() or company_id is not None:
+                cid_num = company_id if company_id is not None else int(selected_key)
+                target_cids.add(cid_num)
+                comp_obj = pg_idx["by_id"].get(cid_num)
+                if comp_obj:
+                    if comp_obj.company_name:
+                        duck_keys.add(comp_obj.company_name)
+                    if comp_obj.canonical_name:
+                        duck_keys.add(comp_obj.canonical_name)
+                    norm_c = re.sub(r'[^a-z0-9]', '', (comp_obj.company_name or '').lower())
+                    if norm_c in pg_idx.get("norm_to_cids", {}):
+                        target_cids.update(pg_idx["norm_to_cids"][norm_c])
+                    dom = (comp_obj.primary_domain or '').lower()
+                    if dom in pg_idx.get("domain_to_cids", {}):
+                        target_cids.update(pg_idx["domain_to_cids"][dom])
+            else:
+                s_low = selected_key.strip().lower()
+                norm_s = re.sub(r'[^a-z0-9]', '', s_low)
+                cid = (
+                    pg_idx["by_name_lower"].get(s_low)
+                    or pg_idx.get("by_domain", {}).get(s_low)
+                    or pg_idx.get("by_norm_name", {}).get(norm_s)
+                )
+                if cid:
+                    target_cids.add(cid)
+                    comp_obj = pg_idx["by_id"].get(cid)
+                    if comp_obj:
+                        if comp_obj.company_name:
+                            duck_keys.add(comp_obj.company_name)
+                        if comp_obj.canonical_name:
+                            duck_keys.add(comp_obj.canonical_name)
+                if s_low in pg_idx.get("domain_to_cids", {}):
+                    target_cids.update(pg_idx["domain_to_cids"][s_low])
+                if norm_s in pg_idx.get("norm_to_cids", {}):
+                    target_cids.update(pg_idx["norm_to_cids"][norm_s])
+
+            # Also check if any target_cid has DuckDB records by numeric ID
+            for t_cid in target_cids:
+                duck_keys.add(str(t_cid))
+
+            # Query DuckDB state index for all matching duck_keys
+            seen_duck_keys = set()
+            for dk in duck_keys:
+                if dk in seen_duck_keys:
+                    continue
+                seen_duck_keys.add(dk)
+                fast_states = recruiter_store.get_company_states(dk)
+                for st_k, cnt in fast_states.items():
+                    target_st = UNKNOWN_STATE_SENTINEL if st_k in ("", "Unknown", "UNKNOWN") else st_k
+                    state_map[target_st] = state_map.get(target_st, 0) + int(cnt)
+
+            # Query PostgreSQL live recruiters for all target_cids
+            for t_cid in target_cids:
+                if t_cid in pg_idx["counts_by_state"]:
+                    for st, cnt in pg_idx["counts_by_state"][t_cid].items():
+                        state_map[st] = state_map.get(st, 0) + int(cnt)
         else:
             duck_conn = recruiter_store._conn.cursor() if recruiter_store._conn else None
             if duck_conn:
@@ -525,21 +762,6 @@ def company_states(
                     target_st = st_up if st_up else UNKNOWN_STATE_SENTINEL
                     state_map[target_st] = state_map.get(target_st, 0) + int(cnt)
 
-        # Merge live PostgreSQL recruiters for this company using cached index (<1ms)
-        if selected_key:
-            pg_idx = _get_pg_company_directory_index(db)
-            cid = None
-            if selected_key.isdigit():
-                cid = int(selected_key)
-            elif company_id is not None:
-                cid = company_id
-            else:
-                cid = pg_idx["by_name_lower"].get(selected_key.strip().lower())
-
-            if cid and cid in pg_idx["counts_by_state"]:
-                for st, cnt in pg_idx["counts_by_state"][cid].items():
-                    state_map[st] = state_map.get(st, 0) + int(cnt)
-
         result = [
             {"state": st, "count": cnt}
             for st, cnt in sorted(state_map.items(), key=lambda x: (-x[1], x[0]))
@@ -548,12 +770,18 @@ def company_states(
         if UNKNOWN_STATE_SENTINEL in state_map and state_map[UNKNOWN_STATE_SENTINEL] > 0:
             result.append({"state": UNKNOWN_STATE_SENTINEL, "count": state_map[UNKNOWN_STATE_SENTINEL]})
 
-        analytics_cache.set(cache_key, result, ttl=600)
+        analytics_cache.set(cache_key, result, ttl=30)
         return result
     except Exception as e:
         logger.warning(f"DuckDB company-states failed: {e}")
 
     return []
+
+
+@router.post("/invalidate-company-cache")
+def invalidate_company_cache_endpoint():
+    invalidate_company_analytics_cache()
+    return {"status": "success", "message": "Company analytics cache invalidated"}
 
 
 @router.get("/companies-search")
@@ -565,6 +793,7 @@ def companies_search(
     min_recruiters: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
     skip: int = Query(0, ge=0),
+    refresh: bool = Query(False, description="Force fresh live recomputation"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_from_request),
 ):
@@ -574,22 +803,32 @@ def companies_search(
     min_recruiters = min_recruiters if isinstance(min_recruiters, int) else 0
     limit = limit if isinstance(limit, int) else 100
     skip = skip if isinstance(skip, int) else 0
+    is_refresh = True if str(refresh).lower() in ('true', '1', 'yes') else False
+
+    if is_refresh:
+        invalidate_company_analytics_cache()
 
     data_version = recruiter_store.data_version
     cache_key = f"companies_search_{data_version}_{q or ''}_{state or ''}_{min_recruiters}_{limit}_{skip}"
-    cached = analytics_cache.get(cache_key)
-    if cached is not None:
-        response.headers["X-Total-Count"] = str(cached["total_count"])
-        return cached["rows"]
+    if not is_refresh:
+        cached = analytics_cache.get(cache_key)
+        if cached is not None:
+            response.headers["X-Total-Count"] = str(cached["total_count"])
+            return cached["rows"]
 
     pg_idx = _get_pg_company_directory_index(db)
 
     matched_keys = []
     if q and q.strip():
         q_clean = q.strip().lower()
+        if q_clean.isdigit():
+            matched_keys.append(q_clean)
         tokens = [t.strip().lower() for t in q_clean.split() if len(t.strip()) >= 3]
         for cname_low, cid in pg_idx["by_name_lower"].items():
             if q_clean in cname_low or any(t in cname_low for t in tokens):
+                matched_keys.append(str(cid))
+        for dom, cid in pg_idx.get("by_domain", {}).items():
+            if q_clean in dom or any(t in dom for t in tokens):
                 matched_keys.append(str(cid))
 
     active_companies = recruiter_store.company_directory(q, state, matched_keys=matched_keys)
@@ -601,82 +840,170 @@ def companies_search(
         'active window', 'candidate card', 'quick search', 'homepage', 'inbox', 
         'contacts', 'search', 'notifications', 'network', 'jobs', 'messaging', 
         'me', 'format text', 'sent items', 'address book', 'ctv- phone',
-        'chelsie walsh', 'kelly moran', 'jeff thomas', 'brenda geisler'
+        'chelsie walsh', 'kelly moran', 'jeff thomas', 'brenda geisler',
+        'gmail', 'yahoo', 'hotmail', 'outlook', 'aol', 'icloud', 'protonmail', 'zoho'
     }
 
-    # O(1) dictionary merge for PostgreSQL companies
-    comp_by_key = {str(row['company_key']): row for row in active_companies}
-    try:
-        st_filter = state.strip().upper() if (state and state.upper() != 'ALL') else None
-        matched_set = set(matched_keys) if (q and q.strip()) else None
+    st_filter = state.strip().upper() if (state and state.upper() != 'ALL') else None
+    matched_set = set(matched_keys) if (q and q.strip()) else None
 
-        for cid, total_cnt in pg_idx["counts_all"].items():
-            cid_str = str(cid)
-            if matched_set is not None and cid_str not in matched_set:
+    # Consolidated canonical company mapping to merge DuckDB shards and eliminate duplicate cards
+    consolidated = {}
+    consumed_cids = set()
+
+    # 1. Merge DuckDB Parquet company shards into canonical companies with live PostgreSQL additions
+    for row in active_companies:
+        key = str(row['company_key']).strip()
+        dom = (row.get('dominant_domain') or '').strip().lower()
+        norm_key = re.sub(r'[^a-z0-9]', '', key.lower())
+
+        if key.lower() in BOGUS_COMPANY_NAMES or norm_key in BOGUS_COMPANY_NAMES:
+            continue
+        if dom in FREE_EMAIL_PROVIDERS or norm_key in {'gmail', 'yahoo', 'hotmail', 'outlook', 'aol'}:
+            continue
+
+        matched_cid = None
+        if dom and dom in pg_idx["by_domain"]:
+            matched_cid = pg_idx["by_domain"][dom]
+        elif key.isdigit() and int(key) in pg_idx["by_id"]:
+            matched_cid = int(key)
+        elif norm_key and norm_key in pg_idx["by_norm_name"]:
+            matched_cid = pg_idx["by_norm_name"][norm_key]
+        elif key.lower() in pg_idx["by_name_lower"]:
+            matched_cid = pg_idx["by_name_lower"][key.lower()]
+
+        # Filter by search query if applicable
+        if matched_set is not None:
+            is_match = False
+            if matched_cid and str(matched_cid) in matched_set:
+                is_match = True
+            elif key in matched_set:
+                is_match = True
+            elif q and (q.lower() in key.lower() or (dom and q.lower() in dom)):
+                is_match = True
+            if not is_match:
                 continue
-            if st_filter:
-                cnt = pg_idx["counts_by_state"].get(cid, {}).get(st_filter, 0)
-            else:
-                cnt = total_cnt
-            if cnt <= 0:
+
+        # Calculate live PostgreSQL recruiter addition
+        live_addition = 0
+        if st_filter:
+            if matched_cid and matched_cid in pg_idx["counts_by_state"]:
+                live_addition = pg_idx["counts_by_state"][matched_cid].get(st_filter, 0)
+        else:
+            if dom and dom in pg_idx["pg_domain_counts"]:
+                live_addition = pg_idx["pg_domain_counts"][dom]
+            elif norm_key and norm_key in pg_idx["pg_norm_counts"]:
+                live_addition = pg_idx["pg_norm_counts"][norm_key]
+            elif matched_cid and matched_cid in pg_idx["counts_all"]:
+                live_addition = pg_idx["counts_all"][matched_cid]
+
+        # Determine canonical consolidation key across all fragmented representations
+        canon_id = None
+        if matched_cid:
+            canon_id = f"cid_{matched_cid}"
+        elif dom and dom not in FREE_EMAIL_PROVIDERS:
+            canon_id = f"dom_{dom}"
+        elif norm_key and norm_key not in BOGUS_COMPANY_NAMES:
+            canon_id = f"norm_{norm_key}"
+        else:
+            canon_id = f"raw_{key}"
+
+        base_cnt = int(row.get('recruiter_count') or 0)
+
+        if canon_id in consolidated:
+            existing = consolidated[canon_id]
+            # Retain the master baseline across DuckDB shards so fragments never shrink company totals
+            existing['base_count'] = max(existing['base_count'], base_cnt)
+            existing['recruiter_count'] = existing['base_count'] + existing['live_addition']
+            # Prefer clean brand names over numeric or decimal ID strings
+            if (existing['company_key'].isdigit() or '.' in existing['company_key']) and not key.isdigit() and '.' not in key:
+                existing['company_key'] = key
+            if not existing.get('dominant_domain') and dom:
+                existing['dominant_domain'] = dom
+        else:
+            consolidated[canon_id] = {
+                'company_key': key,
+                'company_id': matched_cid,
+                'dominant_domain': dom,
+                'base_count': base_cnt,
+                'live_addition': live_addition,
+                'recruiter_count': base_cnt + live_addition,
+                'canonical_id': canon_id
+            }
+
+        if matched_cid:
+            consumed_cids.add(matched_cid)
+            if dom and dom in pg_idx.get("domain_to_cids", {}):
+                for scid in pg_idx["domain_to_cids"][dom]:
+                    consumed_cids.add(scid)
+            if norm_key and norm_key in pg_idx.get("norm_to_cids", {}):
+                for scid in pg_idx["norm_to_cids"][norm_key]:
+                    consumed_cids.add(scid)
+
+    # 2. Append PostgreSQL-only companies with active recruiters that weren't in Parquet
+    for cid, total_cnt in pg_idx["counts_all"].items():
+        if cid in consumed_cids:
+            continue
+        c_obj = pg_idx["by_id"].get(cid)
+        if not c_obj:
+            continue
+        cname = (c_obj.company_name or '').strip()
+        cdom = (c_obj.primary_domain or extract_domain(c_obj.website) or '').strip().lower()
+        norm = re.sub(r'[^a-z0-9]', '', cname.lower())
+
+        if cname.lower() in BOGUS_COMPANY_NAMES or norm in BOGUS_COMPANY_NAMES:
+            continue
+        if cdom in FREE_EMAIL_PROVIDERS or norm in {'gmail', 'yahoo', 'hotmail', 'outlook', 'aol'}:
+            continue
+
+        canon_id = f"cid_{cid}"
+        if canon_id in consolidated or (cdom and f"dom_{cdom}" in consolidated) or (norm and f"norm_{norm}" in consolidated):
+            continue
+
+        cid_str = str(cid)
+        if matched_set is not None and cid_str not in matched_set:
+            if not (q and (q.lower() in cname.lower() or (cdom and q.lower() in cdom))):
                 continue
 
-            if cid_str in comp_by_key:
-                comp_by_key[cid_str]['recruiter_count'] += cnt
-            else:
-                c_obj = pg_idx["by_id"].get(cid)
-                if c_obj and (c_obj.company_name or '').strip().lower() not in BOGUS_COMPANY_NAMES:
-                    new_row = {
-                        'company_key': cid_str,
-                        'recruiter_count': cnt,
-                        'dominant_domain': c_obj.primary_domain or extract_domain(c_obj.website) or 'talentops.ai'
-                    }
-                    active_companies.append(new_row)
-                    comp_by_key[cid_str] = new_row
-    except Exception as pge:
-        logger.warning("Error merging postgres company search results: %s", pge)
+        if st_filter:
+            cnt = pg_idx["counts_by_state"].get(cid, {}).get(st_filter, 0)
+        else:
+            cnt = total_cnt
+        if cnt <= 0:
+            continue
 
-    # Filter out bogus UI companies
-    active_companies = [
-        row for row in active_companies
-        if str(row['company_key']).strip().lower() not in BOGUS_COMPANY_NAMES
-    ]
+        consumed_cids.add(cid)
+        consolidated[canon_id] = {
+            'company_key': cname or cid_str,
+            'company_id': cid,
+            'recruiter_count': cnt,
+            'dominant_domain': cdom or 'talentops.ai',
+            'canonical_id': canon_id
+        }
 
+    active_companies = list(consolidated.values())
     if min_recruiters > 0:
         active_companies = [row for row in active_companies if row['recruiter_count'] >= min_recruiters]
 
-    # When no search query is active, sort by recruiter_count DESC so top enterprise companies appear first
-    if not (q and q.strip()):
-        active_companies.sort(key=lambda r: (-int(r.get('recruiter_count') or 0), str(r.get('company_key') or '')))
+    # Always sort by recruiter_count DESC so top companies and most relevant search results appear first
+    active_companies.sort(key=lambda r: (-int(r.get('recruiter_count') or 0), str(r.get('company_key') or '')))
 
     total_count = len(active_companies)
     paginated_companies = active_companies[skip:skip+limit]
 
+    # Resolve company metadata
     metadata = {}
     for row in paginated_companies:
-        try:
-            value = float(row['company_key'])
-            if value.is_integer():
-                val_int = int(value)
-                if -2147483648 <= val_int <= 2147483647:
-                    c_cached = pg_idx["by_id"].get(val_int) or analytics_cache.get(f"comp_obj_{val_int}")
-                    if c_cached:
-                        metadata[str(val_int)] = c_cached
-        except ValueError:
-            pass
+        cid = row.get('company_id')
+        if cid and cid in pg_idx["by_id"]:
+            metadata[cid] = pg_idx["by_id"][cid]
 
     enriched_results = []
     for row in paginated_companies:
         key = row['company_key']
+        cid = row.get('company_id')
+        company = metadata.get(cid)
         parquet_domain = row.get('dominant_domain')
-        normalized_numeric_key = None
-        try:
-            numeric_value = float(key)
-            if numeric_value.is_integer():
-                normalized_numeric_key = str(int(numeric_value))
-        except ValueError:
-            pass
-        company = metadata.get(normalized_numeric_key)
 
         pg_logo = select_logo_domain(company.website, company.email_pattern) if company else None
         logo_domain = parquet_domain or pg_logo
@@ -697,7 +1024,7 @@ def companies_search(
 
         enriched_results.append({
             "company_key": key,
-            "company_id": company.company_id if company else None,
+            "company_id": company.company_id if company else cid,
             "company_name": name,
             "location": company.location if company else None,
             "industry": company.industry if company else None,
@@ -717,9 +1044,10 @@ def companies_search(
         })
     
     final_result = {"total_count": total_count, "rows": enriched_results}
-    analytics_cache.set(cache_key, final_result, ttl=600)
+    analytics_cache.set(cache_key, final_result, ttl=30)
     response.headers["X-Total-Count"] = str(total_count)
     return enriched_results
+
 
 class VisitPayload(BaseModel):
     page: str

@@ -111,7 +111,7 @@ def safe_duckdb_connect(memory_limit: Optional[str] = None, threads: Optional[in
     is_render = bool(os.getenv("RENDER") or os.getenv("RENDER_SERVICE_ID") or os.getenv("IS_PRODUCTION", "false").lower() == "true")
     
     if memory_limit is None:
-        memory_limit = "256MB" if is_render else "2GB"
+        memory_limit = "32MB" if is_render else "2GB"
     if threads is None:
         threads = 1 if is_render else 2
 
@@ -356,7 +356,7 @@ class RecruiterStore:
         self._conn = duckdb.connect(":memory:")
         
         is_render = bool(os.getenv("RENDER") or os.getenv("RENDER_SERVICE_ID") or os.getenv("IS_PRODUCTION", "false").lower() == "true")
-        max_mem = os.getenv("DUCKDB_MAX_MEMORY", "64MB" if is_render else "512MB")
+        max_mem = os.getenv("DUCKDB_MAX_MEMORY", "32MB" if is_render else "512MB")
         num_threads = int(os.getenv("DUCKDB_THREADS", "1" if is_render else "4"))
 
         try:
@@ -557,6 +557,9 @@ class RecruiterStore:
             self._conn = None
             self._loaded = False
             self._email_cache = {}
+            self._counts_by_key = None
+            self._counts_by_domain = None
+            self._counts_by_norm = None
         self._ensure_loaded()
 
     @property
@@ -780,13 +783,20 @@ class RecruiterStore:
         email_status: Optional[str] = None,
         data_source: Optional[str] = None,
         date_filter: Optional[str] = None,
+        is_priority_contact: Optional[bool] = None,
+        priority_tier: Optional[str] = None,
+        priority_leaders: Optional[str] = None,
         sort_by: str = "created_at",
         sort_desc: bool = True,
+        **kwargs
     ) -> Tuple[List[Dict[str, Any]], int]:
         """
         List recruiters with filtering and pagination.
         Returns (results, total_count).
         """
+        if is_priority_contact is True or priority_leaders == "yes":
+            return [], 0
+
         self._ensure_loaded()
 
         where_clauses = []
@@ -1088,6 +1098,71 @@ class RecruiterStore:
             "SELECT COUNT(*) FROM recruiters WHERE CAST(company_id AS VARCHAR) = ?", [str(company_id)]
         ).fetchone()
         return result[0] if result else 0
+
+    def company_recruiter_counts_for_companies(self, companies: List[Any]) -> Dict[int, int]:
+        """
+        Targeted fast O(1) lookup of Parquet baseline recruiter counts for a list of Company objects.
+        Bridges PostgreSQL Company model instances to DuckDB Parquet by ID, company name, and dominant domain.
+        """
+        if not companies:
+            return {}
+        self._ensure_loaded()
+        if not hasattr(self, '_counts_by_key') or self._counts_by_key is None:
+            try:
+                rows = self._conn.execute("SELECT LOWER(TRIM(company_key)), CAST(recruiter_count AS INTEGER), LOWER(TRIM(COALESCE(dominant_domain, ''))) FROM company_overall").fetchall()
+                by_key = {}
+                by_domain = {}
+                by_norm = {}
+                for r in rows:
+                    k, cnt, dom = r[0], int(r[1]), r[2]
+                    if k:
+                        by_key[k] = max(by_key.get(k, 0), cnt)
+                        norm_k = re.sub(r'[^a-z0-9]', '', k)
+                        if norm_k:
+                            by_norm[norm_k] = max(by_norm.get(norm_k, 0), cnt)
+                    if dom:
+                        by_domain[dom] = max(by_domain.get(dom, 0), cnt)
+                self._counts_by_key = by_key
+                self._counts_by_domain = by_domain
+                self._counts_by_norm = by_norm
+            except Exception as e:
+                logger.warning("Failed to build company count fast maps: %s", e)
+                self._counts_by_key = {}
+                self._counts_by_domain = {}
+                self._counts_by_norm = {}
+
+        result = {}
+        for c in companies:
+            cid = getattr(c, 'company_id', None)
+            if cid is None and isinstance(c, dict):
+                cid = c.get('company_id')
+            if cid is None:
+                continue
+
+            cname = getattr(c, 'company_name', None) or (c.get('company_name') if isinstance(c, dict) else '')
+            cdom = getattr(c, 'primary_domain', None) or (c.get('primary_domain') if isinstance(c, dict) else '')
+            if not cdom:
+                cweb = getattr(c, 'website', None) or (c.get('website') if isinstance(c, dict) else '')
+                if cweb:
+                    cdom = cweb.replace('https://', '').replace('http://', '').split('/')[0].strip().lower()
+                    if cdom.startswith('www.'):
+                        cdom = cdom[4:]
+
+            cid_str = str(cid)
+            cname_str = (cname or '').strip().lower()
+            cdom_str = (cdom or '').strip().lower()
+            norm_str = re.sub(r'[^a-z0-9]', '', cname_str)
+
+            # Consolidate candidate counts by norm, domain, and key, selecting the true enterprise total
+            cnt = max(
+                self._counts_by_norm.get(norm_str, 0),
+                self._counts_by_domain.get(cdom_str, 0),
+                self._counts_by_key.get(cname_str, 0),
+                self._counts_by_key.get(cid_str, 0)
+            )
+            result[cid] = cnt
+
+        return result
 
     def company_recruiter_counts_by_ids(self, company_ids: List[int]) -> Dict[int, int]:
         """Get recruiter counts for a specific set of company IDs (targeted fast query)."""

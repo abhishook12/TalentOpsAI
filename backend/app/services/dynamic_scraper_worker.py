@@ -68,6 +68,18 @@ class DynamicScraperWorker:
         or has < 3.5 GB free memory, guaranteeing zero impact on desktop apps/Chrome.
         """
         try:
+            # Check Linux container cgroup memory limits if present
+            try:
+                from ..core.memory_sentinel import read_cgroup_memory
+                used_b, limit_b = read_cgroup_memory()
+                if used_b is not None and limit_b and limit_b > 0:
+                    cgroup_pct = (used_b / limit_b) * 100
+                    if cgroup_pct >= 65.0:
+                        logger.info("[DYNAMIC_SCRAPER] Container cgroup memory guard active (%.1f%%) — skipping headless browser", cgroup_pct)
+                        return True
+            except Exception:
+                pass
+
             import psutil
             vm = psutil.virtual_memory()
             free_gb = vm.available / (1024 ** 3)

@@ -1,3 +1,5 @@
+import os
+os.environ.setdefault('MALLOC_ARENA_MAX', '2')
 import logging
 import os
 import sys
@@ -312,11 +314,17 @@ if RUN_STARTUP_MIGRATIONS:
     except Exception as e:
         logger.warning("Migration warning: %s", e)
 
+from .core.sentry import init_sentry, is_sentry_active, capture_exception, capture_security_alert
+init_sentry()
+
 app = FastAPI(
     title="TalentOps AI",
     description="Recruitment Operations Intelligence Platform",
     version="1.1.0",
 )
+
+from .core.security_sentinel import AutonomousSecurityMiddleware, security_sentinel
+app.add_middleware(AutonomousSecurityMiddleware)
 
 from .core.limiter import limiter
 app.state.limiter = limiter
@@ -334,6 +342,21 @@ async def request_id_middleware(request: Request, call_next):
     return response
 
 from .resource_lockdown import is_locked_down, get_lockdown_reason, check_system_limits
+
+_REQ_COUNTER = 0
+
+@app.middleware("http")
+async def memory_hygiene_middleware(request: Request, call_next):
+    global _REQ_COUNTER
+    response = await call_next(request)
+    _REQ_COUNTER += 1
+    if _REQ_COUNTER % 50 == 0:
+        try:
+            from .core.memory_sentinel import trim_os_memory
+            trim_os_memory()
+        except Exception:
+            pass
+    return response
 
 @app.middleware("http")
 async def lockdown_middleware(request: Request, call_next):
@@ -508,6 +531,11 @@ app.include_router(outlook_feedback.router, prefix="/api")
 app.include_router(outlook_feedback.router)
 app.include_router(system_windows.router)
 app.include_router(system_windows.router, prefix="/api")
+from .routes import teams_daily
+app.include_router(teams_daily.router)
+app.include_router(teams_daily.router, prefix="/api")
+from .routes import campaign_priority_intelligence
+app.include_router(campaign_priority_intelligence.router)
 
 
 
@@ -537,6 +565,25 @@ async def get_version():
 @app.get("/ping")
 async def ping():
     return {"status": "ok"}
+
+@app.get("/api/sentry/status")
+@app.get("/sentry/status")
+async def sentry_status():
+    return {
+        "status": "healthy",
+        "sentry_enabled": is_sentry_active(),
+        "environment": os.getenv("ENV", "development"),
+        "version": _GIT_HASH,
+    }
+
+@app.get("/sentry-debug")
+async def trigger_sentry_debug():
+    division_by_zero = 1 / 0
+    return {"result": division_by_zero}
+
+@app.get("/api/security/sentinel-status")
+async def get_security_sentinel_status():
+    return security_sentinel.get_status()
 
 
 import asyncio
@@ -705,6 +752,14 @@ async def startup_event():
         if ENABLE_DISCOVERY_LOOP:
             asyncio.create_task(discovery_batch_processor_loop())
 
+        # Start Automated Daily Snapshot & Backup Engine
+        from .services.backup_service import backup_service
+        asyncio.create_task(backup_service.run_daily_backup_loop())
+
+        # Start Campaign Priority Intelligence & Cross-Entity Validation Engine
+        from .services.campaign_priority_intelligence_service import campaign_priority_service
+        asyncio.create_task(campaign_priority_service.run_background_loop())
+
         try:
             await restart_active_campaigns()
         except Exception as e:
@@ -798,12 +853,11 @@ async def startup_event():
         except Exception as harvest_err:
             logger.warning("WebHarvest engine initialization warning: %s", harvest_err)
 
-        # Launch Offline Harvest Buffer + Render Watchdog
-        # Buffers all discoveries locally when Render is suspended (HTTP 503).
-        # The moment Render comes back online, auto-flushes everything to production.
+        # Launch Offline Harvest Buffer + Render Watchdog (Desktop only, skip on Render)
         try:
-            from .services.offline_buffer import offline_buffer
-            offline_buffer.start_watchdog()
+            if not (os.getenv("RENDER") or os.getenv("RENDER_SERVICE_ID")):
+                from .services.offline_buffer import offline_buffer
+                offline_buffer.start_watchdog()
             pending = offline_buffer.get_pending_count()
             if pending > 0:
                 logger.info(

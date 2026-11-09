@@ -48,6 +48,30 @@ const recruitersRoute = createRoute({
   component: lazyComponent(() => import('./pages/Recruiters')),
 })
 
+const candidatesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/candidates',
+  component: lazyComponent(() => import('./pages/Recruiters')),
+})
+
+const candidateProfileRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/candidates/$id',
+  component: lazyComponent(() => import('./pages/CandidateProfile')),
+})
+
+const candidateProfileQueryRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/candidate-profile',
+  component: lazyComponent(() => import('./pages/CandidateProfile')),
+})
+
+const recruiterProfileDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/recruiters/$id',
+  component: lazyComponent(() => import('./pages/CandidateProfile')),
+})
+
 const analyticsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/analytics',
@@ -320,6 +344,10 @@ const routeTree = rootRoute.addChildren([
   resetPasswordRoute,
   verifyEmailRoute,
   recruitersRoute,
+  candidatesRoute,
+  candidateProfileRoute,
+  candidateProfileQueryRoute,
+  recruiterProfileDetailRoute,
   analyticsRoute,
   searchRoute,
   directoryRoute,

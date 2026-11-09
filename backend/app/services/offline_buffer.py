@@ -543,7 +543,9 @@ class OfflineHarvestBuffer:
                         continue
 
                     staging = DiscoveryStaging(
+                        batch_id         = (f"batch_{row['discovery_id']}")[:64],
                         discovery_id     = row["discovery_id"],
+                        device_id        = "SCOUT-OFFLINE-BUFFER",
                         raw_name         = row["raw_name"],
                         raw_title        = row["raw_title"],
                         raw_company      = row["raw_company"],
@@ -553,8 +555,8 @@ class OfflineHarvestBuffer:
                         raw_location     = row["raw_location"],
                         source_url       = row["source_url"],
                         extraction_source= row["extraction_source"] or "web_harvest",
-                        quality_score    = row["quality_score"] or 0.7,
-                        dom_confidence   = row["dom_confidence"] or 0.7,
+                        quality_score    = int((row["quality_score"] or 0.7) * 100) if isinstance(row["quality_score"], (float, int)) and row["quality_score"] <= 1.0 else int(row["quality_score"] or 70),
+                        dom_confidence   = int((row["dom_confidence"] or 0.7) * 100) if isinstance(row["dom_confidence"], (float, int)) and row["dom_confidence"] <= 1.0 else int(row["dom_confidence"] or 70),
                         geo_region       = row["geo_region"],
                         geo_confidence   = row["geo_confidence"],
                         owner_user_id    = row["owner_user_id"] or 1,

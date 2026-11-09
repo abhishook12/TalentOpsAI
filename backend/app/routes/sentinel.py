@@ -211,14 +211,24 @@ def get_data_quality_anomalies(
         ORDER BY completeness_score ASC, recruiter_id ASC
         LIMIT {limit} OFFSET {offset}
         """
-        rows = _store._conn.execute(data_q).fetchall()
+        try:
+            _store._ensure_loaded()
+            cur = _store._conn.cursor()
+            rows = cur.execute(data_q).fetchall()
+        except Exception as q_err:
+            logger.warning(f"[SENTINEL] Query failed ({q_err}), reloading store...")
+            _store._loaded = False
+            _store._conn = None
+            _store._ensure_loaded()
+            rows = _store._conn.cursor().execute(data_q).fetchall()
         
         for r in rows:
             # Resolve company name if possible
             cid = r[6]
             cname = f"Company #{cid}" if cid else "Unassigned"
-            if cid and _store._company_registry and cid in _store._company_registry:
-                cname = _store._company_registry[cid].get("name", cname)
+            company_registry = getattr(_store, "_company_registry", None)
+            if cid and company_registry and cid in company_registry:
+                cname = company_registry[cid].get("name", cname)
                 
             anomalies.append({
                 "recruiter_id": r[0],

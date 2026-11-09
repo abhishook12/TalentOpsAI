@@ -52,7 +52,9 @@ ROUTINE_CHECK_PROMPT = (
     "and Night Sweeper loops.\n"
     "5. Deliverability & Corporate Email Gate: Verify the 5-phase Corporate Email Intelligence Gate and Scout dual-sync status.\n"
     "6. Desktop Workstation Tools: Verify Vitel Global (Softphone/Dialer), Microsoft Outlook, and Microsoft Teams are running and ready.\n"
-    "7. Summary & Report: Provide an executive health checklist and flag any issues or anomalies that require user attention."
+    "7. Daily 5-Day Teams Collection: Verify that the 5-working-day background Teams collection engine is active or scheduled for its 2-hour morning window to ingest previous workday candidate cards and sync to Master DB.\n"
+    "8. Daily Chrome Tabs Wakeup & Refresh: Verify and trigger the one-time morning refresh of all tabs across all open Google Chrome windows on screen so they wake up ready without manual refresh.\n"
+    "9. Summary & Report: Provide an executive health checklist and flag any issues or anomalies that require user attention."
 )
 
 
@@ -295,6 +297,31 @@ def trigger_daily_antigravity_routine_check(force: bool = False, source: str = "
         ensure_daily_work_apps()
     except Exception as e:
         logger.warning(f"Note: Could not run ensure_daily_work_apps from daily routine: {e}")
+
+    # Launch or verify the Daily 5-Day Teams Background Collection (runs for first 2 hours on weekdays)
+    try:
+        if WORKSPACE_DIR not in sys.path:
+            sys.path.insert(0, WORKSPACE_DIR)
+        from backend.app.services.teams_daily_collection_service import teams_daily_service
+        teams_res = teams_daily_service.start_collection(
+            duration_seconds=7200,
+            force=False,
+            source=f"DAILY_ROUTINE_{source}"
+        )
+        logger.info(f"Daily Teams 2-hour collection trigger result: {teams_res.get('status')}")
+    except Exception as te:
+        logger.warning(f"Note: Could not start daily Teams collection from routine: {te}")
+
+    # Trigger Campaign Priority Intelligence & Cross-Entity Validation Cycle
+    try:
+        if WORKSPACE_DIR not in sys.path:
+            sys.path.insert(0, WORKSPACE_DIR)
+        from backend.app.services.campaign_priority_intelligence_service import campaign_priority_service
+        logger.info("Executing Campaign Priority Intelligence cycle from daily routine...")
+        cp_res = campaign_priority_service.run_full_cycle()
+        logger.info(f"Campaign Priority Intelligence routine result: {cp_res.get('status')}")
+    except Exception as cpe:
+        logger.warning(f"Note: Campaign Priority Intelligence cycle warning in routine: {cpe}")
 
     # 2. Resolve language server environment (address & csrf token)
     env = resolve_antigravity_env(max_wait_sec=20.0)

@@ -9,9 +9,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import Dict, Any, List
 
-from backend.app.database import get_db
-from backend.app.services.campaign_priority_intelligence_service import campaign_priority_service
-from backend.app.models.models import Recruiter, Company
+from ..database import get_db
+from ..services.campaign_priority_intelligence_service import campaign_priority_service
+from ..models.models import Recruiter, Company
 
 router = APIRouter(prefix="/api/campaigns/priority-intelligence", tags=["Campaign Priority Intelligence"])
 

@@ -4,7 +4,7 @@ import {
   X, Mail, Phone, ExternalLink, Building2, MapPin, Award,
   ShieldCheck, CheckCircle2, Copy, Check, Send, Sparkles,
   Calendar, Clock, User, ChevronRight, AlertTriangle, Wand2, RefreshCw, Users,
-  PhoneCall, Hash, FileText
+  PhoneCall, Hash, FileText, Maximize2
 } from 'lucide-react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
@@ -344,8 +344,9 @@ export default function RecruiterProfileDrawer({
       if (!item) continue;
       const str = String(item).replace(/[\[\]"']/g, '').trim();
       const digits = str.replace(/[^\d]/g, '');
-      if (digits.length >= 7 && !seen.has(digits)) {
-        seen.add(digits);
+      const key = digits.length >= 10 ? digits.slice(-10) : digits;
+      if (digits.length >= 7 && !seen.has(key)) {
+        seen.add(key);
         result.push(str);
       }
     }
@@ -439,6 +440,19 @@ export default function RecruiterProfileDrawer({
               style={{ borderBottom: '1px solid var(--card-border, #343B35)', background: 'var(--panel-bg, #1B1F1C)' }}
             >
               <button
+                onClick={() => {
+                  sessionStorage.setItem('talentops_active_candidate', JSON.stringify(recruiter));
+                  if (onClose) onClose();
+                  navigate({ to: `/candidates/${recruiter.recruiter_id || recruiter.id || ''}` });
+                }}
+                className="absolute top-5 right-14 h-8 px-2.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-400 text-xs font-semibold"
+                title="Open Complete 360° Profile"
+              >
+                <Maximize2 className="w-3.5 h-3.5" />
+                <span>Full Profile</span>
+              </button>
+
+              <button
                 onClick={onClose}
                 className="absolute top-5 right-5 w-8 h-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer hover:bg-white/10"
                 style={{ color: 'var(--text-muted, #a1a1aa)' }}
@@ -492,6 +506,16 @@ export default function RecruiterProfileDrawer({
                       size="xs"
                       detailed={true}
                     />
+                    {recruiter.is_priority_contact && (
+                      <span
+                        className="px-2.5 py-0.5 rounded-full text-[10px] font-bold border tracking-wide uppercase flex items-center gap-1 shadow-sm"
+                        style={{ background: 'rgba(234, 179, 8, 0.18)', color: '#eab308', borderColor: 'rgba(234, 179, 8, 0.45)' }}
+                        title={`Priority Decision Maker / Active Campaign Contact (${recruiter.priority_tier || 'TOP_DECISION_MAKER'}) • Sent: ${recruiter.campaign_sent_count || 0}`}
+                      >
+                        <Sparkles className="w-3 h-3 text-yellow-400" />
+                        {recruiter.priority_tier === 'TOP_DECISION_MAKER' ? 'TOP DECISION MAKER' : 'PRIORITY LEADER'}
+                      </span>
+                    )}
                   </div>
                   <h2 className="text-xl font-bold tracking-tight truncate m-0 leading-tight" style={{ color: 'var(--text-primary, #F1F0E8)' }}>
                     {name}
@@ -540,6 +564,17 @@ export default function RecruiterProfileDrawer({
                   >
                     <ExternalLink className="w-4 h-4" /> LinkedIn Profile
                   </a>
+                ) : recruiter.linkedin_search_url ? (
+                  <a
+                    href={recruiter.linkedin_search_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold no-underline transition-all shadow-md cursor-pointer"
+                    style={{ background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.35)', color: '#38bdf8' }}
+                    title="Find candidate profile on LinkedIn via 1-click Google search"
+                  >
+                    <ExternalLink className="w-4 h-4" /> Find on LinkedIn
+                  </a>
                 ) : allPhones[0] ? (
                   <a
                     href={`tel:${allPhones[0]}`}
@@ -549,6 +584,40 @@ export default function RecruiterProfileDrawer({
                   </a>
                 ) : null}
               </div>
+
+              {/* Priority Leadership & Campaign Activity Dossier */}
+              {recruiter.is_priority_contact && (
+                <div
+                  className="p-4 rounded-xl space-y-2.5 border"
+                  style={{ background: 'rgba(234, 179, 8, 0.05)', borderColor: 'rgba(234, 179, 8, 0.25)' }}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Award className="w-4 h-4 text-yellow-400" />
+                      <span className="text-xs font-bold uppercase tracking-wider text-yellow-400">
+                        Campaign Priority Decision Maker
+                      </span>
+                    </div>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-yellow-500/10 text-yellow-300 border border-yellow-500/20">
+                      {recruiter.priority_tier || 'TOP_DECISION_MAKER'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 pt-1 text-[11px] text-zinc-300">
+                    <div className="p-2 rounded bg-zinc-900/80 border border-zinc-800">
+                      <div className="text-[10px] uppercase text-zinc-500 font-medium">Outreach Delivery Count</div>
+                      <div className="font-mono text-white font-semibold mt-0.5">
+                        {recruiter.campaign_sent_count || 0} Emails Dispatched
+                      </div>
+                    </div>
+                    <div className="p-2 rounded bg-zinc-900/80 border border-zinc-800">
+                      <div className="text-[10px] uppercase text-zinc-500 font-medium">Last Campaign Activity</div>
+                      <div className="font-mono text-white font-semibold mt-0.5 truncate">
+                        {recruiter.last_campaign_at ? new Date(recruiter.last_campaign_at).toLocaleDateString() : 'Active In Campaign'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Teams Autonomous Stream Origin Dossier (if candidate was harvested from Teams chat) */}
               {isTeamsSource && (
@@ -892,19 +961,30 @@ export default function RecruiterProfileDrawer({
             >
               <button
                 onClick={() => {
+                  sessionStorage.setItem('talentops_active_candidate', JSON.stringify(recruiter));
+                  if (onClose) onClose();
+                  navigate({ to: `/candidates/${recruiter.recruiter_id || recruiter.id || ''}` });
+                }}
+                className="px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer bg-emerald-500 text-black hover:bg-emerald-400 shadow-md"
+              >
+                <Maximize2 className="w-4 h-4" /> View Full Profile
+              </button>
+
+              <button
+                onClick={() => {
                   const phoneStr = allPhones.length > 0 ? ` | Phones: ${allPhones.join(', ')}` : '';
                   copyToClipboard(`${name} <${allEmails.join(', ')}> - ${company}${phoneStr}`, 'Full Dossier');
                 }}
-                className="px-4 py-2.5 rounded-xl text-xs font-semibold transition-colors flex items-center gap-2 cursor-pointer bg-white/10 hover:bg-white/15 text-white border border-white/20"
+                className="px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer bg-white/10 hover:bg-white/15 text-white border border-white/20"
               >
-                <Copy className="w-4 h-4" /> Copy Complete Profile
+                <Copy className="w-3.5 h-3.5" /> Copy Profile
               </button>
 
               <button
                 onClick={() => handleOutreachCampaign(recruiter)}
-                className="px-5 py-2.5 rounded-xl text-xs font-bold bg-white text-black hover:bg-zinc-200 transition-colors flex items-center gap-2 shadow-md cursor-pointer"
+                className="px-4 py-2.5 rounded-xl text-xs font-bold bg-white text-black hover:bg-zinc-200 transition-colors flex items-center gap-1.5 shadow-md cursor-pointer"
               >
-                <Send className="w-4 h-4 text-black" /> Add to Campaign
+                <Send className="w-3.5 h-3.5 text-black" /> Add to Campaign
               </button>
             </div>
           </motion.div>

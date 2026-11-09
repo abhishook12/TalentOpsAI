@@ -101,6 +101,9 @@ def post_heartbeat(
     Heartbeat ping sent by active Scout Desktop nodes every 15-30 seconds.
     Verifies that the device is active, tracks recent capture and page context.
     """
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
     device = db.query(ExtensionDevice).filter(ExtensionDevice.device_id == payload.device_id).first()
     if device and not device.is_active:
         raise HTTPException(status_code=403, detail="Device access has been revoked by administrator")

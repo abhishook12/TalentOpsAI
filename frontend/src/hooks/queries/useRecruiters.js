@@ -34,6 +34,9 @@ export function useRecruiters(page = 1, search = '', filters = {}) {
       if (filters.email_inference_status) params.append('email_inference_status', filters.email_inference_status)
       if (filters.data_source) params.append('data_source', filters.data_source)
       if (filters.date_filter) params.append('date_filter', filters.date_filter)
+      if (filters.priority_leaders) params.append('priority_leaders', filters.priority_leaders)
+      if (filters.is_priority_contact) params.append('is_priority_contact', filters.is_priority_contact)
+      if (filters.priority_tier) params.append('priority_tier', filters.priority_tier)
       if (filters.sort_by) params.append('sort_by', filters.sort_by)
       if (filters.sort_desc) params.append('sort_desc', filters.sort_desc === 'true' ? 'true' : 'false')
 
@@ -76,6 +79,9 @@ export function usePrefetchRecruiters(page, search, filters) {
     if (filters?.email_inference_status) params.append('email_inference_status', filters.email_inference_status)
     if (filters?.data_source) params.append('data_source', filters.data_source)
     if (filters?.date_filter) params.append('date_filter', filters.date_filter)
+    if (filters?.priority_leaders) params.append('priority_leaders', filters.priority_leaders)
+    if (filters?.is_priority_contact) params.append('is_priority_contact', filters.is_priority_contact)
+    if (filters?.priority_tier) params.append('priority_tier', filters.priority_tier)
     if (filters?.sort_by) params.append('sort_by', filters.sort_by)
     if (filters?.sort_desc) params.append('sort_desc', filters.sort_desc === 'true' ? 'true' : 'false')
 

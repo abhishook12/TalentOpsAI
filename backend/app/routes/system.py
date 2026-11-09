@@ -143,3 +143,42 @@ def trigger_mx_refresh(
 
     background_tasks.add_task(_run_mx_worker)
     return {"status": "queued", "message": "DNS MX Pre-Validation background task dispatched."}
+
+
+class ChromeRefreshRequest(BaseModel):
+    force: bool = False
+    delay: float = 0.5
+
+
+@router.get("/chrome-tabs/status")
+def get_chrome_tabs_status():
+    """Returns today's execution status and metrics for the Chrome tabs refresh routine."""
+    try:
+        from ..services.chrome_tab_refresher import chrome_tab_refresher
+        state = chrome_tab_refresher.read_state()
+        return {
+            "service": "ChromeTabRefresher",
+            "has_run_today": chrome_tab_refresher.has_run_today(),
+            "today": chrome_tab_refresher.get_today_str(),
+            "state": state,
+        }
+    except Exception as e:
+        logger.error(f"Error fetching chrome tabs status: {e}")
+        return {"service": "ChromeTabRefresher", "error": str(e), "has_run_today": False}
+
+
+@router.post("/chrome-tabs/refresh")
+def trigger_chrome_tabs_refresh(req: ChromeRefreshRequest = ChromeRefreshRequest()):
+    """Triggers the daily one-time wakeup and refresh routine for all open Chrome tabs."""
+    try:
+        from ..services.chrome_tab_refresher import chrome_tab_refresher
+        res = chrome_tab_refresher.refresh_all_tabs(
+            force=req.force,
+            source="API_TRIGGER",
+            tab_delay_sec=req.delay
+        )
+        return res
+    except Exception as e:
+        logger.error(f"Error executing chrome tabs refresh: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+

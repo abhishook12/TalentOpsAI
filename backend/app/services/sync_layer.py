@@ -21,6 +21,11 @@ class SyncManager:
     def request_sync(self):
         with self._lock:
             self._sync_requested = True
+        try:
+            from app.routes.analytics import invalidate_company_analytics_cache
+            invalidate_company_analytics_cache()
+        except Exception:
+            pass
 
     def start(self):
         if self._thread is None or not self._thread.is_alive():

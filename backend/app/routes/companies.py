@@ -36,7 +36,7 @@ from ..models.models import Recruiter
 
 from ..services.recruiter_store import recruiter_store
 
-from .analytics import analytics_cache, DOMAIN_DISPLAY_NAMES
+from .analytics import analytics_cache, DOMAIN_DISPLAY_NAMES, invalidate_company_analytics_cache
 
 @router.get("")
 @router.get("/")
@@ -46,11 +46,13 @@ def get_companies(
     skip: int = 0, 
     limit: int = Query(50, ge=1, le=100), 
     state: Optional[str] = None,
+    company_id: Optional[int] = Query(None),
+    search: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
     if page is not None:
         skip = (page - 1) * limit
-    cache_key = f"comp_list_{skip}_{limit}_{state or ''}"
+    cache_key = f"comp_list_{skip}_{limit}_{state or ''}_{company_id or ''}_{search or ''}"
     cached = analytics_cache.get(cache_key)
     if cached is not None:
         response.headers["X-Total-Count"] = str(cached.get("total_count", 0))
@@ -58,6 +60,18 @@ def get_companies(
 
     query = db.query(Company).filter(Company.is_active == True)
     
+    if company_id:
+        query = query.filter(Company.company_id == company_id)
+    if search:
+        from sqlalchemy import or_
+        s_term = search.strip()
+        query = query.filter(
+            or_(
+                Company.company_name.ilike(f"%{s_term}%"),
+                Company.primary_domain.ilike(f"%{s_term}%"),
+                Company.canonical_name.ilike(f"%{s_term}%")
+            )
+        )
     if state:
         abbr = normalize_state(state)
         if abbr:
@@ -70,7 +84,7 @@ def get_companies(
     
     # Fast targeted recruiter counts from DuckDB and PostgreSQL for the returned page
     company_ids = [r.company_id for r in results]
-    counts_map = recruiter_store.company_recruiter_counts_by_ids(company_ids)
+    counts_map = recruiter_store.company_recruiter_counts_for_companies(results)
     
     # Also fetch live PostgreSQL recruiter counts for these companies
     pg_counts = {}
@@ -123,7 +137,18 @@ def get_company(company_id: int, db: Session = Depends(get_db), current_user: Us
     c = db.query(Company).filter(Company.company_id == company_id).first()
     if not c:
         raise HTTPException(status_code=404, detail="Company not found")
-    return c
+    
+    from sqlalchemy import func as sqlfunc
+    counts_map = recruiter_store.company_recruiter_counts_for_companies([c])
+    pg_count = db.query(sqlfunc.count(Recruiter.recruiter_id)).filter(
+        Recruiter.company_id == company_id,
+        Recruiter.is_active == True
+    ).scalar() or 0
+    
+    c_dict = {col.name: getattr(c, col.name) for col in c.__table__.columns}
+    c_dict["total_recruiters"] = counts_map.get(company_id, 0) + pg_count
+    c_dict["active_recruiters"] = counts_map.get(company_id, 0) + pg_count
+    return c_dict
 
 from ..utils.state_mapper import normalize_state
 
@@ -136,6 +161,11 @@ def create_company(data: CompanyCreate, db: Session = Depends(get_db), current_u
     c = Company(user_id=current_user.id, **c_data, state=state)
     db.add(c)
     db.commit()
+    try:
+        from ..services.sync_layer import sync_manager
+        sync_manager.request_sync()
+    except Exception:
+        pass
     db.refresh(c)
     return c
 

@@ -11,7 +11,7 @@ from typing import Optional
 from ..database import get_db
 from ..models.models import Recruiter, Company, Candidate, Submission, Vendor, PageVisit
 from ..models.models import UploadJob, ActionLog
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from collections import defaultdict
 from functools import wraps
 import time

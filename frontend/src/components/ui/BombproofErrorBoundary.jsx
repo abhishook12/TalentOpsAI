@@ -4,6 +4,7 @@ import { AlertTriangle, RefreshCw, RotateCcw, ChevronDown, ChevronUp } from 'luc
 /**
  * BombproofErrorBoundary: High-resilience error boundary that isolates component crashes,
  * prevents white-screen cascades, and provides 1-click automated self-healing recovery.
+ * Also auto-dismisses errors from browser extensions (Copilot, Grammarly, etc.)
  */
 export default class BombproofErrorBoundary extends Component {
   constructor(props) {
@@ -17,10 +18,45 @@ export default class BombproofErrorBoundary extends Component {
   }
 
   static getDerivedStateFromError(error) {
+    // Check if this is a known browser extension error before triggering error state
+    const msg = String(error?.message || '').toLowerCase();
+    const stack = String(error?.stack || '').toLowerCase();
+    const EXTENSION_SIGNATURES = [
+      'lottie',              // Microsoft Copilot extension
+      'grammarly',           // Grammarly extension
+      'extension://',        // Generic browser extension URLs
+      'chrome-extension://',
+      'moz-extension://',
+      'lastpass',            // LastPass
+      'kaspersky',           // Kaspersky
+      '_dash_',              // Dash extensions
+      'ciscobinary',         // Cisco WebEx
+    ];
+    const isExtensionError = EXTENSION_SIGNATURES.some(sig => msg.includes(sig) || stack.includes(sig));
+    if (isExtensionError) {
+      console.warn(`[BombproofErrorBoundary] Browser extension error suppressed: "${error?.message}"`);
+      return null; // Don't trigger error state for extension errors
+    }
     return { hasError: true, error };
   }
 
   componentDidCatch(error, errorInfo) {
+    // Double-check for extension errors (in case getDerivedStateFromError couldn't fully detect)
+    const msg = String(error?.message || '').toLowerCase();
+    const stack = String(error?.stack || '').toLowerCase();
+    const EXTENSION_SIGNATURES = [
+      'lottie', 'grammarly', 'extension://', 'chrome-extension://',
+      'moz-extension://', 'lastpass', 'kaspersky', '_dash_', 'ciscobinary',
+    ];
+    const isExtensionError = EXTENSION_SIGNATURES.some(sig => msg.includes(sig) || stack.includes(sig));
+    if (isExtensionError) {
+      console.warn(`[BombproofErrorBoundary] Browser extension error auto-recovered: "${error?.message}"`);
+      setTimeout(() => {
+        this.setState({ hasError: false, error: null, errorInfo: null });
+      }, 50);
+      return;
+    }
+
     this.setState({ errorInfo });
     console.error(`[BombproofErrorBoundary] Caught exception in ${this.props.componentName || 'Component'}:`, error, errorInfo);
     

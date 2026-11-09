@@ -256,16 +256,9 @@ def reconstruct_name_from_email(name: str, email: str) -> Optional[str]:
     return None
 
 def synthesize_linkedin_url(name: str) -> Optional[str]:
-    if not name or ' ' not in name:
-        return None
-    name_clean = normalize('NFKD', name).encode('ascii', 'ignore').decode('ascii')
-    name_clean = re.sub(r',\s*(ph\.?d|m\.?d|mba|mph|pmp|csm|cpa|esq|jr\.?|sr\.?|ii|iii|iv)', '', name_clean, flags=re.IGNORECASE)
-    name_clean = re.split(r'\s*[|]\s*', name_clean)[0]
-    slug = re.sub(r"[^a-z0-9]+", "-", name_clean.lower().strip()).strip('-')
-    slug = re.sub(r'-+', '-', slug)
-    if not slug or len(slug) < 3 or '-' not in slug:
-        return None
-    return f"https://www.linkedin.com/in/{slug}"
+    # Strictly prohibited per User Mandate: never synthesize unverified LinkedIn profile URLs.
+    # Returns None so missing profiles can fall back cleanly to 1-click verified search.
+    return None
 
 def infer_specialization(title: str) -> str:
     if not title:
@@ -478,11 +471,13 @@ class EnrichmentEngine:
                 updates["specialization"] = inferred_spec
                 spec = inferred_spec
                 
-        # 5. LinkedIn Profile URL Synthesis
-        if name and ' ' in name and not linkedin:
-            synth_li = synthesize_linkedin_url(name)
-            if synth_li:
-                updates["linkedin"] = synth_li
+        # 5. LinkedIn Search URL Fallback (Never synthesize fake profile URLs)
+        if name and not linkedin and not rec.get("linkedin_search_url"):
+            clean_n = name.strip()
+            clean_c = rec.get("company_name") or ""
+            q_str = f'site:linkedin.com/in "{clean_n}" "{clean_c}"'.strip()
+            import urllib.parse
+            updates["linkedin_search_url"] = f"https://www.google.com/search?q={urllib.parse.quote_plus(q_str)}"
                 
         # 6. Recalculate Quality & Trust Scores if anything changed
         if updates:

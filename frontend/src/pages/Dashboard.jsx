@@ -121,6 +121,10 @@ export default function Dashboard() {
         localStorage.removeItem('dashboard_dashboard-top-companies')
       } catch { /* ignore */ }
 
+      try {
+        await api.post('/analytics/invalidate-company-cache')
+      } catch { /* ignore */ }
+
       await Promise.all([
         queryClient.refetchQueries({ queryKey: ['dashboard-kpis'] }),
         queryClient.refetchQueries({ queryKey: ['dashboard-data-quality'] }),
@@ -396,7 +400,7 @@ export default function Dashboard() {
             <div style={{ display: 'grid', gap: 10 }}>
               {topCompanies.map((company, index) => (
                 <button
-                  key={company.company_id}
+                  key={company.company_id || company.company_key || index}
                   onClick={() => navigate({ to: '/companies' })}
                   style={{
                     display: 'flex',

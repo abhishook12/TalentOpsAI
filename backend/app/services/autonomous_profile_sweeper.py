@@ -667,17 +667,24 @@ class AutonomousProfileSweeper:
         4. Synchronizes affected PostgreSQL recruiter records.
         """
         t0 = time.time()
-        con = safe_duckdb_connect(memory_limit="512MB", threads=1)
+        con = safe_duckdb_connect(memory_limit="256MB", threads=1)
+        import tempfile
+        try:
+            spill_dir = os.path.join(tempfile.gettempdir(), "duckdb_sweeper_spill")
+            os.makedirs(spill_dir, exist_ok=True)
+            con.execute(f"SET temp_directory='{spill_dir.replace(os.sep, '/')}';")
+            con.execute("SET preserve_insertion_order=false;")
+        except Exception:
+            pass
         
         target_file = PARQUET_FILE.replace(os.sep, "/")
         
         # Sequential Profile-by-Profile Quality Sweeper:
-        # Traverses all recruiter profiles in the dataset, inspecting each for defects.
+        # Traverses un-swept recruiter profiles using projection pushdown without expensive full-dataset sorting.
         # Once swept, records are stamped sentinel_status = 'swept_clean'.
         query = f"""
             SELECT * FROM read_parquet('{target_file}')
             WHERE (sentinel_status IS NULL OR sentinel_status != 'swept_clean')
-            ORDER BY recruiter_id ASC
             LIMIT {limit}
         """
         

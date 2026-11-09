@@ -92,16 +92,8 @@ class ContactEnrichmentWorker:
 
     @staticmethod
     def synthesize_linkedin_url(name: str) -> Optional[str]:
-        """
-        Generate a probable LinkedIn profile URL from a recruiter's name.
-        
-        Returns None if the name cannot produce a meaningful slug.
-        """
-        slug = ContactEnrichmentWorker._normalize_name(name)
-        if not slug or len(slug) < 3 or '-' not in slug:
-            return None  # Need at least first-last format
-        
-        return f"https://www.linkedin.com/in/{slug}"
+        # Strictly prohibited per User Mandate: never synthesize unverified LinkedIn profile URLs.
+        return None
 
     # ─── Phone Propagation ───────────────────────────────────────────────────
 
@@ -285,16 +277,16 @@ class ContactEnrichmentWorker:
                     update = {'recruiter_id': int(record['recruiter_id'])}
                     enriched = False
 
-                    # Vector 1: LinkedIn URL synthesis
+                    # Vector 1: LinkedIn 1-Click Search URL Generation (No fake profile URLs)
                     current_linkedin = safe_str(record.get('linkedin'))
-                    if not current_linkedin or 'linkedin.com' not in current_linkedin:
+                    if not current_linkedin and not record.get('linkedin_search_url'):
                         name = safe_str(record.get('recruiter_name'))
+                        comp = safe_str(record.get('company_name')) or ''
                         if name:
-                            linkedin_url = self.synthesize_linkedin_url(name)
-                            if linkedin_url:
-                                update['linkedin'] = linkedin_url
-                                linkedin_count += 1
-                                enriched = True
+                            import urllib.parse
+                            q_str = f'site:linkedin.com/in "{name}" "{comp}"'.strip()
+                            update['linkedin_search_url'] = f"https://www.google.com/search?q={urllib.parse.quote_plus(q_str)}"
+                            enriched = True
 
                     # Vector 2: Phone propagation from company peers
                     current_phone = safe_str(record.get('phone'))

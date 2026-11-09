@@ -5,6 +5,7 @@ import api from '../services/api'
 import { CompanyIdentity } from '../components/CompanyIdentity'
 import { useSessionState } from '../hooks/useSessionState'
 import { useRecruiters, usePrefetchRecruiters } from '../hooks/queries/useRecruiters'
+import { useNavigate } from '@tanstack/react-router'
 import CustomSelect from '../components/ui/CustomSelect'
 import RecruiterProfileDrawer from '../components/recruiters/RecruiterProfileDrawer'
 import SourceProvenanceBadge from '../components/common/SourceProvenanceBadge'
@@ -251,6 +252,7 @@ const formatLastActive = (dateStr) => {
 }
 
 const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleActive, handleDelete, onSelect }) {
+  const navigate = useNavigate();
   const lastActiveText = formatLastActive(r.last_active_at || r.updated_at)
   const isNewEntry = (() => {
     if (!r.created_at) return false
@@ -297,7 +299,18 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleA
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14, letterSpacing: '-0.01em' }}>{r.recruiter_name}</div>
+                <div 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    sessionStorage.setItem('talentops_active_candidate', JSON.stringify(r));
+                    navigate({ to: `/candidates/${r.recruiter_id}` });
+                  }}
+                  className="hover:text-emerald-400 hover:underline cursor-pointer transition-colors"
+                  style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14, letterSpacing: '-0.01em' }}
+                  title="Click to view 360° Candidate Profile"
+                >
+                  {r.recruiter_name}
+                </div>
                 <SourceProvenanceBadge source={r.data_source} size="xs" detailed={true} />
                 {isNewEntry && (
                   <div style={{
@@ -309,6 +322,37 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleA
                   }} title={`Newly ingested on ${new Date(r.created_at).toLocaleDateString()} ${new Date(r.created_at).toLocaleTimeString()}`}>
                     <i className="ti ti-sparkles" style={{ fontSize: 10 }} /> NEW ENTRY
                   </div>
+                )}
+                {r.is_priority_contact && (
+                  <div style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    padding: '2px 7px', borderRadius: 4, fontSize: 10.5, fontWeight: 700,
+                    background: 'rgba(234, 179, 8, 0.15)', color: '#eab308',
+                    border: '1px solid rgba(234, 179, 8, 0.35)', letterSpacing: '0.03em',
+                    textTransform: 'uppercase'
+                  }} title={`Priority Decision Maker / Active Campaign Contact (${r.priority_tier || 'TOP_DECISION_MAKER'}) • Outreach: ${r.campaign_sent_count || 0}`}>
+                    <i className="ti ti-star-filled" style={{ fontSize: 10, color: '#eab308' }} />
+                    <span>{r.priority_tier === 'TOP_DECISION_MAKER' ? 'TOP DECISION MAKER' : 'PRIORITY LEADER'}</span>
+                  </div>
+                )}
+                {!r.linkedin && r.linkedin_search_url && (
+                  <a
+                    href={r.linkedin_search_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    title="Find on LinkedIn (1-Click Google/LinkedIn Search)"
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 3,
+                      padding: '2px 6px', borderRadius: 4, fontSize: 10.5, fontWeight: 600,
+                      background: 'rgba(56, 189, 248, 0.12)', color: '#38bdf8',
+                      border: '1px solid rgba(56, 189, 248, 0.3)', textDecoration: 'none'
+                    }}
+                  >
+                    <i className="ti ti-search" style={{ fontSize: 10 }} />
+                    <i className="ti ti-brand-linkedin" style={{ fontSize: 12 }} />
+                    <span>Find</span>
+                  </a>
                 )}
                 {r.linkedin && (
                   <a href={r.linkedin} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} title="LinkedIn Profile" style={{ color: '#38bdf8', display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
@@ -539,6 +583,24 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleA
         </div>
       </td>
       <td style={{ padding: '24px 24px', textAlign: 'right', verticalAlign: 'middle' }}>
+        <button
+          title="Open Full Candidate Profile"
+          style={{
+            width: 32, height: 32, borderRadius: '8px', background: 'rgba(16, 185, 129, 0.1)',
+            border: '1px solid rgba(16, 185, 129, 0.3)', color: '#10b981', cursor: 'pointer',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'all 0.2s ease', marginRight: 6
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            sessionStorage.setItem('talentops_active_candidate', JSON.stringify(r));
+            navigate({ to: `/candidates/${r.recruiter_id}` });
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(16, 185, 129, 0.25)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(16, 185, 129, 0.1)' }}
+        >
+          <i className="ti ti-external-link" style={{ fontSize: 14 }} />
+        </button>
         <button 
           className="cc-action-btn"
           style={{ 
@@ -916,6 +978,10 @@ export default function Recruiters() {
                             <option value="">Any Verification State</option>
                             <option value="yes">Requires Manual Review</option>
                           </select>
+                          <select value={filters.priority_leaders || ''} onChange={e => updateFilter('priority_leaders', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--card-border)', fontSize: 13, background: 'var(--main-bg)', outline: 'none' }}>
+                            <option value="">Any Priority Tier</option>
+                            <option value="yes">⭐ Priority Leaders Only (3,257)</option>
+                          </select>
                           <select value={filters.data_source || ''} onChange={e => updateFilter('data_source', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--card-border)', fontSize: 13, background: 'var(--main-bg)', outline: 'none' }}>
                             <option value="">Any Sourcing Origin</option>
                             <option value="teams">Microsoft Teams (Group Chat)</option>
@@ -1095,6 +1161,23 @@ export default function Recruiters() {
                   <i className="ti ti-messages" style={{ fontSize: 13, color: filters.data_source === 'teams' ? '#818cf8' : '#a1a1aa' }} />
                   <span>Teams Chat</span>
                   {filters.data_source === 'teams' && <i className="ti ti-check" style={{ fontSize: 12 }} />}
+                </button>
+
+                <button
+                  onClick={() => updateFilter('priority_leaders', filters.priority_leaders === 'yes' ? '' : 'yes')}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    padding: '8px 14px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    background: filters.priority_leaders === 'yes' ? 'rgba(234, 179, 8, 0.18)' : 'rgba(255, 255, 255, 0.04)',
+                    color: filters.priority_leaders === 'yes' ? '#eab308' : 'var(--text-secondary)',
+                    border: filters.priority_leaders === 'yes' ? '1px solid rgba(234, 179, 8, 0.4)' : '1px solid var(--card-border)'
+                  }}
+                  title="Filter to campaign-active priority leadership contacts"
+                >
+                  <i className="ti ti-star-filled" style={{ fontSize: 13, color: filters.priority_leaders === 'yes' ? '#eab308' : '#a1a1aa' }} />
+                  <span>⭐ Priority Leaders</span>
+                  {filters.priority_leaders === 'yes' && <i className="ti ti-check" style={{ fontSize: 12 }} />}
                 </button>
               </div>
 

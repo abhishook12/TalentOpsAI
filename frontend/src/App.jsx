@@ -99,7 +99,16 @@ function AppShell() {
   const navigate = useNavigate()
   const isAuthPage = ['/login', '/register', '/forgot-password', '/reset-password', '/verify-email'].includes(location.pathname)
   const { user, isAdmin, loading } = useAuth()
-  const pageName = useMemo(() => PAGE_NAMES[location.pathname] || 'Dashboard', [location.pathname])
+  const pageName = useMemo(() => {
+    // Exact match first
+    if (PAGE_NAMES[location.pathname]) return PAGE_NAMES[location.pathname]
+    // Dynamic route pattern matching for parameterized paths
+    if (location.pathname.startsWith('/candidates/')) return 'Candidate Profile'
+    if (location.pathname.startsWith('/recruiters/')) return 'Recruiter Profile'
+    if (location.pathname.startsWith('/companies/')) return 'Company Profile'
+    if (location.pathname.startsWith('/admin/')) return 'Administration'
+    return 'Dashboard'
+  }, [location.pathname])
   
   const [backendVersion, setBackendVersion] = useState('v4.0.2-Stable')
   const [aiPanelOpen, setAiPanelOpen] = useState(false)

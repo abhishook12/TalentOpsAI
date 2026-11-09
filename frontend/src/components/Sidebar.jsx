@@ -45,8 +45,9 @@ export default function Sidebar() {
 
   const userNav = [
     { to: '/', label: 'Dashboard', icon: LayoutDashboard },
-    { to: '/campaigns', label: 'Campaigns', icon: Radar },
+    { to: '/candidates', label: 'Candidates', icon: Users, aliases: ['/recruiters', '/candidates'] },
     { to: '/recruiters', label: 'Recruiters', icon: Users },
+    { to: '/campaigns', label: 'Campaigns', icon: Radar },
     { to: '/directory', label: 'Directory', icon: Map, aliases: ['/states', '/companies'] },
     { to: '/analytics', label: 'Analytics', icon: BarChart2 },
     { to: '/search', label: 'Search', icon: Search },

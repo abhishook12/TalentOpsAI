@@ -198,6 +198,21 @@ def main():
     except Exception as e:
         logger.debug(f"Browser launch note: {e}")
 
+    # 5. Daily One-Time Chrome Tabs Wakeup and Refresh (refreshes all open Chrome tabs one by one)
+    try:
+        if WORKSPACE_DIR not in sys.path:
+            sys.path.insert(0, WORKSPACE_DIR)
+        from backend.app.services.chrome_tab_refresher import chrome_tab_refresher
+        logger.info("Evaluating daily Chrome tabs wakeup and refresh (runs once daily)...")
+        c_res = chrome_tab_refresher.refresh_all_tabs(
+            force=False,
+            source=f"AUTOSTART_{trigger_type}",
+            tab_delay_sec=0.5
+        )
+        logger.info(f"Daily Chrome tabs refresh result: {c_res.get('status')} ({c_res.get('tabs_refreshed', 0)} tabs across {c_res.get('windows_scanned', 0)} windows)")
+    except Exception as e:
+        logger.error(f"Error during daily Chrome tabs refresh: {e}", exc_info=True)
+
     # 5. Start-of-Day Antigravity Routine Health & System Check (runs once per day)
     try:
         from daily_antigravity_routine import trigger_daily_antigravity_routine_check
@@ -211,6 +226,20 @@ def main():
         ensure_daily_work_apps()
     except Exception as e:
         logger.error(f"Error ensuring daily work applications: {e}", exc_info=True)
+
+    # 7. Daily 5-Day Teams Background Collection Engine (runs for first 2 hours on weekdays)
+    try:
+        if WORKSPACE_DIR not in sys.path:
+            sys.path.insert(0, WORKSPACE_DIR)
+        from backend.app.services.teams_daily_collection_service import teams_daily_service
+        t_res = teams_daily_service.start_collection(
+            duration_seconds=7200,
+            force=False,
+            source=f"AUTOSTART_{trigger_type}"
+        )
+        logger.info(f"Daily Teams 2-hour collection trigger result: {t_res.get('status')}")
+    except Exception as e:
+        logger.error(f"Error starting daily Teams collection: {e}", exc_info=True)
 
 if __name__ == "__main__":
     main()

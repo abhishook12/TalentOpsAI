@@ -1185,4 +1185,90 @@ def get_waterfall_osint_stats(
     return waterfall_osint_engine.get_telemetry()
 
 
+# ── Frontier 3: Existing Candidate Deep Web Enrichment & Healing Endpoints ─────
+
+class BatchExistingEnrichRequest(BaseModel):
+    recruiter_ids: List[int] = Field(..., max_items=25, description="List of recruiter IDs to enrich and heal from web")
+
+
+@router.post("/enrich-existing-candidate/{recruiter_id}")
+def enrich_existing_candidate_endpoint(
+    recruiter_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+) -> Dict[str, Any]:
+    """
+    Enriches, corrects, and heals an existing candidate record by searching the web.
+    - Sanitizes noisy names (removes certifications, decouples degrees)
+    - Cleans run-on multi-pipe headline titles
+    - Discovers direct phone numbers and verified LinkedIn URLs
+    - Attaches genuine work experience, education, and skills (Zero Fabrication)
+    - Deactivates non-human UI noise
+    - Dual-syncs to PostgreSQL and DuckDB Parquet
+    """
+    from ..services.existing_record_web_enricher import existing_record_web_enricher
+    result = existing_record_web_enricher.enrich_and_heal_candidate(recruiter_id, db)
+    if not result.get("success"):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=result.get("error", f"Candidate #{recruiter_id} not found or failed to enrich")
+        )
+    return result
+
+
+@router.post("/batch-enrich-existing")
+def batch_enrich_existing_candidates(
+    req: BatchExistingEnrichRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+) -> Dict[str, Any]:
+    """
+    Batches deep web enrichment across multiple existing recruiter IDs.
+    """
+    from ..services.existing_record_web_enricher import existing_record_web_enricher
+    results = []
+    for rid in req.recruiter_ids:
+        try:
+            r = existing_record_web_enricher.enrich_and_heal_candidate(rid, db)
+            results.append(r)
+        except Exception as e:
+            results.append({"recruiter_id": rid, "success": False, "error": str(e)})
+
+    return {
+        "success": True,
+        "processed_count": len(results),
+        "healed_count": len([r for r in results if r.get("success")]),
+        "results": results,
+    }
+
+
+@router.post("/web-enricher/trigger-cycle")
+def trigger_existing_web_enrichment_cycle(
+    limit: int = Query(5, ge=1, le=20),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+) -> Dict[str, Any]:
+    """
+    Manually triggers an autonomous web enrichment and healing pass on the highest-priority pending candidates.
+    """
+    from ..services.existing_record_web_enricher import existing_record_web_enricher
+    batch_res = existing_record_web_enricher.run_enrichment_batch(batch_size=limit)
+    return {
+        "success": True,
+        **batch_res
+    }
+
+
+@router.get("/web-enricher/stats")
+def get_existing_web_enricher_stats(
+    current_user: User = Depends(get_current_user_from_request),
+) -> Dict[str, Any]:
+    """
+    Returns real-time statistics from the Existing Candidate Deep Web Enrichment & Healing Engine.
+    """
+    from ..services.existing_record_web_enricher import existing_record_web_enricher
+    return existing_record_web_enricher.get_telemetry()
+
+
+
 

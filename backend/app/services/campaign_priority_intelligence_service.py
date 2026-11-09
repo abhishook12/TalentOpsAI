@@ -37,12 +37,21 @@ sys.path.insert(0, '.')
 from sqlalchemy import func, or_, text
 from sqlalchemy.orm import Session
 
-from backend.app.database import SessionLocal
-from backend.app.models.models import Recruiter, Company
-from backend.app.models.campaigns import Campaign, CampaignRecruiter, EmailLog
-from backend.app.models.staging_models import DiscoveryStaging
-from backend.scripts.incremental_parquet_sync import sync as sync_parquet
-from backend.app.services.recruiter_store import recruiter_store
+from ..database import SessionLocal
+from ..models.models import Recruiter, Company
+from ..models.campaigns import Campaign, CampaignRecruiter, EmailLog
+from ..models.staging_models import DiscoveryStaging
+try:
+    from ...scripts.incremental_parquet_sync import sync as sync_parquet
+except (ImportError, ValueError):
+    try:
+        from scripts.incremental_parquet_sync import sync as sync_parquet
+    except ImportError:
+        try:
+            from backend.scripts.incremental_parquet_sync import sync as sync_parquet
+        except ImportError:
+            sync_parquet = None
+from ..services.recruiter_store import recruiter_store
 
 logger = logging.getLogger("CampaignPriorityIntelligence")
 

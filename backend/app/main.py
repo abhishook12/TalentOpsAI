@@ -8,6 +8,9 @@ import time
 _BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _BACKEND_DIR not in sys.path:
     sys.path.insert(0, _BACKEND_DIR)
+_REPO_ROOT = os.path.dirname(_BACKEND_DIR)
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
 
 from fastapi import FastAPI, Depends, Request, Response
 from fastapi.responses import JSONResponse
@@ -102,7 +105,8 @@ def _ensure_core_schema(db_engine):
 
 # Unconditionally guarantee core schema consistency across SQLite & PostgreSQL
 try:
-    _ensure_core_schema(engine)
+    if "sqlite" in str(engine.url):
+        _ensure_core_schema(engine)
 except Exception as _schema_err:
     logger.warning("Initial core schema verification warning: %s", _schema_err)
 
@@ -736,6 +740,11 @@ async def startup_event():
     async def _async_background_init():
         # Delay background tasks by 5 seconds to ensure port 8000 binds and health checks pass with 0 latency
         await asyncio.sleep(5.0)
+        try:
+            if "sqlite" not in str(engine.url):
+                await asyncio.to_thread(_ensure_core_schema, engine)
+        except Exception as _bg_schema_err:
+            logger.warning("Background core schema verification note: %s", _bg_schema_err)
         from .services.send_engine import restart_active_campaigns
         from .services.sentinel_engine import sentinel_engine
         from .services.quality_engine import quality_engine

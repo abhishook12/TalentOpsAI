@@ -1,8 +1,8 @@
 {
-  "last_run_date": "2026-10-30",
-  "last_run_timestamp": "2026-10-30T09:01:16.391926",
-  "conversation_id": "dbeb2d9a-ac03-4933-81f6-02f4ace4c73e",
-  "conversation_title": "TalentOps AI Start-of-Day Routine Check (2026-10-30)",
-  "trigger_source": "AUTOSTART_SCHEDULED_START_OF_DAY",
+  "last_run_date": "2026-11-09",
+  "last_run_timestamp": "2026-11-09T08:49:10.000000",
+  "conversation_id": "4531f68d-a1df-4235-9315-e1bff9624799",
+  "conversation_title": "TalentOps AI Start-of-Day Routine Check (2026-11-09)",
+  "trigger_source": "START_OF_DAY_AUTOMATED_ROUTINE",
   "status": "SUCCESS"
 }

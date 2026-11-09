@@ -177,6 +177,7 @@ class WebHarvestEngine:
             "profiles_staged": 0,
             "profiles_promoted": 0,
             "profiles_enriched": 0,
+            "existing_candidates_healed": 0,
             "domains_scraped": 0,
             "domains_queued": 0,
             "quality_gate_rejections": 0,
@@ -422,6 +423,18 @@ class WebHarvestEngine:
                     self._log_action(f"Autonomous Dual-Sync: Appended {synced_pq} verified recruiters into DuckDB Parquet dataset")
         except Exception as recon_err:
             logger.error("[WEBHARVEST] Autonomous reconcile / parquet-sync error: %s", recon_err)
+
+        # Phase 5: Existing Record Deep Web Enrichment & Correction Flywheel
+        try:
+            from .existing_record_web_enricher import existing_record_web_enricher
+            heal_res = existing_record_web_enricher.run_enrichment_batch(batch_size=2)
+            enr_count = heal_res.get("enriched_count", 0)
+            if enr_count > 0:
+                self.stats["existing_candidates_healed"] += enr_count
+                result["existing_candidates_healed"] = enr_count
+                self._log_action(f"Existing Record Healing: Healed and enriched {enr_count} existing candidates from live web intelligence")
+        except Exception as heal_err:
+            logger.debug("[WEBHARVEST] Existing record healing pass note: %s", heal_err)
 
         self._log_action(f"Harvest cycle completed: audited {result['domains_scraped']} domains")
         logger.info('[WEB_HARVEST] Geo distribution: %s', quota_tracker.get_stats())

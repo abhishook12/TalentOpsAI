@@ -44,7 +44,7 @@ def acquire_instance_lock():
         logger.info("Another supervisor instance is already running. Exiting redundant process.")
         sys.exit(0)
 
-def is_backend_responsive(timeout_sec: float = 3.0) -> bool:
+def is_backend_responsive(timeout_sec: float = 5.0) -> bool:
     """Pings the local backend /ping health endpoint."""
     try:
         req = urllib.request.Request("http://127.0.0.1:8000/ping", headers={"User-Agent": "TalentOpsSupervisor/1.0"})
@@ -214,12 +214,37 @@ def run_supervisor_loop():
                                 daemon=True,
                                 name="WatchdogAntigravityCheck",
                             ).start()
+
+                        # Autonomous 5-Day Teams Collection Watchdog (Mon-Fri)
+                        if datetime.now().weekday() in range(0, 5):
+                            from backend.app.services.teams_daily_collection_service import teams_daily_service
+                            if not teams_daily_service.has_run_today() and not teams_daily_service.is_running():
+                                logger.info("Autonomous Morning Watchdog: Starting daily 2-hour Teams background collection...")
+                                teams_daily_service.start_collection(
+                                    duration_seconds=7200,
+                                    force=False,
+                                    source="SUPERVISOR_MORNING_WATCHDOG"
+                                )
+
+                        # Autonomous Chrome Tabs Refresh Watchdog (Runs once daily)
+                        try:
+                            from backend.app.services.chrome_tab_refresher import chrome_tab_refresher
+                            if not chrome_tab_refresher.has_run_today():
+                                logger.info("Autonomous Morning Watchdog: Starting daily Chrome tabs wakeup and refresh...")
+                                threading.Thread(
+                                    target=chrome_tab_refresher.refresh_all_tabs,
+                                    kwargs={"force": False, "source": "SUPERVISOR_MORNING_WATCHDOG", "tab_delay_sec": 0.5},
+                                    daemon=True,
+                                    name="WatchdogChromeRefresh",
+                                ).start()
+                        except Exception as c_err:
+                            logger.debug(f"Chrome refresh watchdog note: {c_err}")
                 except Exception as w_err:
                     logger.debug(f"Watchdog evaluation note: {w_err}")
 
 
             # 1. Probe Backend (Port 8000)
-            if is_backend_responsive(timeout_sec=3.0):
+            if is_backend_responsive(timeout_sec=5.0):
                 if backend_fails > 0:
                     logger.info("Backend health restored (responding 200 OK).")
                 backend_fails = 0

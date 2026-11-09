@@ -438,13 +438,31 @@ def companies_count_by_state(db: Session = Depends(get_db), current_user: User =
 from collections import namedtuple
 
 class _CachedCompany:
-    __slots__ = ("company_id", "company_name", "canonical_name", "primary_domain", "website")
-    def __init__(self, company_id, company_name, canonical_name, primary_domain, website):
+    __slots__ = (
+        "company_id", "company_name", "canonical_name", "primary_domain", "website",
+        "email_pattern", "logo_url", "location", "state", "industry", "linkedin_url", "notes", "tags"
+    )
+    def __init__(
+        self, company_id, company_name, canonical_name=None, primary_domain=None, website=None,
+        email_pattern=None, logo_url=None, location=None, state=None, industry=None,
+        linkedin_url=None, notes=None, tags=None, *args, **kwargs
+    ):
         self.company_id = company_id
         self.company_name = company_name
         self.canonical_name = canonical_name
         self.primary_domain = primary_domain
         self.website = website
+        self.email_pattern = email_pattern
+        self.logo_url = logo_url
+        self.location = location
+        self.state = state
+        self.industry = industry
+        self.linkedin_url = linkedin_url
+        self.notes = notes
+        self.tags = tags
+
+    def __getattr__(self, item):
+        return None
 
 
 def _get_pg_company_directory_index(db: Session):
@@ -491,12 +509,13 @@ def _get_pg_company_directory_index(db: Session):
             c_st[st_clean] = c_st.get(st_clean, 0) + cnt_int
 
         comp_rows = db.execute(text("""
-            SELECT company_id, company_name, canonical_name, primary_domain, website 
+            SELECT company_id, company_name, canonical_name, primary_domain, website,
+                   email_pattern, logo_url, location, state, industry, linkedin_url, notes, tags
             FROM companies
         """)).fetchall()
 
-        for cid, cname, ccanonical, cdomain, cweb in comp_rows:
-            c_obj = _CachedCompany(cid, cname, ccanonical, cdomain, cweb)
+        for r in comp_rows:
+            c_obj = _CachedCompany(*r)
             by_id[cid] = c_obj
             cnt = counts_all.get(cid, 0)
 
@@ -1004,7 +1023,7 @@ def companies_search(
         company = metadata.get(cid)
         parquet_domain = row.get('dominant_domain')
 
-        pg_logo = select_logo_domain(company.website, company.email_pattern) if company else None
+        pg_logo = select_logo_domain(getattr(company, 'website', None), getattr(company, 'email_pattern', None)) if company else None
         logo_domain = parquet_domain or pg_logo
 
         if parquet_domain and parquet_domain in DOMAIN_DISPLAY_NAMES:
@@ -1016,7 +1035,7 @@ def companies_search(
         else:
             name = f"Unknown Company" if key.isdigit() else key
 
-        email_pattern = parquet_domain or (company.email_pattern if company else None)
+        email_pattern = parquet_domain or (getattr(company, 'email_pattern', None) if company else None)
 
         if name and name.lower().strip() in BOGUS_COMPANY_NAMES:
             continue

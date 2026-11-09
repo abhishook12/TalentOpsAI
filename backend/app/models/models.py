@@ -163,14 +163,14 @@ class Recruiter(Base):
     user_id          = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=True, index=True)
     recruiter_name   = Column(String(150), nullable=False)
     normalized_recruiter_name = Column(String(150), nullable=True)
-    email            = Column(String(150), unique=True, nullable=False)
-    phone            = Column(String(30))
+    email            = Column(String(150), unique=True, nullable=True)
+    phone            = Column(String(100))
     email2           = Column(String(150))          # secondary / personal email
-    phone2           = Column(String(30))           # secondary phone
+    phone2           = Column(String(100))           # secondary phone
     email3           = Column(String(150))
-    phone3           = Column(String(30))
+    phone3           = Column(String(100))
     email4           = Column(String(150))
-    phone4           = Column(String(30))
+    phone4           = Column(String(100))
     alternate_emails = Column(Text)                 # CSV of extra emails
     alternate_phones = Column(Text)                 # CSV of extra phones
     linkedin         = Column(String(255))
@@ -224,6 +224,11 @@ class Recruiter(Base):
     company_reasoning = Column(Text, nullable=True)
     raw_email_value  = Column(String(255), nullable=True)
     repair_reason    = Column(Text, nullable=True)
+    is_priority_contact = Column(Boolean, default=False, index=True)
+    priority_tier    = Column(String(50), default='STANDARD', index=True)
+    campaign_sent_count = Column(Integer, default=0)
+    last_campaign_at = Column(TIMESTAMP, nullable=True)
+    linkedin_search_url = Column(Text, nullable=True)
     company          = relationship("Company", foreign_keys=[company_id], back_populates="recruiters")
     canonical_company= relationship("Company", foreign_keys=[canonical_company_id])
     historical_company= relationship("Company", foreign_keys=[historical_company_id])
@@ -474,7 +479,7 @@ class Candidate(Base):
     candidate_id   = Column(Integer, primary_key=True, index=True)
     user_id        = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     candidate_name   = Column(String(150), nullable=False)
-    email            = Column(String(150), unique=True, nullable=False)
+    email            = Column(String(150), unique=True, nullable=True)
     phone            = Column(String(30))
     linkedin         = Column(String(255))
     visa_status      = Column(String(50))

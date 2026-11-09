@@ -1,3 +1,4 @@
+import toast from 'react-hot-toast';
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
 import {
@@ -18,7 +19,10 @@ import {
   CloudOff,
   CloudUpload,
   Database,
-  TrendingUp
+  TrendingUp,
+  Sparkles,
+  UserCheck,
+  Wrench
 } from 'lucide-react';
 
 export default function WebHarvestAdmin() {
@@ -49,6 +53,28 @@ export default function WebHarvestAdmin() {
 
   // Hover state for table rows
   const [hoveredRow, setHoveredRow] = useState(null);
+  const [existingEnricherStats, setExistingEnricherStats] = useState(null);
+  const [isHealingCycleRunning, setIsHealingCycleRunning] = useState(false);
+
+
+    const handleTriggerHealingPass = async () => {
+    setIsHealingCycleRunning(true);
+    const toastId = toast.loading('Running deep web candidate enrichment & healing pass...');
+    try {
+      const res = await api.post('/api/enrichment/web-enricher/trigger-cycle?limit=5');
+      if (res.data?.success) {
+        const enriched = res.data.enriched_count || 0;
+        toast.success(`Healing cycle complete: ${enriched} candidate(s) enriched & repaired!`, { id: toastId });
+        fetchTelemetryAndReports(true);
+      } else {
+        toast.error('Cycle finished with 0 updates', { id: toastId });
+      }
+    } catch (err) {
+      toast.error('Error triggering healing cycle: ' + (err?.message || 'Unknown error'), { id: toastId });
+    } finally {
+      setIsHealingCycleRunning(false);
+    }
+  };
 
   const fetchTelemetryAndReports = async (silent = false, statusOverride = null) => {
     if (!silent) setLoading(true);
@@ -63,6 +89,10 @@ export default function WebHarvestAdmin() {
         api.get(`/api/enrichment/web-harvest-reports?limit=100${statusParam}`).catch(() => ({ data: { reports: [] } })),
         api.get('/api/enrichment/multi-source-stats').catch(() => ({ data: null })),
         api.get('/api/enrichment/offline-buffer-status').catch(() => ({ data: null })),
+      api.get('/api/enrichment/web-enricher/stats').then(res => {
+        if (res?.data) setExistingEnricherStats(res.data);
+      }).catch(() => {}),
+
       ]);
 
       if (statsRes?.data?.web_harvest_engine) {
@@ -668,6 +698,127 @@ export default function WebHarvestAdmin() {
             </div>
           );
         })()}
+      </div>
+
+      
+      {/* Existing Candidate Deep Web Enrichment & Quality Healing Engine */}
+      <div style={{
+        background: 'linear-gradient(135deg, rgba(30, 27, 75, 0.4) 0%, rgba(15, 23, 42, 0.6) 100%)',
+        border: '1px solid rgba(99, 102, 241, 0.3)',
+        borderRadius: 14,
+        padding: '20px 22px',
+        marginBottom: 20,
+        boxShadow: '0 8px 32px -8px rgba(0, 0, 0, 0.5)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              width: 38,
+              height: 38,
+              borderRadius: 10,
+              background: 'rgba(99, 102, 241, 0.2)',
+              border: '1px solid rgba(129, 140, 248, 0.4)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#818cf8'
+            }}>
+              <Sparkles style={{ width: 20, height: 20 }} />
+            </div>
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 8 }}>
+                Existing Candidate Deep Web Enrichment & Quality Healing Engine
+                <span style={{
+                  fontSize: 10,
+                  padding: '2px 8px',
+                  borderRadius: 9999,
+                  background: 'rgba(52, 211, 153, 0.15)',
+                  color: '#34d399',
+                  border: '1px solid rgba(52, 211, 153, 0.3)',
+                  fontWeight: 600,
+                  textTransform: 'uppercase'
+                }}>Active 24/7 Flywheel</span>
+              </div>
+              <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
+                Diverts zero-browser web harvesting to audit, repair, and enrich existing database candidates with live LinkedIn, phone, education, and skills.
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={handleTriggerHealingPass}
+            disabled={isHealingCycleRunning}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '9px 16px',
+              borderRadius: 10,
+              fontSize: 12,
+              fontWeight: 700,
+              background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+              color: '#ffffff',
+              border: '1px solid rgba(165, 180, 252, 0.3)',
+              cursor: isHealingCycleRunning ? 'not-allowed' : 'pointer',
+              opacity: isHealingCycleRunning ? 0.6 : 1,
+              boxShadow: '0 4px 14px rgba(79, 70, 229, 0.35)',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <Sparkles style={{ width: 14, height: 14 }} className={isHealingCycleRunning ? 'animate-spin' : ''} />
+            {isHealingCycleRunning ? 'Enriching Live Candidates...' : 'Run Healing Pass (5 Candidates)'}
+          </button>
+        </div>
+
+        {/* Metric Badges */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
+          <div style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(51, 65, 85, 0.7)', borderRadius: 10, padding: '12px 14px' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Candidates Enriched</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: '#38bdf8', marginTop: 4 }}>
+              {(existingEnricherStats?.candidates_enriched ?? 0).toLocaleString()}
+            </div>
+            <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>Audited: {(existingEnricherStats?.total_candidates_audited ?? 0).toLocaleString()}</div>
+          </div>
+
+          <div style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(51, 65, 85, 0.7)', borderRadius: 10, padding: '12px 14px' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Names Sanitized</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: '#a78bfa', marginTop: 4 }}>
+              {(existingEnricherStats?.names_sanitized ?? 0).toLocaleString()}
+            </div>
+            <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>Certs Decoupled</div>
+          </div>
+
+          <div style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(51, 65, 85, 0.7)', borderRadius: 10, padding: '12px 14px' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Titles Cleaned</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: '#34d399', marginTop: 4 }}>
+              {(existingEnricherStats?.titles_cleaned ?? 0).toLocaleString()}
+            </div>
+            <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>Headlines Fixed</div>
+          </div>
+
+          <div style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(51, 65, 85, 0.7)', borderRadius: 10, padding: '12px 14px' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Phones Discovered</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: '#fbbf24', marginTop: 4 }}>
+              {(existingEnricherStats?.phones_discovered ?? 0).toLocaleString()}
+            </div>
+            <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>Direct & Office</div>
+          </div>
+
+          <div style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(51, 65, 85, 0.7)', borderRadius: 10, padding: '12px 14px' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>LinkedIn Repaired</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: '#60a5fa', marginTop: 4 }}>
+              {(existingEnricherStats?.linkedin_urls_repaired ?? 0).toLocaleString()}
+            </div>
+            <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>URLs Verified</div>
+          </div>
+
+          <div style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(51, 65, 85, 0.7)', borderRadius: 10, padding: '12px 14px' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>UI Noise Deactivated</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: '#f87171', marginTop: 4 }}>
+              {(existingEnricherStats?.junk_deactivated ?? 0).toLocaleString()}
+            </div>
+            <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>Non-Human Junk</div>
+          </div>
+        </div>
       </div>
 
       {/* Demand-Driven Priority Harvest Queue */}

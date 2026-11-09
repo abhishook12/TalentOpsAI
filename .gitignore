@@ -167,3 +167,6 @@ backend/app/sheet_harvest_state.json
 /patch_*.*
 teams_extractor/supervisor_status.json
 teams_extractor/patch_*.py
+
+*.zip
+backend/scratch_*.json

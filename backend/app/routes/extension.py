@@ -415,13 +415,13 @@ def ingest_extension_batch(
                 identity_confidence=0.0,
                 quality_score=0,
                 
-                # Deep Profile Progressive Enrichment (defensively truncated to prevent DB truncation crashes)
-                education=(contact.education or "")[:255] if contact.education else None,
-                about_summary=contact.about_summary,
-                followers_count=(contact.followers_count or "")[:50] if contact.followers_count else None,
-                connections_count=(contact.connections_count or "")[:50] if contact.connections_count else None,
-                previous_company=(contact.previous_company or "")[:255] if getattr(contact, 'previous_company', None) else None,
-                page_type=(contact.page_type or "")[:50] if contact.page_type else None,
+                # Deep Profile Progressive Enrichment (defensively cast and truncated to prevent DB truncation crashes)
+                education=str(contact.education)[:255] if contact.education else None,
+                about_summary=str(contact.about_summary) if contact.about_summary else None,
+                followers_count=str(contact.followers_count)[:50] if contact.followers_count else None,
+                connections_count=str(contact.connections_count)[:50] if contact.connections_count else None,
+                previous_company=str(contact.previous_company)[:255] if getattr(contact, 'previous_company', None) else None,
+                page_type=str(contact.page_type)[:50] if contact.page_type else None,
                 skills=json.dumps(contact.skills) if contact.skills else None,
                 experience_history=json.dumps(contact.experience_history) if contact.experience_history else None,
                 metadata_json=json.dumps({

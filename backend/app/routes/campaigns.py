@@ -215,6 +215,7 @@ async def _launch_campaign_background(
             new_crs = []
             for r in rec_by_email.values():
                 if r.recruiter_id not in existing_cr_ids:
+                    existing_cr_ids.add(r.recruiter_id)
                     new_crs.append(CampaignRecruiter(
                         campaign_id=campaign_id,
                         recruiter_id=r.recruiter_id,
@@ -919,6 +920,7 @@ def enroll_emails(campaign_id: int, payload: EnrollEmailsRequest, db: Session = 
         new_crs = []
         for r in rec_by_email.values():
             if r.recruiter_id not in existing_cr_ids:
+                existing_cr_ids.add(r.recruiter_id)
                 new_crs.append(CampaignRecruiter(
                     campaign_id=campaign_id,
                     recruiter_id=r.recruiter_id,
@@ -942,6 +944,8 @@ def enroll_emails(campaign_id: int, payload: EnrollEmailsRequest, db: Session = 
 @router.get("/{campaign_id}/progress")
 def get_campaign_progress_rest(campaign_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     """Fetch real-time snapshot of campaign progress, counts, and latest logs."""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Authentication required")
     from ..models.campaigns import EmailLog
     from sqlalchemy import func as sa_func
     
@@ -1966,10 +1970,16 @@ def create_sequence_step(campaign_id: int, payload: SequenceStepCreate, db: Sess
     template = get_template_or_404(db, campaign_id, payload.template_id, current_user)
     if not template.is_active:
         raise HTTPException(status_code=400, detail="Cannot attach an inactive template to a sequence step")
+    # Auto-resolve step_order to prevent uq_sequence_steps_campaign_order conflict
+    existing_orders = {s[0] for s in db.query(SequenceStep.step_order).filter(SequenceStep.campaign_id == campaign_id).all()}
+    target_order = payload.step_order
+    if target_order in existing_orders or target_order is None or target_order <= 0:
+        target_order = (max(existing_orders) if existing_orders else 0) + 1
+
     step = SequenceStep(
         campaign_id=campaign_id,
         template_id=payload.template_id,
-        step_order=payload.step_order,
+        step_order=target_order,
         delay_days=payload.delay_days,
         delay_hours=payload.delay_hours,
         is_active=payload.is_active,
@@ -2024,6 +2034,7 @@ def enroll_recruiters(campaign_id: int, payload: EnrollRecruitersRequest, db: Se
     new_crs = []
     for rid in recruiter_ids:
         if rid not in existing_enrollments:
+            existing_enrollments.add(rid)
             new_crs.append(CampaignRecruiter(
                 campaign_id=campaign_id,
                 recruiter_id=rid,
@@ -2091,6 +2102,8 @@ class PreparePreviewRequest(BaseModel):
 # Add this to app/routes/campaigns.py
 @router.post("/{campaign_id}/prepare-preview")
 def api_prepare_preview(campaign_id: int, request: PreparePreviewRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Authentication required")
     campaign = db.query(Campaign).filter(Campaign.user_id == current_user.id, Campaign.campaign_id == campaign_id).first()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
@@ -2174,6 +2187,7 @@ def api_prepare_preview(campaign_id: int, request: PreparePreviewRequest, db: Se
         new_crs = []
         for r in rec_by_email.values():
             if r.recruiter_id not in existing_cr_ids:
+                existing_cr_ids.add(r.recruiter_id)
                 new_crs.append(CampaignRecruiter(
                     campaign_id=campaign_id,
                     recruiter_id=r.recruiter_id,
@@ -2187,7 +2201,11 @@ def api_prepare_preview(campaign_id: int, request: PreparePreviewRequest, db: Se
         if new_crs:
             db.add_all(new_crs)
 
-    db.commit()
+    try:
+        db.commit()
+    except Exception as commit_err:
+        db.rollback()
+        logger.warning("Campaign preview prepare commit conflict resolved: %s", commit_err)
 
     from ..services.send_engine import _check_account_health
     bridge_healthy, bridge_error = _check_account_health(campaign.sender_account_id, current_user.id)

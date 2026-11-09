@@ -10,6 +10,28 @@ import EvidenceBadge from './EvidenceBadge'
  * - Temporal intelligence timeline
  */
 export default function CompanyIntelligenceWorkspace({ company, onClose }) {
+  const [priorityLeaders, setPriorityLeaders] = React.useState([])
+  const [loadingLeaders, setLoadingLeaders] = React.useState(false)
+
+  React.useEffect(() => {
+    const compId = company?.company_id || company?.id
+    if (!compId) return
+    let active = true
+    setLoadingLeaders(true)
+    fetch(`/api/campaigns/priority-intelligence/company/${compId}/leaders`)
+      .then(res => res.json())
+      .then(data => {
+        if (active && data.priority_leaders) {
+          setPriorityLeaders(data.priority_leaders)
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setLoadingLeaders(false)
+      })
+    return () => { active = false }
+  }, [company?.company_id, company?.id])
+
   if (!company) return null
 
   const name = company.name || company.company_name || 'Enterprise Corporation'
@@ -153,6 +175,44 @@ export default function CompanyIntelligenceWorkspace({ company, onClose }) {
             ))}
           </div>
         </div>
+
+        {/* Campaign Priority Decision Makers & Company Leaders */}
+        {priorityLeaders.length > 0 && (
+          <div>
+            <div style={{ fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', color: '#eab308', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span>⭐</span> Verified Key Priority Decision Makers & Campaign Contacts ({priorityLeaders.length}):
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '10px' }}>
+              {priorityLeaders.map((ldr, i) => (
+                <div
+                  key={i}
+                  style={{
+                    backgroundColor: 'rgba(234, 179, 8, 0.05)',
+                    border: '1px solid rgba(234, 179, 8, 0.25)',
+                    borderRadius: '8px',
+                    padding: '12px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '6px'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ fontWeight: 700, fontSize: '13px', color: 'var(--text-primary)' }}>{ldr.name}</div>
+                    <span style={{ fontSize: '10px', fontWeight: 800, padding: '2px 6px', borderRadius: '4px', background: 'rgba(234, 179, 8, 0.2)', color: '#eab308' }}>
+                      {ldr.priority_tier === 'TOP_DECISION_MAKER' ? 'TOP DECISION MAKER' : 'LEADER'}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{ldr.title || 'Talent Acquisition Leader'}</div>
+                  <div style={{ fontSize: '11px', color: '#38bdf8', fontFamily: 'monospace' }}>{ldr.email}</div>
+                  <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px', display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Outreach: {ldr.campaign_sent_count || 1} emails</span>
+                    {ldr.has_phone && <span>📞 Phone Verified</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Leadership & Executive Moves */}
         <div>

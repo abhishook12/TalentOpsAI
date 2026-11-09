@@ -739,17 +739,26 @@ class DatabaseSynchronizer:
                 ) TO '{temp_parquet.replace(os.sep, "/")}' (FORMAT 'PARQUET', COMPRESSION 'ZSTD')
             """
             con.execute(update_sql)
+            con.close()
+            con = None
             
-            # Atomic file swap
+            # Atomic file swap (close DuckDB connection first to release file lock on Windows)
             if os.path.exists(temp_parquet) and os.path.getsize(temp_parquet) > 1000000:
-                os.replace(temp_parquet, parquet_path)
+                import shutil
+                try:
+                    os.replace(temp_parquet, parquet_path)
+                except PermissionError:
+                    import time
+                    time.sleep(0.5)
+                    shutil.move(temp_parquet, parquet_path)
                 self.stats["parquet_sync"]["records_synced"] = len(pg_rows)
                 logger.info("[STAGE 5] Parquet store updated atomically (%d rows refreshed).", len(pg_rows))
         except Exception as e:
             logger.error("[STAGE 5] Parquet sync exception: %s", e)
             self.stats["errors"].append(str(e))
         finally:
-            con.close()
+            if con is not None:
+                con.close()
 
     def audit_post_sync(self, db: Session) -> Dict[str, Any]:
         """Calculates final post-sync metrics and deltas."""

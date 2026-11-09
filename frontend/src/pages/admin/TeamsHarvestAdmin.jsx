@@ -3,7 +3,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../services/api';
 import { ShellCard, SectionHeader, Badge } from '../../components/CommandCenter';
 import { SkeletonRow } from '../../components/ui/Skeleton';
-import { MessageSquare, Eye, EyeOff, Activity, ShieldCheck, RefreshCw, Smartphone, Building, User, Clock, Terminal } from 'lucide-react';
+import { 
+  MessageSquare, Eye, EyeOff, Activity, ShieldCheck, RefreshCw, 
+  Smartphone, Building, User, Clock, Terminal, Calendar, Play, Square, CheckCircle2 
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function TeamsHarvestAdmin() {
@@ -17,7 +20,14 @@ export default function TeamsHarvestAdmin() {
     refetchInterval: 5000,
   });
 
-  // 2. Fetch Staging Stream
+  // 2. Fetch Daily 5-Day Teams Collection Status (Mon-Fri 2-Hour Engine)
+  const { data: dailyStatus, refetch: refetchDailyStatus, isLoading: dailyLoading } = useQuery({
+    queryKey: ['teams-daily-status'],
+    queryFn: async () => (await api.get('/teams/daily-status')).data,
+    refetchInterval: 4000,
+  });
+
+  // 3. Fetch Staging Stream
   const { data: stagingData, isLoading: stagingLoading } = useQuery({
     queryKey: ['teams-staging-stream'],
     queryFn: async () => {
@@ -54,19 +64,220 @@ export default function TeamsHarvestAdmin() {
     }
   };
 
+  const handleTriggerDaily = async () => {
+    setActionLoading(true);
+    try {
+      const res = await api.post('/teams/daily-trigger?force=true&duration_seconds=7200');
+      toast.success('Started 2-Hour Daily Teams Background Collection');
+      refetchDailyStatus();
+    } catch (err) {
+      toast.error('Could not start daily collection: ' + (err.response?.data?.detail || err.message));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleStopDaily = async () => {
+    setActionLoading(true);
+    try {
+      await api.post('/teams/daily-stop');
+      toast.success('Daily Teams collection stopped and data synchronized');
+      refetchDailyStatus();
+    } catch (err) {
+      toast.error('Could not stop daily collection: ' + (err.response?.data?.detail || err.message));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const supervisor = winStatus?.teams?.supervisor || {};
   const isVisible = winStatus?.teams?.is_visible_on_screen || false;
   const isRunning = supervisor?.status === 'RUNNING';
+
+  const isDailyRunning = dailyStatus?.is_running || false;
+  const hasRunToday = dailyStatus?.has_run_today || false;
+  const isWeekday = dailyStatus?.is_weekday ?? true;
+
+  const formatSeconds = (sec) => {
+    if (!sec || sec < 0) return '0m';
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    if (m >= 60) {
+      const h = Math.floor(m / 60);
+      return `${h}h ${m % 60}m`;
+    }
+    return `${m}m ${s}s`;
+  };
 
   return (
     <div className="page-enter" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <SectionHeader
         eyebrow="Autonomous Pipeline"
-        title="Teams Harvester Live Stream"
-        subtitle="Continuous 24/7 upward message scraper and phone intelligence engine."
+        title="Teams Harvester & Workday Ingestion Engine"
+        subtitle="Daily 5-day automated collection and phone intelligence engine running in background."
       />
 
-      {/* Control Panel */}
+      {/* Daily 5-Day Workday Collection Window Card */}
+      <ShellCard style={{ padding: 20, border: '1px solid rgba(184, 213, 160, 0.25)', background: 'linear-gradient(180deg, rgba(184, 213, 160, 0.04) 0%, rgba(184, 213, 160, 0.01) 100%)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16, borderBottom: '1px solid var(--card-border)', paddingBottom: 16, marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{
+              width: 44,
+              height: 44,
+              borderRadius: 10,
+              background: 'rgba(184, 213, 160, 0.15)',
+              border: '1px solid rgba(184, 213, 160, 0.4)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--brand)'
+            }}>
+              <Calendar size={22} />
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
+                  Daily Workday Teams Ingestion (Mon–Fri, First 2 Hours)
+                </h3>
+                {isDailyRunning ? (
+                  <Badge tone="success">● 2-HR COLLECTION RUNNING</Badge>
+                ) : hasRunToday ? (
+                  <Badge tone="success">✓ TODAY'S INGESTION COMPLETE</Badge>
+                ) : !isWeekday ? (
+                  <Badge tone="warning">WEEKEND COOLDOWN</Badge>
+                ) : (
+                  <Badge tone="info">SCHEDULED FOR START-OF-DAY</Badge>
+                )}
+                <span style={{
+                  padding: '2px 8px',
+                  borderRadius: 4,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  background: 'rgba(184, 213, 160, 0.12)',
+                  color: 'var(--brand)',
+                  border: '1px solid rgba(184, 213, 160, 0.25)'
+                }}>
+                  100% Headless Background
+                </span>
+              </div>
+              <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-muted)' }}>
+                Collects candidate cards posted by team members over the previous workday • Window: <strong>First 2 Hours Daily</strong> • 5 Working Days
+              </p>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {isDailyRunning ? (
+              <button
+                onClick={handleStopDaily}
+                disabled={actionLoading}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '9px 16px',
+                  borderRadius: 8,
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  background: 'rgba(239, 68, 68, 0.12)',
+                  color: '#ef4444',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: actionLoading ? 'default' : 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <Square size={15} />
+                <span>Stop Session</span>
+              </button>
+            ) : (
+              <button
+                onClick={handleTriggerDaily}
+                disabled={actionLoading}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '9px 16px',
+                  borderRadius: 8,
+                  border: '1px solid rgba(184, 213, 160, 0.4)',
+                  background: 'rgba(184, 213, 160, 0.16)',
+                  color: 'var(--brand)',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: actionLoading ? 'default' : 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <Play size={15} />
+                <span>Run 2-Hour Collection Now</span>
+              </button>
+            )}
+
+            <button
+              onClick={() => refetchDailyStatus()}
+              style={{
+                padding: '9px 12px',
+                borderRadius: 8,
+                border: '1px solid var(--card-border)',
+                background: 'var(--bg-elevated)',
+                color: 'var(--text-secondary)',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center'
+              }}
+              title="Refresh status"
+            >
+              <RefreshCw size={15} />
+            </button>
+          </div>
+        </div>
+
+        {/* Daily Metrics Breakdown */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 12 }}>
+          <div style={{ padding: 14, borderRadius: 8, background: 'var(--bg-elevated)', border: '1px solid var(--card-border)' }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Calendar Day</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginTop: 4 }}>
+              {dailyStatus?.day_of_week || 'Today'} ({dailyStatus?.today || 'Active'})
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
+              {isWeekday ? 'Weekday (Monday–Friday Active)' : 'Weekend Schedule'}
+            </div>
+          </div>
+
+          <div style={{ padding: 14, borderRadius: 8, background: 'var(--bg-elevated)', border: '1px solid var(--card-border)' }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Daily 2-Hour Window</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--brand)', marginTop: 4 }}>
+              {formatSeconds(dailyStatus?.elapsed_seconds)} elapsed / {formatSeconds(dailyStatus?.remaining_seconds)} left
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
+              Target: {dailyStatus?.target_duration_hours || 2.0} Hours max per day
+            </div>
+          </div>
+
+          <div style={{ padding: 14, borderRadius: 8, background: 'var(--bg-elevated)', border: '1px solid var(--card-border)' }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Profiles Ingested</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginTop: 4 }}>
+              +{dailyStatus?.candidates_staged || 0} New Staged
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
+              {dailyStatus?.candidates_promoted || 0} Cumulative in Master DB
+            </div>
+          </div>
+
+          <div style={{ padding: 14, borderRadius: 8, background: 'var(--bg-elevated)', border: '1px solid var(--card-border)' }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Last Person Collected</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {dailyStatus?.last_person_collected || 'None yet'}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
+              Synced with Parquet Store
+            </div>
+          </div>
+        </div>
+      </ShellCard>
+
+      {/* Control Panel (Window Management) */}
       <ShellCard style={{ padding: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16, borderBottom: '1px solid var(--card-border)', paddingBottom: 16, marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>

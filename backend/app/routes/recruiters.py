@@ -156,7 +156,10 @@ def _normalize_phone(value):
     if not value:
         return ""
     clean = str(value).strip().strip("'\"[]()<>,;")
-    return re.sub(r"[^\d+]+", "", clean).strip()
+    digits = re.sub(r"\D", "", clean)
+    if len(digits) >= 10:
+        return digits[-10:]
+    return digits if len(digits) >= 7 else ""
 
 
 def _search_quality_tier(record):
@@ -333,7 +336,12 @@ def serialize_recruiter(r):
     all_emails = [e for e in all_emails if e and not e.endswith("@noemail.talentops") and not e.endswith("@unknown.com")]
     email_val = r.email if not (r.email and (r.email.endswith("@noemail.talentops") or r.email.endswith("@unknown.com"))) else (all_emails[0] if all_emails else None)
 
-    comp_obj = getattr(r, "company", None)
+    comp_obj = r.__dict__.get("company") if hasattr(r, "__dict__") else None
+    if comp_obj is None and hasattr(r, "company"):
+        try:
+            comp_obj = r.company
+        except Exception:
+            pass
     c_name = (comp_obj.company_name if comp_obj and getattr(comp_obj, "company_name", None) else None) or getattr(r, "company_name", None)
     c_dom = getattr(comp_obj, "primary_domain", None) if comp_obj else None
     if not c_dom and r.email and '@' in str(r.email):
@@ -365,6 +373,11 @@ def serialize_recruiter(r):
         "state": getattr(comp_obj, "state", None) or r.state,
     } if (c_name or c_dom or r.company_id) else None
 
+    # Safe relationship resolution without triggering expensive N+1 lazy WAN queries
+    se_list = (r.__dict__.get("structured_emails") or []) if hasattr(r, "__dict__") else getattr(r, "structured_emails", [])
+    sp_list = (r.__dict__.get("structured_phones") or []) if hasattr(r, "__dict__") else getattr(r, "structured_phones", [])
+    sl_list = (r.__dict__.get("structured_locations") or []) if hasattr(r, "__dict__") else getattr(r, "structured_locations", [])
+
     return {
         "recruiter_id": r.recruiter_id,
         "recruiter_name": r.recruiter_name,
@@ -384,14 +397,14 @@ def serialize_recruiter(r):
         "title": getattr(r, "title", None) or r.specialization,
         "specialization": r.specialization or getattr(r, "title", None),
         "notes": r.notes,
-        "metadata_json": r.__dict__.get("metadata_json"),
-        "raw_data": r.__dict__.get("raw_data"),
+        "metadata_json": r.__dict__.get("metadata_json") if hasattr(r, "__dict__") else r.get("metadata_json"),
+        "raw_data": r.__dict__.get("raw_data") if hasattr(r, "__dict__") else r.get("raw_data"),
         "company_id": r.company_id,
         "company_name": c_name,
         "company_domain": c_dom,
         "logo_url": c_logo,
         "company": company_payload,
-        "location": r.location if r.location else (r.company.location if hasattr(r, "company") and r.company else None),
+        "location": r.location if r.location else (comp_obj.location if comp_obj else None),
         "state": r.state,
         "normalized_city": getattr(r, "normalized_city", None),
         "quality_score": getattr(r, "quality_score", 95) or 95,
@@ -425,15 +438,15 @@ def serialize_recruiter(r):
         "structured_emails": [{
             "id": e.id, "email": e.email, "email_type": e.email_type, "status": e.status, 
             "confidence_score": e.confidence_score, "is_primary": e.is_primary, "source": e.source
-        } for e in getattr(r, "structured_emails", [])],
+        } for e in se_list if hasattr(e, "email")],
         "structured_phones": [{
             "id": p.id, "phone_number": p.phone_number, "phone_type": p.phone_type,
             "is_primary": p.is_primary, "belongs_to_person": p.belongs_to_person, "source": p.source
-        } for p in getattr(r, "structured_phones", [])],
+        } for p in sp_list if hasattr(p, "phone_number")],
         "structured_locations": [{
             "id": l.id, "city": l.city, "state": l.state, "location_type": l.location_type,
             "is_fallback": l.is_fallback, "source": l.source
-        } for l in getattr(r, "structured_locations", [])],
+        } for l in sl_list if hasattr(l, "city")],
     }
 
 
@@ -1029,9 +1042,11 @@ def get_recruiters(
                 Recruiter.recruiter_name.ilike(q_like),
                 Recruiter.email.ilike(q_like),
                 Recruiter.title.ilike(q_like),
-                Recruiter.linkedin.ilike(q_like)
+                Recruiter.linkedin.ilike(q_like),
+                Company.company_name.ilike(q_like),
+                Company.canonical_name.ilike(q_like)
             )
-            pg_query = db.query(Recruiter).options(joinedload(Recruiter.company)).filter(and_(search_filter, *pg_filters))
+            pg_query = db.query(Recruiter).join(Recruiter.company, isouter=True).options(joinedload(Recruiter.company)).filter(and_(search_filter, *pg_filters)).limit(limit)
             if pg_query:
                 pg_recs = pg_query.all()
                 for r in reversed(pg_recs):
@@ -1095,17 +1110,37 @@ def get_recruiters(
     # actual integer IDs to PostgreSQL; string keys remain valid and are used
     # directly as the recruiter company name below.
     companies_dict = {}
+    missing_cids = []
     for value in {r.get('company_id') for r in results if r.get('company_id') is not None}:
         try:
             numeric_value = float(value)
             if numeric_value.is_integer():
                 val_int = int(numeric_value)
                 if -2147483648 <= val_int <= 2147483647:
-                    c_cached = pg_idx["by_id"].get(val_int) or analytics_cache.get(f"comp_obj_{val_int}")
+                    c_cached = (pg_idx["by_id"].get(val_int) if pg_idx else None) or analytics_cache.get(f"comp_obj_{val_int}")
                     if c_cached:
                         companies_dict[val_int] = c_cached
+                        companies_dict[value] = c_cached
+                        companies_dict[str(val_int)] = c_cached
+                        companies_dict[float(val_int)] = c_cached
+                    else:
+                        missing_cids.append(val_int)
         except (TypeError, ValueError):
             continue
+
+    if missing_cids:
+        try:
+            fetched_comps = db.query(Company).filter(Company.company_id.in_(missing_cids)).all()
+            for fc in fetched_comps:
+                if pg_idx:
+                    pg_idx["by_id"][fc.company_id] = fc
+                analytics_cache.set(f"comp_obj_{fc.company_id}", fc, ttl=300)
+                companies_dict[fc.company_id] = fc
+                companies_dict[str(fc.company_id)] = fc
+                companies_dict[float(fc.company_id)] = fc
+                companies_dict[f"{float(fc.company_id)}"] = fc
+        except Exception as e:
+            logger.warning("Error fetching missing companies: %s", e)
     
     def _basic_company(company_row):
         return {
@@ -1125,7 +1160,14 @@ def get_recruiters(
     
     formatted_results = []
     for r in results:
-        comp = companies_dict.get(r.get('company_id'))
+        cid_raw = r.get('company_id')
+        comp = companies_dict.get(cid_raw)
+        if not comp and cid_raw is not None:
+            try:
+                cid_int = int(float(str(cid_raw).strip()))
+                comp = companies_dict.get(cid_int)
+            except (ValueError, TypeError):
+                pass
         
         pg_logo = select_logo_domain(comp.website, comp.email_pattern) if comp else None
         rec_domain = None
@@ -1139,10 +1181,10 @@ def get_recruiters(
         store_domain = recruiter_store.get_company_domain(raw_key) if raw_key else None
         company_domain = rec_domain or pg_logo or store_domain
 
-        if company_domain and company_domain in DOMAIN_DISPLAY_NAMES:
-            c_name = DOMAIN_DISPLAY_NAMES[company_domain]
-        elif comp and comp.company_name:
+        if comp and comp.company_name and comp.company_name.lower() not in ("unknown company", "none", ""):
             c_name = comp.company_name
+        elif company_domain and company_domain in DOMAIN_DISPLAY_NAMES:
+            c_name = DOMAIN_DISPLAY_NAMES[company_domain]
         elif company_domain:
             c_name = company_domain.split('.')[0].replace('-', ' ').title()
         elif raw_key and not raw_key.isdigit():
@@ -1195,7 +1237,8 @@ def get_recruiters(
                 r.get("all_phones") if r.get("all_phones") else _collect_all_contacts(r)[1]
             ),
             "linkedin": r.get("linkedin"),
-            "specialization": r.get("specialization"),
+            "title": r.get("title") or r.get("specialization"),
+            "specialization": r.get("specialization") or r.get("title"),
             "notes": r.get("notes"),
             "company_id": r.get("company_id"),
             "company_name": c_name,
@@ -1382,9 +1425,16 @@ def export_recruiters(
     )
 
 
+@router.get("/system/reload-store")
+@router.post("/system/reload-store")
+def reload_recruiter_store(current_user: User = Depends(get_current_user_from_request)):
+    recruiter_store.reload()
+    analytics_cache.clear()
+    return {"status": "success", "data_version": recruiter_store.data_version, "record_count": recruiter_store._record_count}
+
 @router.get("/{recruiter_id}")
 def get_recruiter(recruiter_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
-    r = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()
+    r = db.query(Recruiter).options(joinedload(Recruiter.company)).filter(Recruiter.recruiter_id == recruiter_id).first()
     if r:
         return serialize_recruiter(r)
     
@@ -1397,7 +1447,7 @@ def get_recruiter(recruiter_id: int, db: Session = Depends(get_db), current_user
 
 @router.post("/{recruiter_id}/email/approve")
 def approve_email(recruiter_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
-    r = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()
+    r = db.query(Recruiter).options(joinedload(Recruiter.company)).filter(Recruiter.recruiter_id == recruiter_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Recruiter not found")
     
@@ -1414,7 +1464,7 @@ def approve_email(recruiter_id: int, db: Session = Depends(get_db), current_user
 
 @router.post("/{recruiter_id}/email/reject")
 def reject_email(recruiter_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
-    r = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()
+    r = db.query(Recruiter).options(joinedload(Recruiter.company)).filter(Recruiter.recruiter_id == recruiter_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Recruiter not found")
     
@@ -1472,7 +1522,7 @@ def update_recruiter(recruiter_id: int, data: RecruiterUpdate, db: Session = Dep
     is_admin = (admin.email or "").lower().strip() == "abhishekjadon824@gmail.com"
     if not is_admin:
         raise HTTPException(status_code=403, detail="Read-only access: Cannot modify global recruiter database")
-    r = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()
+    r = db.query(Recruiter).options(joinedload(Recruiter.company)).filter(Recruiter.recruiter_id == recruiter_id).first()
     if not r:
         parquet_rec = recruiter_store.get_by_id(recruiter_id)
         if parquet_rec:
@@ -1516,7 +1566,7 @@ def delete_recruiter(recruiter_id: int, db: Session = Depends(get_db), admin: Us
     is_admin = (admin.email or "").lower().strip() == "abhishekjadon824@gmail.com"
     if not is_admin:
         raise HTTPException(status_code=403, detail="Read-only access: Cannot modify global recruiter database")
-    r = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()
+    r = db.query(Recruiter).options(joinedload(Recruiter.company)).filter(Recruiter.recruiter_id == recruiter_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Recruiter not found")
     db.delete(r)

@@ -76,9 +76,28 @@ def bridge_heartbeat(payload: HeartbeatPayload = None, db: Session = Depends(get
 
 @router.get("/status")
 def get_bridge_status(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    # Find any active connected account
+    outlook_account = db.query(ConnectedEmailAccount).filter(
+        ConnectedEmailAccount.user_id == current_user.id,
+        ConnectedEmailAccount.status == "connected"
+    ).first() or db.query(ConnectedEmailAccount).filter(
+        ConnectedEmailAccount.user_id == current_user.id
+    ).first()
+    connected_email = outlook_account.email_address if outlook_account and outlook_account.status == "connected" else None
+
+    # Auto-synchronize UserBridgeStatus to 'online' if user has a connected account
     status_record = db.query(UserBridgeStatus).filter(UserBridgeStatus.user_id == current_user.id).first()
-    outlook_account = db.query(ConnectedEmailAccount).filter(ConnectedEmailAccount.user_id == current_user.id).first()
-    connected_email = outlook_account.email_address if outlook_account else None
+    if outlook_account and outlook_account.status == "connected":
+        if not status_record:
+            status_record = UserBridgeStatus(user_id=current_user.id, status='online', last_heartbeat=datetime.now(timezone.utc))
+            db.add(status_record)
+            db.commit()
+            db.refresh(status_record)
+        elif status_record.status != 'online':
+            status_record.status = 'online'
+            status_record.last_heartbeat = datetime.now(timezone.utc)
+            db.commit()
+            db.refresh(status_record)
     
     # Calculate queue statistics
     from ..models.campaigns import Campaign, EmailLog, EmailLogStatus

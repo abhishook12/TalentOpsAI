@@ -92,11 +92,11 @@ class MemorySentinel:
         )
         # Default container memory ceiling (Render free/starter is 512MB)
         self.default_limit_bytes = int(os.getenv("CONTAINER_MEMORY_LIMIT_MB", "512")) * 1024 * 1024
-        # Proactive threshold (65% on Render = 332MB, 75% on desktop)
-        self.warning_threshold_ratio = float(os.getenv("MEMORY_WARNING_RATIO", "0.65" if self.is_render else "0.75"))
+        # Proactive threshold (85% on Render = 435MB, 80% on desktop)
+        self.warning_threshold_ratio = float(os.getenv("MEMORY_WARNING_RATIO", "0.85" if self.is_render else "0.80"))
         self._running = False
         self._thread: Optional[threading.Thread] = None
-        self._interval = 5.0 if self.is_render else 15.0  # Rapid 5s watchdog on Render
+        self._interval = 15.0  # Stable 15s watchdog interval across all platforms
         self._last_stats: Dict[str, Any] = {}
         self._trims_performed = 0
 
@@ -160,10 +160,12 @@ class MemorySentinel:
             except Exception:
                 pass
 
-            # 2. Clear OLAP sidecar cache
+            # 2. Throttle DuckDB working set (without wiping OLAP sync timestamps)
             try:
-                from ..olap_sidecar import olap_sidecar
-                olap_sidecar.invalidate()
+                from ..services.recruiter_store import recruiter_store
+                if recruiter_store._conn:
+                    recruiter_store._conn.execute("CHECKPOINT;")
+                    recruiter_store._conn.execute("PRAGMA max_memory='64MB';")
             except Exception:
                 pass
 

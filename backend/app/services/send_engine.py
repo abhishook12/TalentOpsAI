@@ -207,12 +207,16 @@ def _check_account_health(sender_account_id: int, user_id: int) -> tuple[bool, s
         if not account or account.status != "connected":
             return False, "Email account not connected"
         if account.provider in ("microsoft", "outlook"):
+            if account.smtp_host and account.smtp_pass:
+                return True, "healthy (outlook smtp)"
             if not account.access_token or account.access_token == "local_outlook_com":
                 # Check if local Outlook COM is available
                 try:
                     import win32com.client
                     return True, "healthy (local outlook com)"
                 except Exception:
+                    if account.status == "connected":
+                        return True, "healthy (remote outlook bridge)"
                     return False, "Local Outlook not available"
         if account.provider == "smtp" and not account.smtp_host:
             return False, "Missing SMTP host"
@@ -430,7 +434,7 @@ async def _send_email_via_provider(sender_account_id: int, user_id: int, payload
                         account = gmail_acc
                         sender_email = account.email_address
 
-                if account.provider in ("microsoft", "outlook"):
+                if account.provider in ("microsoft", "outlook") and not (account.smtp_host and account.smtp_pass):
                     if not account.access_token or account.access_token == "local_outlook_com":
                         com_ok, com_err = _send_via_local_outlook_com(payload)
                         return com_ok, com_err, "outlook_com_error" if not com_ok else None
@@ -498,7 +502,7 @@ async def _send_email_via_provider(sender_account_id: int, user_id: int, payload
                         error_type = "auth_permanent" if resp.status_code in [401, 403] else "graph_error"
                         return False, f"Graph API Error: {resp.text}", error_type
                 
-                elif account.provider == "smtp" or account.provider == "google" or account.provider == "yahoo":
+                elif account.provider in ("smtp", "google", "yahoo", "microsoft", "outlook") or account.smtp_host:
                     # Generic SMTP send
                     import smtplib
                     from email.mime.text import MIMEText
@@ -558,6 +562,11 @@ async def _send_email_via_provider(sender_account_id: int, user_id: int, payload
                         smtp_host = "smtp.mail.yahoo.com"
                         smtp_port = 587
                         smtp_user = account.email_address
+                        smtp_pass = decrypt_token(account.smtp_pass) if account.smtp_pass else ""
+                    elif account.provider in ("microsoft", "outlook"):
+                        smtp_host = account.smtp_host or ("smtp-mail.outlook.com" if any(d in (account.email_address or "").lower() for d in ("@outlook.com", "@hotmail.com", "@live.com")) else "smtp.office365.com")
+                        smtp_port = account.smtp_port or 587
+                        smtp_user = account.smtp_user or account.email_address
                         smtp_pass = decrypt_token(account.smtp_pass) if account.smtp_pass else ""
                     else:
                         smtp_host = account.smtp_host

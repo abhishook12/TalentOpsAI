@@ -184,10 +184,26 @@ export default function ConnectionWizard({ onClose, onSuccess }) {
               onClick={() => handleOAuthConnect('google')} 
             />
             <ProviderCard 
-              name="Microsoft Outlook / Office 365" 
-              description="For @outlook.com or Microsoft 365 work accounts"
+              name="Microsoft Outlook / 365 (Direct / App Password - Recommended)" 
+              description="Direct connection for any PC, Mac, Linux, or remote workstation"
               icon={<Mail size={20} />} 
-              bgColor="rgba(0, 120, 212, 0.1)" 
+              bgColor="rgba(0, 120, 212, 0.15)" 
+              textColor="#e41937" 
+              onClick={() => {
+                setProvider('microsoft');
+                setSmtpData(prev => ({ 
+                  ...prev, 
+                  smtp_host: 'smtp.office365.com', 
+                  smtp_port: '587' 
+                }));
+                setStep('smtp_form');
+              }} 
+            />
+            <ProviderCard 
+              name="Microsoft Outlook / 365 (Cloud OAuth)" 
+              description="For @outlook.com or Microsoft 365 work accounts via popup"
+              icon={<Mail size={20} />} 
+              bgColor="rgba(0, 120, 212, 0.08)" 
               textColor="#e41937" 
               onClick={() => handleOAuthConnect('microsoft')} 
             />
@@ -262,6 +278,7 @@ export default function ConnectionWizard({ onClose, onSuccess }) {
               <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>App Password / SMTP Password</label>
               <input type="password" value={smtpData.smtp_pass} onChange={e => setSmtpData({...smtpData, smtp_pass: e.target.value})} placeholder="••••••••" style={{ padding: '10px 14px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--bg-base)', color: 'var(--text-primary)' }} required />
               {provider === 'google' && <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>For Gmail, you must use an <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer" style={{ color: 'var(--brand)' }}>App Password</a>.</div>}
+              {provider === 'microsoft' && <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>For Outlook / Microsoft 365, enter your account password or an App Password (if 2FA is active).</div>}
             </div>
 
             <button type="submit" disabled={isLoading} className="btn-primary" style={{ padding: 14, fontSize: 15, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>

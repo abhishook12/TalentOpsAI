@@ -825,6 +825,9 @@ async def startup_event():
 
         # Warm up recruiter store, Directory company index, and OLAP sidecar in background thread (non-blocking)
         def _warm_olap():
+            if os.getenv("RENDER") or os.getenv("RENDER_SERVICE_ID"):
+                logger.info("Render cloud instance detected: skipping startup OLAP heavy warmup to conserve container RAM and WAN egress.")
+                return
             try:
                 from .services.recruiter_store import recruiter_store
                 recruiter_store._ensure_loaded()

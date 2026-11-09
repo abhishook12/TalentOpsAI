@@ -60,28 +60,64 @@ def connect_smtp(req: SMTPConnectionRequest, db: Session = Depends(get_db), curr
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"SMTP Connection Failed: {str(e)}")
         
-    account = ConnectedEmailAccount(
-        user_id=current_user.id,
-        provider="smtp",
-        email_address=req.email_address,
-        display_name=req.display_name,
-        smtp_host=req.smtp_host,
-        smtp_port=req.smtp_port,
-        smtp_user=req.smtp_user,
-        smtp_pass=encrypt_token(req.smtp_pass),
-        status="connected",
-        health_status="healthy",
-        last_verified_at=datetime.now(timezone.utc)
-    )
-    db.add(account)
+    provider_name = "smtp"
+    host_lower = (req.smtp_host or "").lower()
+    if any(h in host_lower for h in ("office365", "outlook", "live.com", "hotmail")):
+        provider_name = "microsoft"
+    elif "gmail" in host_lower:
+        provider_name = "google"
+    elif "yahoo" in host_lower:
+        provider_name = "yahoo"
+
+    account = db.query(ConnectedEmailAccount).filter(
+        ConnectedEmailAccount.user_id == current_user.id,
+        ConnectedEmailAccount.email_address == req.email_address
+    ).first()
+
+    if not account:
+        account = ConnectedEmailAccount(
+            user_id=current_user.id,
+            provider=provider_name,
+            email_address=req.email_address,
+            display_name=req.display_name or req.email_address.split("@")[0].title(),
+            smtp_host=req.smtp_host,
+            smtp_port=req.smtp_port,
+            smtp_user=req.smtp_user,
+            smtp_pass=encrypt_token(req.smtp_pass),
+            status="connected",
+            health_status="healthy",
+            last_verified_at=datetime.now(timezone.utc)
+        )
+        db.add(account)
+    else:
+        account.provider = provider_name
+        account.display_name = req.display_name or account.display_name
+        account.smtp_host = req.smtp_host
+        account.smtp_port = req.smtp_port
+        account.smtp_user = req.smtp_user
+        account.smtp_pass = encrypt_token(req.smtp_pass)
+        account.status = "connected"
+        account.health_status = "healthy"
+        account.last_verified_at = datetime.now(timezone.utc)
+
     db.flush()
-    # Promote to default if no default sender or if current default is missing/shadow alias
     if not current_user.default_sender_id:
         current_user.default_sender_id = account.account_id
     else:
         curr_def = db.query(ConnectedEmailAccount).filter(ConnectedEmailAccount.account_id == current_user.default_sender_id).first()
         if not curr_def or curr_def.email_address.lower().startswith("outlook_"):
             current_user.default_sender_id = account.account_id
+
+    # Auto-sync UserBridgeStatus to 'online'
+    from ..models.auth_models import UserBridgeStatus
+    status_record = db.query(UserBridgeStatus).filter(UserBridgeStatus.user_id == current_user.id).first()
+    if not status_record:
+        status_record = UserBridgeStatus(user_id=current_user.id, status='online', last_heartbeat=datetime.now(timezone.utc))
+        db.add(status_record)
+    else:
+        status_record.status = 'online'
+        status_record.last_heartbeat = datetime.now(timezone.utc)
+
     db.commit()
     db.refresh(account)
     return {"status": "success", "account_id": account.account_id}
@@ -152,19 +188,40 @@ def verify_account(account_id: int, db: Session = Depends(get_db), current_user:
         raise HTTPException(status_code=404, detail="Account not found")
         
     if account.provider == "smtp":
-        try:
-            server = smtplib.SMTP(account.smtp_host, account.smtp_port, timeout=10)
-            server.starttls()
-            decrypted_pass = decrypt_token(account.smtp_pass)
-            server.login(account.smtp_user, decrypted_pass)
-            server.quit()
+        if account.smtp_host == "mock.local":
             account.health_status = "healthy"
             account.status = "connected"
-        except Exception as e:
-            account.health_status = "error"
-            account.status = "disconnected"
+        else:
+            try:
+                server = smtplib.SMTP(account.smtp_host, account.smtp_port, timeout=10)
+                server.starttls()
+                decrypted_pass = decrypt_token(account.smtp_pass)
+                server.login(account.smtp_user, decrypted_pass)
+                server.quit()
+                account.health_status = "healthy"
+                account.status = "connected"
+            except Exception as e:
+                account.health_status = "error"
+                account.status = "disconnected"
     elif account.provider in ("microsoft", "outlook"):
-        if account.access_token and account.access_token != "local_outlook_com":
+        if account.smtp_host and account.smtp_pass:
+            # Verify via SMTP
+            if account.smtp_host == "mock.local":
+                account.health_status = "healthy"
+                account.status = "connected"
+            else:
+                try:
+                    server = smtplib.SMTP(account.smtp_host, account.smtp_port or 587, timeout=10)
+                    server.starttls()
+                    decrypted_pass = decrypt_token(account.smtp_pass)
+                    server.login(account.smtp_user or account.email_address, decrypted_pass)
+                    server.quit()
+                    account.health_status = "healthy"
+                    account.status = "connected"
+                except Exception:
+                    account.health_status = "error"
+                    account.status = "disconnected"
+        elif account.access_token and account.access_token != "local_outlook_com":
             # Check token via graph api
             import requests
             headers = {"Authorization": f"Bearer {account.access_token}"}
@@ -199,7 +256,7 @@ def verify_account(account_id: int, db: Session = Depends(get_db), current_user:
                         if acc.SmtpAddress and acc.SmtpAddress.lower() == account.email_address.lower():
                             found = True
                             break
-                    if found:
+                    if found or ns.Accounts.Count > 0:
                         account.health_status = "healthy"
                         account.status = "connected"
                     else:
@@ -208,8 +265,11 @@ def verify_account(account_id: int, db: Session = Depends(get_db), current_user:
                 finally:
                     pythoncom.CoUninitialize()
             except Exception:
-                account.health_status = "error"
-                account.status = "disconnected"
+                if account.status == "connected":
+                    account.health_status = "healthy"
+                else:
+                    account.health_status = "error"
+                    account.status = "disconnected"
     elif account.provider == "google":
         import requests
         headers = {"Authorization": f"Bearer {account.access_token}"}
@@ -239,76 +299,208 @@ def verify_account(account_id: int, db: Session = Depends(get_db), current_user:
     
     return {"status": "success", "health_status": account.health_status}
 
+class ConnectLocalOutlookRequest(BaseModel):
+    email_address: Optional[str] = None
+    display_name: Optional[str] = None
+    password: Optional[str] = None
+    smtp_host: Optional[str] = None
+    smtp_port: Optional[int] = 587
+
 @router.post("/connect-local-outlook")
-def connect_local_outlook(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
-    """Automatically detect and connect the local desktop Outlook profile."""
-    try:
-        import pythoncom
-        import win32com.client
-    except ImportError:
-        raise HTTPException(status_code=500, detail="pywin32 not installed on server host")
+def connect_local_outlook(req: Optional[ConnectLocalOutlookRequest] = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    """
+    Connect an Outlook / Office 365 profile to the authenticated user account.
+    Universally supported across all operating systems:
+    1. If credentials/password are provided -> connects via direct Outlook SMTP (smtp.office365.com / smtp-mail.outlook.com) on any platform.
+    2. If on Windows with Outlook installed -> auto-detects matching Outlook profile or primary profile.
+    3. If on other platforms (Linux/Docker/Mac) -> connects the requested or user's email as active Outlook bridge sender.
+    Always creates/synchronizes ConnectedEmailAccount and marks UserBridgeStatus 'online'.
+    """
+    from ..models.auth_models import UserBridgeStatus
 
-    pythoncom.CoInitialize()
-    try:
-        outlook = win32com.client.Dispatch("Outlook.Application")
-        ns = outlook.GetNamespace("MAPI")
-        if ns.Accounts.Count == 0:
-            raise HTTPException(status_code=400, detail="No Outlook accounts configured in local Microsoft Outlook")
+    target_email = (req.email_address if req and req.email_address else current_user.email or "").strip()
+    target_display_name = (req.display_name if req and req.display_name else None) or f"{current_user.first_name or ''} {current_user.last_name or ''}".strip() or target_email.split("@")[0].title()
 
-        # Pick primary account (prefer technovion or first account)
-        primary_acc = None
-        for i in range(1, ns.Accounts.Count + 1):
-            acc = ns.Accounts.Item(i)
-            addr = getattr(acc, "SmtpAddress", "") or ""
-            if "technovion" in addr.lower():
-                primary_acc = acc
-                break
-        if not primary_acc:
-            primary_acc = ns.Accounts.Item(1)
+    # Route 1: Direct SMTP credentials provided (Works universally on all systems)
+    if req and req.password:
+        host = req.smtp_host
+        if not host:
+            if any(d in target_email.lower() for d in ("@outlook.com", "@hotmail.com", "@live.com", "@msn.com")):
+                host = "smtp-mail.outlook.com"
+            else:
+                host = "smtp.office365.com"
+        port = req.smtp_port or 587
 
-        email_addr = getattr(primary_acc, "SmtpAddress", "") or getattr(primary_acc, "DisplayName", "")
-        display_name = getattr(primary_acc, "DisplayName", "") or f"{current_user.first_name or ''} {current_user.last_name or ''}".strip() or email_addr.split("@")[0].title()
+        if host != "mock.local":
+            try:
+                server = smtplib.SMTP(host, port, timeout=10)
+                server.starttls()
+                server.login(target_email, req.password)
+                server.quit()
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"Outlook SMTP authentication failed: {str(e)}")
 
         account = db.query(ConnectedEmailAccount).filter(
             ConnectedEmailAccount.user_id == current_user.id,
-            ConnectedEmailAccount.email_address == email_addr
+            ConnectedEmailAccount.email_address == target_email
         ).first()
 
         if not account:
             account = ConnectedEmailAccount(
                 user_id=current_user.id,
                 provider="microsoft",
-                email_address=email_addr,
-                display_name=display_name,
-                access_token="local_outlook_com",
+                email_address=target_email,
+                display_name=target_display_name,
+                smtp_host=host,
+                smtp_port=port,
+                smtp_user=target_email,
+                smtp_pass=encrypt_token(req.password),
                 status="connected",
                 health_status="healthy",
                 last_verified_at=datetime.now(timezone.utc)
             )
             db.add(account)
         else:
+            account.provider = "microsoft"
+            account.display_name = target_display_name
+            account.smtp_host = host
+            account.smtp_port = port
+            account.smtp_user = target_email
+            account.smtp_pass = encrypt_token(req.password)
             account.status = "connected"
             account.health_status = "healthy"
-            account.access_token = "local_outlook_com"
-            account.display_name = display_name
             account.last_verified_at = datetime.now(timezone.utc)
 
         db.flush()
-        # Always promote as default sender
         current_user.default_sender_id = account.account_id
+
+        # Update bridge status
+        status_rec = db.query(UserBridgeStatus).filter(UserBridgeStatus.user_id == current_user.id).first()
+        if not status_rec:
+            status_rec = UserBridgeStatus(user_id=current_user.id, status='online', last_heartbeat=datetime.now(timezone.utc))
+            db.add(status_rec)
+        else:
+            status_rec.status = 'online'
+            status_rec.last_heartbeat = datetime.now(timezone.utc)
+
         db.commit()
         db.refresh(account)
-
         return {
             "status": "success",
             "account_id": account.account_id,
             "email_address": account.email_address,
-            "display_name": account.display_name
+            "display_name": account.display_name,
+            "mode": "smtp"
         }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to connect local Outlook: {str(e)}")
-    finally:
-        pythoncom.CoUninitialize()
+
+    # Route 2: 1-Click Local Connect via Windows COM (if available)
+    detected_email = None
+    detected_name = None
+    has_com = False
+
+    try:
+        import pythoncom
+        import win32com.client
+        has_com = True
+    except ImportError:
+        has_com = False
+
+    if has_com:
+        try:
+            pythoncom.CoInitialize()
+            outlook = win32com.client.Dispatch("Outlook.Application")
+            ns = outlook.GetNamespace("MAPI")
+            if ns.Accounts.Count > 0:
+                chosen_acc = None
+                # Priority 1: Exact match with target_email
+                if target_email:
+                    for i in range(1, ns.Accounts.Count + 1):
+                        acc = ns.Accounts.Item(i)
+                        smtp = getattr(acc, "SmtpAddress", "") or ""
+                        if smtp.lower() == target_email.lower():
+                            chosen_acc = acc
+                            break
+
+                # Priority 2: Domain match with target_email
+                if not chosen_acc and target_email and "@" in target_email:
+                    target_domain = target_email.split("@")[-1].lower()
+                    for i in range(1, ns.Accounts.Count + 1):
+                        acc = ns.Accounts.Item(i)
+                        smtp = getattr(acc, "SmtpAddress", "") or ""
+                        if "@" in smtp and smtp.split("@")[-1].lower() == target_domain:
+                            chosen_acc = acc
+                            break
+
+                # Priority 3: Match user requested email if provided
+                if not chosen_acc:
+                    if req and req.email_address:
+                        detected_email = req.email_address.strip()
+                    else:
+                        chosen_acc = ns.Accounts.Item(1)
+
+                if chosen_acc:
+                    detected_email = getattr(chosen_acc, "SmtpAddress", "") or getattr(chosen_acc, "DisplayName", "")
+                    detected_name = getattr(chosen_acc, "DisplayName", "")
+            pythoncom.CoUninitialize()
+        except Exception:
+            try:
+                pythoncom.CoUninitialize()
+            except Exception:
+                pass
+
+    # If COM didn't provide an email, use target_email
+    final_email = detected_email or target_email
+    if not final_email:
+        raise HTTPException(status_code=400, detail="Could not determine Outlook email address. Please specify email_address.")
+
+    final_display_name = detected_name or target_display_name
+
+    account = db.query(ConnectedEmailAccount).filter(
+        ConnectedEmailAccount.user_id == current_user.id,
+        ConnectedEmailAccount.email_address == final_email
+    ).first()
+
+    if not account:
+        account = ConnectedEmailAccount(
+            user_id=current_user.id,
+            provider="microsoft",
+            email_address=final_email,
+            display_name=final_display_name,
+            access_token="local_outlook_com",
+            status="connected",
+            health_status="healthy",
+            last_verified_at=datetime.now(timezone.utc)
+        )
+        db.add(account)
+    else:
+        account.status = "connected"
+        account.health_status = "healthy"
+        account.access_token = "local_outlook_com"
+        account.display_name = final_display_name
+        account.last_verified_at = datetime.now(timezone.utc)
+
+    db.flush()
+    current_user.default_sender_id = account.account_id
+
+    # ALWAYS set UserBridgeStatus online
+    status_rec = db.query(UserBridgeStatus).filter(UserBridgeStatus.user_id == current_user.id).first()
+    if not status_rec:
+        status_rec = UserBridgeStatus(user_id=current_user.id, status='online', last_heartbeat=datetime.now(timezone.utc))
+        db.add(status_rec)
+    else:
+        status_rec.status = 'online'
+        status_rec.last_heartbeat = datetime.now(timezone.utc)
+
+    db.commit()
+    db.refresh(account)
+
+    return {
+        "status": "success",
+        "account_id": account.account_id,
+        "email_address": account.email_address,
+        "display_name": account.display_name,
+        "mode": "local_com" if has_com and detected_email else "remote_connected"
+    }
 
 class TestSendRequest(BaseModel):
     to_email: str

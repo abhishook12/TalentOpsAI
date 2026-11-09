@@ -1205,16 +1205,31 @@ def outlook_status(db: Session = Depends(get_db), current_user: User = Depends(g
 
 @router.post("/outlook/connect")
 def outlook_connect(payload: OutlookConnectPayload, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
-    from ..models.auth_models import ConnectedEmailAccount
+    from ..models.auth_models import ConnectedEmailAccount, UserBridgeStatus
     account = db.query(ConnectedEmailAccount).filter(ConnectedEmailAccount.user_id == current_user.id).first()
     if not account:
         account = ConnectedEmailAccount(user_id=current_user.id)
         db.add(account)
     
+    account.provider = "microsoft"
     account.email_address = payload.email
-    account.access_token = payload.token
-    account.refresh_token = "mock_refresh_token"
+    account.access_token = payload.token or "local_outlook_com"
+    account.status = "connected"
+    account.health_status = "healthy"
+    account.last_verified_at = datetime.now(timezone.utc)
     account.token_expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=90)
+    db.flush()
+    current_user.default_sender_id = account.account_id
+
+    # Ensure bridge status is online
+    status_rec = db.query(UserBridgeStatus).filter(UserBridgeStatus.user_id == current_user.id).first()
+    if not status_rec:
+        status_rec = UserBridgeStatus(user_id=current_user.id, status='online', last_heartbeat=datetime.now(timezone.utc))
+        db.add(status_rec)
+    else:
+        status_rec.status = 'online'
+        status_rec.last_heartbeat = datetime.now(timezone.utc)
+
     db.commit()
     return {"status": "success", "message": "Outlook account connected"}
 

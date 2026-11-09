@@ -1,8 +1,5 @@
 import hashlib
 import logging
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
-from starlette.responses import Response
 
 logger = logging.getLogger(__name__)
 
@@ -17,13 +14,13 @@ BYPASS_PATHS = (
 )
 
 BYPASS_CONTENT_TYPES = (
-    "text/event-stream",
-    "application/octet-stream",
-    "application/vnd.microsoft.portable-executable",
-    "application/zip",
+    b"text/event-stream",
+    b"application/octet-stream",
+    b"application/vnd.microsoft.portable-executable",
+    b"application/zip",
 )
 
-PUBLIC_CACHE_PATHS = (
+PUBLIC_CACHE_PATHS = {
     "/ping",
     "/version",
     "/api/v1/version",
@@ -33,91 +30,177 @@ PUBLIC_CACHE_PATHS = (
     "/api/health",
     "/api/scout/version",
     "/scout/updates/latest",
-)
+}
 
 
-class ETagMiddleware(BaseHTTPMiddleware):
+class ETagMiddleware:
     """
-    HTTP ETag and Conditional 304 Middleware.
-    Aggressively reduces Render egress bandwidth by:
-    1. Returning 304 Not Modified (0 bytes body) when If-None-Match matches.
-    2. Setting Vercel Edge-friendly Cache-Control (s-maxage) on public endpoints so Vercel edge
+    Pure ASGI HTTP ETag and Conditional 304 Middleware.
+    Aggressively reduces Render egress bandwidth and eliminates all BaseHTTPMiddleware
+    task-group deadlocks (Starlette #1012, #1157, #1271).
+
+    1. Returns 304 Not Modified (0 bytes body) when If-None-Match matches.
+    2. Sets Vercel Edge-friendly Cache-Control (s-maxage) on public endpoints so Vercel edge
        caches responses and avoids hitting Render entirely.
-    3. Setting private, no-cache + ETag on API read endpoints so browsers cache locally and
+    3. Sets private, no-cache + ETag on API read endpoints so browsers cache locally and
        revalidate with 0-byte payloads.
+    4. Operates 100% at the ASGI protocol level with zero threadpool or taskgroup overhead.
     """
 
-    async def dispatch(self, request: Request, call_next):
-        if request.method not in ("GET", "HEAD"):
-            return await call_next(request)
+    def __init__(self, app):
+        self.app = app
 
-        path = request.url.path
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
 
-        # Bypass binary downloads and streaming SSE
+        method = scope.get("method", "GET")
+        if method not in ("GET", "HEAD"):
+            await self.app(scope, receive, send)
+            return
+
+        path = scope.get("path", "")
         for bypass in BYPASS_PATHS:
             if path.startswith(bypass):
-                return await call_next(request)
+                await self.app(scope, receive, send)
+                return
 
-        response = await call_next(request)
+        # Extract client If-None-Match header
+        client_if_none_match = None
+        for k, v in scope.get("headers", []):
+            if k.lower() == b"if-none-match":
+                client_if_none_match = v.decode("latin1", errors="ignore")
+                break
 
-        # Only process successful 200 OK responses
-        if response.status_code != 200:
-            return response
+        response_start = {}
+        body_chunks = []
+        is_bypassed = False
 
-        content_type = response.headers.get("content-type", "")
-        for bypass_ct in BYPASS_CONTENT_TYPES:
-            if bypass_ct in content_type:
-                return response
+        async def custom_send(message):
+            nonlocal is_bypassed
+            msg_type = message.get("type")
 
-        try:
-            res_body = b""
-            async for chunk in response.body_iterator:
-                res_body += chunk if isinstance(chunk, bytes) else chunk.encode("utf-8")
+            if msg_type == "http.response.start":
+                response_start.update(message)
+                # Check for streaming/binary bypass in content-type
+                headers = message.get("headers", [])
+                for hk, hv in headers:
+                    if hk.lower() == b"content-type":
+                        hv_lower = hv.lower()
+                        for bct in BYPASS_CONTENT_TYPES:
+                            if bct in hv_lower:
+                                is_bypassed = True
+                                break
+                        break
+                if is_bypassed:
+                    await send(message)
+                return
 
-            # Compute SHA-256 short hash
-            digest = hashlib.sha256(res_body).hexdigest()[:16]
-            etag = f'"{digest}"'
+            elif msg_type == "http.response.body":
+                if is_bypassed:
+                    await send(message)
+                    return
 
-            headers = dict(response.headers)
-            headers["etag"] = etag
+                body = message.get("body", b"")
+                more_body = message.get("more_body", False)
+                body_chunks.append(body)
 
-            # Add optimal Cache-Control headers if not already set by the endpoint
-            if "cache-control" not in headers:
-                if path in PUBLIC_CACHE_PATHS:
-                    # Edge CDN caches for 2 minutes, serves stale up to 5 minutes
-                    headers["cache-control"] = "public, max-age=30, s-maxage=120, stale-while-revalidate=300"
-                else:
-                    # Client must revalidate with ETag; 0 bytes if unmodified
-                    headers["cache-control"] = "private, no-cache"
+                if more_body:
+                    # If response is chunked streaming with more_body=True, don't buffer infinitely
+                    # If total buffered exceeds 1MB, bypass to prevent memory ballooning
+                    total_len = sum(len(c) for c in body_chunks)
+                    if total_len > 1_000_000:
+                        is_bypassed = True
+                        await send(response_start)
+                        for c in body_chunks:
+                            await send({"type": "http.response.body", "body": c, "more_body": True})
+                        body_chunks.clear()
+                    return
 
-            # Check client conditional request (If-None-Match)
-            if_none_match = request.headers.get("if-none-match")
-            if if_none_match:
-                # Extract client tags, stripping W/ and quotes
-                client_tags = [
-                    t.strip().lstrip("W/").strip('"')
-                    for t in if_none_match.split(",")
-                ]
-                clean_etag = digest
+                # End of response body reached
+                status_code = response_start.get("status", 200)
+                raw_headers = response_start.get("headers", [])
+                header_dict = {k.lower(): (k, v) for k, v in raw_headers}
 
-                if clean_etag in client_tags or "*" in client_tags:
-                    # 304 Not Modified: zero body egress
-                    headers.pop("content-length", None)
-                    headers.pop("content-type", None)
-                    headers.pop("content-encoding", None)
-                    return Response(status_code=304, headers=headers)
+                if status_code == 200:
+                    full_body = b"".join(body_chunks)
+                    digest = hashlib.sha256(full_body).hexdigest()[:16]
+                    etag_val = f'"{digest}"'.encode("latin1")
 
-            # Clean framing headers so Starlette accurately computes Content-Length for res_body
-            headers.pop("content-length", None)
-            headers.pop("content-encoding", None)
-            headers.pop("transfer-encoding", None)
+                    # Set ETag
+                    header_dict[b"etag"] = (b"etag", etag_val)
 
-            return Response(
-                content=res_body,
-                status_code=response.status_code,
-                headers=headers,
-                media_type=response.media_type,
-            )
-        except Exception as e:
-            logger.debug("ETag processing error on %s: %s", path, e)
-            return response
+                    # Optimal Cache-Control headers
+                    if b"cache-control" not in header_dict:
+                        if path in PUBLIC_CACHE_PATHS:
+                            # Edge CDN caches for 2 minutes, serves stale up to 5 minutes
+                            header_dict[b"cache-control"] = (
+                                b"cache-control",
+                                b"public, max-age=30, s-maxage=120, stale-while-revalidate=300"
+                            )
+                        else:
+                            # Client must revalidate with ETag; 0 bytes if unmodified
+                            header_dict[b"cache-control"] = (b"cache-control", b"private, no-cache")
+
+                    # Check client conditional request (If-None-Match)
+                    if client_if_none_match:
+                        client_tags = [
+                            t.strip().lstrip("W/").strip('"')
+                            for t in client_if_none_match.split(",")
+                        ]
+                        if digest in client_tags or "*" in client_tags:
+                            # 304 Not Modified: strip body framing headers, send empty body
+                            header_dict.pop(b"content-length", None)
+                            header_dict.pop(b"content-type", None)
+                            header_dict.pop(b"content-encoding", None)
+                            out_headers = [pair for pair in header_dict.values()]
+                            await send({
+                                "type": "http.response.start",
+                                "status": 304,
+                                "headers": out_headers,
+                            })
+                            await send({
+                                "type": "http.response.body",
+                                "body": b"",
+                                "more_body": False,
+                            })
+                            return
+
+                    # Normal 200 OK: accurately update Content-Length
+                    header_dict.pop(b"content-encoding", None)
+                    header_dict.pop(b"transfer-encoding", None)
+                    header_dict[b"content-length"] = (b"content-length", str(len(full_body)).encode("latin1"))
+
+                    out_headers = [pair for pair in header_dict.values()]
+                    await send({
+                        "type": "http.response.start",
+                        "status": status_code,
+                        "headers": out_headers,
+                    })
+                    await send({
+                        "type": "http.response.body",
+                        "body": full_body,
+                        "more_body": False,
+                    })
+                    return
+
+                # Non-200 responses: send through untouched
+                out_headers = [pair for pair in header_dict.values()]
+                await send({
+                    "type": "http.response.start",
+                    "status": status_code,
+                    "headers": out_headers,
+                })
+                for idx, c in enumerate(body_chunks):
+                    await send({
+                        "type": "http.response.body",
+                        "body": c,
+                        "more_body": idx < len(body_chunks) - 1,
+                    })
+                return
+
+            else:
+                await send(message)
+
+        await self.app(scope, receive, custom_send)

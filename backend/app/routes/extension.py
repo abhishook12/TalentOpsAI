@@ -23,7 +23,7 @@ from typing import List, Optional, Union, Dict, Any
 import io
 import os
 import zipfile
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Header, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Header, Response, BackgroundTasks
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import text, func as sqlfunc
@@ -298,10 +298,34 @@ def activate_extension(req: ActivationRequest, db: Session = Depends(get_db)):
 
 # ── POST /recruiters/extension/batch ─────────────────────────────────────────
 
+
+def _bg_process_batch_enrichment(raw_contacts_dicts: List[Dict[str, Any]], page_url: Optional[str], page_title: Optional[str], capture_id: Optional[str], owner_user_id: int):
+    """Offloads heavy Corporate Email Intelligence and Knowledge Graph ingestion to background thread, freeing HTTP connections immediately."""
+    try:
+        from ..database import SessionLocal
+        from ..services.discovery_processor import DiscoveryProcessor
+        from ..utils.normalizer import build_semantic_graph_document
+        with SessionLocal() as bg_db:
+            processor = DiscoveryProcessor(bg_db)
+            processor.process_pending_batch(limit=100)
+            kg_doc = build_semantic_graph_document(
+                raw_contacts=raw_contacts_dicts,
+                page_url=page_url,
+                page_title=page_title,
+                capture_id=capture_id,
+            )
+            processor.process_knowledge_graph_document(kg_doc, owner_user_id=owner_user_id)
+        from .analytics import analytics_cache
+        analytics_cache.clear()
+        logger.info("Background batch enrichment completed successfully for user %s", owner_user_id)
+    except Exception as e:
+        logger.warning("Background batch processor / knowledge graph run error: %s", e)
+
 @router.post("/batch")
 def ingest_extension_batch(
     req: BatchRequest,
     request: Request,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_extension_user),
     x_device_id: Optional[str] = Header(None),
@@ -499,38 +523,28 @@ def ingest_extension_batch(
         logger.error("Extension batch staging commit failed: %s", e)
         raise HTTPException(status_code=500, detail="Database error during batch staging")
 
-    # Run batch processor on staged batch and ingest knowledge graph document
-    processor_stats = {}
-    kg_stats = {}
+    # Schedule asynchronous batch processing & knowledge graph ingestion
+    # Returns immediately (<50ms) to release HTTP and PgBouncer connection slots instantly
     if staged > 0:
         try:
-            from ..services.discovery_processor import DiscoveryProcessor, run_batch_processor
-            from ..utils.normalizer import build_semantic_graph_document
-            
-            processor = DiscoveryProcessor(db)
-            processor_stats = processor.process_pending_batch(limit=100)
-
-            # Build and Ingest Open-Ended Knowledge Graph Document
-            kg_doc = build_semantic_graph_document(
-                raw_contacts=[c.model_dump() if hasattr(c, 'model_dump') else dict(c) for c in req.contacts],
-                page_url=req.contacts[0].source_url if req.contacts else None,
-                page_title=req.contacts[0].source_page_title if req.contacts else None,
-                capture_id=req.contacts[0].capture_id if req.contacts else None,
+            raw_c = [c.model_dump() if hasattr(c, 'model_dump') else dict(c) for c in req.contacts]
+            p_url = req.contacts[0].source_url if req.contacts else None
+            p_title = req.contacts[0].source_page_title if req.contacts else None
+            c_id = req.contacts[0].capture_id if req.contacts else None
+            background_tasks.add_task(
+                _bg_process_batch_enrichment,
+                raw_c,
+                p_url,
+                p_title,
+                c_id,
+                current_user.id,
             )
-            kg_stats = processor.process_knowledge_graph_document(kg_doc, owner_user_id=current_user.id)
-
-        except Exception as pe:
-            logger.warning("Auto batch processor / knowledge graph run error: %s", pe)
-
-        try:
-            from .analytics import analytics_cache
-            analytics_cache.clear()
-        except Exception:
-            pass
+        except Exception as bg_schedule_err:
+            logger.warning("Failed to schedule background batch enrichment: %s", bg_schedule_err)
 
     logger.info(
-        "Extension staged: device=%s batch=%s staged=%d duplicates=%d processor_stats=%s kg_stats=%s",
-        device_id, batch_id, staged, idempotent_duplicates, processor_stats, kg_stats
+        "Extension staged: device=%s batch=%s staged=%d duplicates=%d (processing scheduled in background)",
+        device_id, batch_id, staged, idempotent_duplicates
     )
 
     return {
@@ -540,8 +554,8 @@ def ingest_extension_batch(
         "accepted": staged,
         "duplicates": idempotent_duplicates,
         "idempotent_skips": idempotent_duplicates,
-        "processor_stats": processor_stats,
-        "knowledge_graph_stats": kg_stats,
+        "processor_stats": {"status": "scheduled_async"},
+        "knowledge_graph_stats": {"status": "scheduled_async"},
         "errors": errors[:5],
     }
 

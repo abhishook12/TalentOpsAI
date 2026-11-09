@@ -337,82 +337,9 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 import uuid
 from .core.logger import request_id_var
 
-@app.middleware("http")
-async def request_id_middleware(request: Request, call_next):
-    req_id = str(uuid.uuid4())
-    request_id_var.set(req_id)
-    response = await call_next(request)
-    response.headers["X-Request-ID"] = req_id
-    return response
-
-from .resource_lockdown import is_locked_down, get_lockdown_reason, check_system_limits
-
-_REQ_COUNTER = 0
-
-@app.middleware("http")
-async def memory_hygiene_middleware(request: Request, call_next):
-    global _REQ_COUNTER
-    response = await call_next(request)
-    _REQ_COUNTER += 1
-    if _REQ_COUNTER % 50 == 0:
-        try:
-            from .core.memory_sentinel import trim_os_memory
-            trim_os_memory()
-        except Exception:
-            pass
-    return response
-
-@app.middleware("http")
-async def lockdown_middleware(request: Request, call_next):
-    path = request.url.path
-    is_modifying_request = request.method != "GET" or path.startswith("/ai")
-    is_whitelisted = (
-        path in ["/admin/unlock", "/admin/cleanup", "/auth/login", "/ping", "/api/ping"]
-        or path.startswith("/health")
-        or path.startswith("/api/health")
-        or path.startswith("/auth")
-        or path.startswith("/api/auth")
-        or path.startswith("/admin")
-        or path.startswith("/api/admin")
-        or path.startswith("/analytics")
-        or path.startswith("/api/analytics")
-    )
-    
-    if is_modifying_request and not is_whitelisted:
-        if is_locked_down():
-            return JSONResponse(
-                status_code=503,
-                content={"detail": f"System is in Emergency Lockdown: {get_lockdown_reason()}", "type": "lockdown"}
-            )
-    
-    # Check limits on every POST/AI request
-    if is_modifying_request and not is_whitelisted:
-        check_system_limits()
-        
-    start_time = time.time()
-    response = await call_next(request)
-    process_time = time.time() - start_time
-    response.headers["X-Process-Time"] = str(process_time)
-    
-    if process_time > 1.0:
-        logger.warning(f"Slow request detected: {request.method} {request.url.path} took {process_time:.2f}s")
-        
-    return response
-
-from .core.etag_middleware import ETagMiddleware
-app.add_middleware(ETagMiddleware)
+from .core.gateway_middleware import TalentOpsGatewayMiddleware
+app.add_middleware(TalentOpsGatewayMiddleware)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
-
-@app.middleware("http")
-async def security_headers_middleware(request: Request, call_next):
-    response = await call_next(request)
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["X-Frame-Options"] = "DENY"
-    response.headers["X-XSS-Protection"] = "1; mode=block"
-    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
-    response.headers["Content-Security-Policy"] = "frame-ancestors 'none';"
-    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    return response
 
 app.add_middleware(
     CORSMiddleware,

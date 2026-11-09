@@ -172,7 +172,7 @@ class MemorySentinel:
                 from ..services.recruiter_store import recruiter_store
                 if recruiter_store._conn:
                     recruiter_store._conn.execute("CHECKPOINT;")
-                    recruiter_store._conn.execute("PRAGMA max_memory='32MB';")
+                    recruiter_store._conn.execute("PRAGMA max_memory='128MB';")
             except Exception:
                 pass
 

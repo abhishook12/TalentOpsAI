@@ -88,7 +88,14 @@ class AIRouterService:
             latency_ms = int((time.time() - start_time) * 1000)
 
         # ── Enterprise Audit Logging ──────────────────────────────────────────
-        if db:
+        # High-frequency background internal adjudications (e.g. screen tokens) are ephemeral
+        # and must not bloat PostgreSQL storage. Only persist human or core user-facing actions.
+        HIGH_VOLUME_BG_ACTIONS = {
+            "autonomous_entity_adjudication",
+            "screen_noise_filter",
+            "token_pre_classifier",
+        }
+        if db and action_type not in HIGH_VOLUME_BG_ACTIONS:
             try:
                 audit_entry = AIAuditLog(
                     user_id=user_id,
@@ -96,8 +103,8 @@ class AIRouterService:
                     model_name=model_used,
                     model_version="2026.09.1",
                     prompt_hash=prompt_hash,
-                    input_payload=json.dumps({"prompt": prompt[:500]}),
-                    output_payload=json.dumps(output_data)[:2000],
+                    input_payload=json.dumps({"prompt": prompt[:300]}),
+                    output_payload=json.dumps(output_data)[:500],
                     confidence_score=output_data.get("confidence", 0.88),
                     latency_ms=latency_ms,
                     tokens_used=tokens_est,

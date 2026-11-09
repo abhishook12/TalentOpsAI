@@ -19,6 +19,18 @@
       ]
     },
     {
+      "source": "/api/ping",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=60, s-maxage=300" }
+      ]
+    },
+    {
+      "source": "/api/health",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=60, s-maxage=300" }
+      ]
+    },
+    {
       "source": "/api/analytics/company-states",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=60, s-maxage=300, stale-while-revalidate=600" }

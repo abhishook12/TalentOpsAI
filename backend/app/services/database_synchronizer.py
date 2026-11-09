@@ -87,6 +87,7 @@ class DatabaseSynchronizer:
     """
 
     def __init__(self):
+        self._last_sync_time: Optional[datetime] = None
         self.stats: Dict[str, Any] = {
             "start_time": None,
             "end_time": None,
@@ -188,12 +189,12 @@ class DatabaseSynchronizer:
         """
         logger.info("[STAGE 1] Executing Email-Level & Identity Synchronization...")
 
-        # 1. Whole Name Recovery from Email Localpart
+        # 1. Whole Name Recovery from Email Localpart (Batch limited to prevent WAN egress spikes)
         generic_recs = db.query(Recruiter).filter(
             (Recruiter.recruiter_name.is_(None)) |
             (Recruiter.recruiter_name == '') |
             (Recruiter.recruiter_name == 'Recruiter')
-        ).all()
+        ).filter(Recruiter.email.isnot(None), Recruiter.email != '').limit(500).all()
 
         for r in generic_recs:
             if not r.email:
@@ -206,8 +207,12 @@ class DatabaseSynchronizer:
 
         db.commit()
 
-        # 2. Company Association from Email Domains
-        unlinked_recs = db.query(Recruiter).filter(Recruiter.company_id.is_(None)).all()
+        # 2. Company Association from Email Domains (Batch limited)
+        unlinked_recs = db.query(Recruiter).filter(
+            Recruiter.company_id.is_(None),
+            Recruiter.email.isnot(None),
+            Recruiter.email.like('%@%')
+        ).limit(500).all()
         for r in unlinked_recs:
             if not r.email or "@" not in r.email:
                 continue
@@ -222,8 +227,8 @@ class DatabaseSynchronizer:
 
         db.commit()
 
-        # 3. Synchronize Deliverability from Outlook Feedback Logs
-        fb_logs = db.query(OutlookFeedbackLog).all()
+        # 3. Synchronize Deliverability from Outlook Feedback Logs (Recent batch)
+        fb_logs = db.query(OutlookFeedbackLog).order_by(OutlookFeedbackLog.id.desc()).limit(200).all()
         for fb in fb_logs:
             email_clean = fb.recipient_email.strip().lower()
             matching_recs = db.query(Recruiter).filter(func.lower(Recruiter.email) == email_clean).all()
@@ -244,12 +249,18 @@ class DatabaseSynchronizer:
 
         db.commit()
 
-        # 4. Reverse-Engineer Company Email Patterns
-        # Find companies with >= 2 recruiters having emails
+        # 4. Reverse-Engineer Company Email Patterns (Delta-targeted)
+        # Find companies missing patterns with >= 2 recruiters having emails
         comp_recs = db.execute(text("""
-            SELECT company_id, email, recruiter_name 
-            FROM recruiters 
-            WHERE company_id IS NOT NULL AND email IS NOT NULL AND email != '' AND email NOT LIKE '%noemail%'
+            SELECT r.company_id, r.email, r.recruiter_name 
+            FROM recruiters r
+            LEFT JOIN company_email_patterns p ON r.company_id = p.company_id
+            WHERE p.company_id IS NULL 
+              AND r.company_id IS NOT NULL 
+              AND r.email IS NOT NULL 
+              AND r.email != '' 
+              AND r.email NOT LIKE '%noemail%'
+            LIMIT 1000
         """)).fetchall()
 
         by_comp = defaultdict(list)
@@ -326,8 +337,12 @@ class DatabaseSynchronizer:
         """
         logger.info("[STAGE 2] Executing Company-Level Enrichment & Deduplication...")
 
-        # 1. Domain & Website Synchronization
-        companies = db.query(Company).all()
+        # 1. Domain & Website Synchronization (Batch-limited delta)
+        companies = db.query(Company).filter(
+            (Company.website.is_(None)) |
+            (Company.primary_domain.is_(None)) |
+            (Company.canonical_name.is_(None))
+        ).limit(500).all()
         for c in companies:
             # Sync domain -> website
             if not c.website and c.primary_domain:
@@ -376,7 +391,7 @@ class DatabaseSynchronizer:
 
         db.commit()
 
-        # 3. Infer Company State from Linked Recruiters
+        # 3. Infer Company State from Linked Recruiters (Batch-limited delta)
         unlocated_comps = db.execute(text("""
             SELECT c.company_id, array_agg(r.state) as states
             FROM companies c
@@ -384,6 +399,7 @@ class DatabaseSynchronizer:
             WHERE (c.state IS NULL OR c.state = '' OR c.state = 'UNKNOWN')
               AND r.state IS NOT NULL AND r.state != '' AND r.state != 'UNKNOWN'
             GROUP BY c.company_id
+            LIMIT 200
         """)).fetchall()
 
         for cid, states in unlocated_comps:
@@ -399,10 +415,10 @@ class DatabaseSynchronizer:
 
         db.commit()
 
-        # 4. Industry Taxonomy Classification
+        # 4. Industry Taxonomy Classification (Batch-limited delta)
         unclassified_comps = db.query(Company).filter(
             (Company.industry.is_(None)) | (Company.industry == '')
-        ).all()
+        ).limit(500).all()
 
         for c in unclassified_comps:
             text_corpus = f"{c.company_name or ''} {c.primary_domain or ''} {c.notes or ''}".lower()
@@ -436,10 +452,10 @@ class DatabaseSynchronizer:
         """
         logger.info("[STAGE 3] Executing Person & Contact Enrichment...")
 
-        # 1. State Recovery from Location Strings
+        # 1. State Recovery from Location Strings (Batch-limited delta)
         unlocated_recs = db.query(Recruiter).filter(
             (Recruiter.state.is_(None)) | (Recruiter.state == '') | (Recruiter.state == 'UNKNOWN')
-        ).all()
+        ).filter(Recruiter.location.isnot(None), Recruiter.location != '').limit(500).all()
 
         for r in unlocated_recs:
             inferred_state = None
@@ -486,9 +502,15 @@ class DatabaseSynchronizer:
 
         db.commit()
 
-        # 2. Title Normalization & Taxonomy Classification
-        all_recs = db.query(Recruiter).all()
-        for r in all_recs:
+        # 2. Title Normalization & Taxonomy Classification (Batch-limited delta)
+        recs_to_enrich = db.query(Recruiter).filter(
+            (Recruiter.taxonomy_category.is_(None)) |
+            (Recruiter.taxonomy_category == '') |
+            (Recruiter.taxonomy_category == 'Uncategorized') |
+            (Recruiter.completeness_score.is_(None)) |
+            (Recruiter.completeness_score == 0)
+        ).limit(500).all()
+        for r in recs_to_enrich:
             t = (r.title or "").strip()
             if t:
                 # Strip noise words
@@ -623,6 +645,10 @@ class DatabaseSynchronizer:
         and completeness scores.
         """
         logger.info("[STAGE 5] Executing Cross-Database Parquet Synchronization...")
+        if os.getenv("RENDER") or os.getenv("RENDER_SERVICE_ID"):
+            logger.info("[STAGE 5] Running on Render cloud instance. Skipping Parquet OLAP full sync to preserve Supabase egress bandwidth.")
+            return
+
         parquet_path = os.path.abspath("backend/data/recruiters_full.parquet")
         if not os.path.exists(parquet_path):
             logger.warning("[STAGE 5] Parquet file not found at %s. Skipping parquet sync.", parquet_path)
@@ -630,8 +656,17 @@ class DatabaseSynchronizer:
 
         con = duckdb.connect()
         try:
-            # Query all PostgreSQL recruiters with joined company names
-            pg_rows = db.execute(text("""
+            # Check latest update timestamp in parquet to perform incremental delta fetch
+            max_parquet_ts = None
+            try:
+                res = con.execute(f"SELECT MAX(updated_at) FROM read_parquet('{parquet_path.replace(os.sep, '/')}')").fetchone()
+                if res and res[0]:
+                    max_parquet_ts = res[0]
+            except Exception as e:
+                logger.debug("Could not read max updated_at from parquet: %s", e)
+
+            # Query only recently updated PostgreSQL recruiters
+            query_sql = """
                 SELECT
                     r.recruiter_id,
                     r.recruiter_name,
@@ -648,7 +683,13 @@ class DatabaseSynchronizer:
                 FROM recruiters r
                 LEFT JOIN companies c ON r.company_id = c.company_id
                 WHERE r.recruiter_name IS NOT NULL
-            """)).fetchall()
+            """
+            params = {}
+            if max_parquet_ts:
+                query_sql += " AND r.updated_at > :max_ts"
+                params["max_ts"] = max_parquet_ts
+
+            pg_rows = db.execute(text(query_sql), params).fetchall()
 
             if not pg_rows:
                 return
@@ -814,12 +855,29 @@ class DatabaseSynchronizer:
         return p
 
     def run_full_synchronization(self) -> Dict[str, Any]:
-        """Orchestrates the entire database-wide synchronization lifecycle."""
+        """Orchestrates the entire database-wide synchronization lifecycle with Delta-Gating."""
         start_ts = time.time()
         self.stats["start_time"] = datetime.now(timezone.utc).isoformat()
         logger.info("=== STARTING FULL DATABASE-WIDE SYNCHRONIZATION ===")
 
         with SessionLocal() as db:
+            # Step 0: Delta-Gating Guard to preserve Supabase egress bandwidth
+            if getattr(self, "_last_sync_time", None) is not None:
+                delta_check = db.execute(text("""
+                    SELECT 
+                        (SELECT COUNT(*) FROM recruiters WHERE updated_at > :ts) as rec_delta,
+                        (SELECT COUNT(*) FROM companies WHERE updated_at > :ts) as comp_delta,
+                        (SELECT COUNT(*) FROM discovery_staging WHERE created_at > :ts) as stag_delta
+                """), {"ts": self._last_sync_time}).fetchone()
+
+                total_delta = (delta_check[0] or 0) + (delta_check[1] or 0) + (delta_check[2] or 0)
+                if total_delta == 0:
+                    logger.info(
+                        "[AUDIT] Zero database modifications detected since %s. Delta-Gate active: skipping synchronization cycle (egress saved: 100%%).",
+                        self._last_sync_time.isoformat()
+                    )
+                    return {"status": "skipped", "reason": "no_delta", "delta_count": 0}
+
             # Step 1: Pre-sync baseline audit
             self.audit_baseline(db)
 
@@ -841,8 +899,20 @@ class DatabaseSynchronizer:
             # Step 7: Post-sync audit
             self.audit_post_sync(db)
 
+            # Step 8: Autonomous Audit Log Retention Maintenance (Ensures DB stays under 200MB)
+            try:
+                db.execute(text("""
+                    DELETE FROM ai_audit_logs 
+                    WHERE action_type = 'autonomous_entity_adjudication'
+                       OR created_at < NOW() - INTERVAL '14 days'
+                """))
+                db.commit()
+            except Exception as ret_err:
+                logger.debug("Audit log retention note: %s", ret_err)
+
+        self._last_sync_time = datetime.now(timezone.utc)
         end_ts = time.time()
-        self.stats["end_time"] = datetime.now(timezone.utc).isoformat()
+        self.stats["end_time"] = self._last_sync_time.isoformat()
         self.stats["duration_seconds"] = round(end_ts - start_ts, 2)
         logger.info("=== COMPLETED FULL DATABASE-WIDE SYNCHRONIZATION in %.2fs ===", self.stats["duration_seconds"])
         return self.stats

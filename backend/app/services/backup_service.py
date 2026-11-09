@@ -44,6 +44,18 @@ class BackupService:
         from ..database import SessionLocal
         from ..models.models import Recruiter, Company
 
+        # Guard: On cloud environments (Render), skipping full PostgreSQL table dumps
+        # saves ~40-50MB Supabase egress per cycle. Snapshotting belongs on persistent local storage.
+        if os.getenv("RENDER") or os.getenv("RENDER_SERVICE_ID"):
+            logger.info("[BACKUP] Cloud instance detected (Render). Skipping full Postgres WAN table dump to preserve Supabase egress quota.")
+            return {
+                "version": "1.0",
+                "exported_at": datetime.now(timezone.utc).isoformat(),
+                "status": "skipped_on_cloud",
+                "message": "Preserved Supabase egress; master snapshots operate on workstation supervisor.",
+                "size_mb": 0.0,
+            }
+
         t0 = time.perf_counter()
         with SessionLocal() as db:
             # Query recruiters

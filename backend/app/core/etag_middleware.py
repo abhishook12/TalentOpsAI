@@ -27,6 +27,12 @@ PUBLIC_CACHE_PATHS = (
     "/ping",
     "/version",
     "/api/v1/version",
+    "/health",
+    "/api/ping",
+    "/api/version",
+    "/api/health",
+    "/api/scout/version",
+    "/scout/updates/latest",
 )
 
 

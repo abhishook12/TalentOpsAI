@@ -107,6 +107,11 @@ class ETagMiddleware(BaseHTTPMiddleware):
                     headers.pop("content-encoding", None)
                     return Response(status_code=304, headers=headers)
 
+            # Clean framing headers so Starlette accurately computes Content-Length for res_body
+            headers.pop("content-length", None)
+            headers.pop("content-encoding", None)
+            headers.pop("transfer-encoding", None)
+
             return Response(
                 content=res_body,
                 status_code=response.status_code,

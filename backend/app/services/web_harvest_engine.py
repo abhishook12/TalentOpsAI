@@ -825,7 +825,6 @@ class WebHarvestEngine:
             with httpx.Client(
                 timeout=self.request_timeout,
                 follow_redirects=True,
-                verify=False,
             ) as client:
                 response = client.get(url, headers=headers)
 

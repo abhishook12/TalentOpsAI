@@ -124,7 +124,6 @@ DEEP_ANOMALY_AUDIT.json
 *.png
 !talent-scout-extension/icons/*.png
 !frontend/public/*.png
-.github/
 scratch/
 cache/
 scout_desktop/build/work/

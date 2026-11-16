@@ -136,7 +136,6 @@ class DynamicScraperWorker:
                     "Upgrade-Insecure-Requests": "1",
                 },
                 allow_redirects=True,
-                verify=False,
             )
             return res.text, res.status_code
         except Exception as e:

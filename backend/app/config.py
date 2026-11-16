@@ -1,6 +1,7 @@
 """App configuration from environment variables."""
 import os
 import logging
+import secrets
 
 logger = logging.getLogger("talentops")
 
@@ -12,8 +13,12 @@ IS_RENDER = bool(os.getenv("RENDER") or os.getenv("RENDER_SERVICE_ID") or os.get
 IS_STAGING = ENV == "staging"
 IS_PRODUCTION = (ENV in ("production", "prod") or IS_RENDER) and not IS_STAGING
 
-JWT_SECRET = os.getenv("JWT_SECRET", "super-secret-jwt-key-talentops-prod-enterprise-32bytes-secure-2026")
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "1012")
+# Never ship a reusable authentication secret or administrator password in source.
+# A generated development secret is deliberately process-local: it is safe for local
+# development and invalidates all sessions after a restart. Production is validated
+# below and requires values supplied by the deployment environment.
+JWT_SECRET = os.getenv("JWT_SECRET") or ("" if IS_PRODUCTION else secrets.token_urlsafe(48))
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
 APP_PASSWORD = os.getenv("APP_PASSWORD") or ADMIN_PASSWORD
 DEV_AUTO_VERIFY = os.getenv("DEV_AUTO_VERIFY", "true").lower() in ("1", "true", "yes", "on") and not IS_PRODUCTION
 
@@ -74,12 +79,12 @@ CORS_ORIGINS = [
 ]
 
 if IS_PRODUCTION:
-    if not os.getenv("JWT_SECRET") or JWT_SECRET.startswith("super-secret"):
+    if not os.getenv("JWT_SECRET") or len(JWT_SECRET) < 32:
         raise RuntimeError("Set a strong JWT_SECRET in production (Render env vars).")
-    if not os.getenv("ADMIN_PASSWORD"):
-        raise RuntimeError("Set ADMIN_PASSWORD in production (Render env vars).")
+    if not os.getenv("ADMIN_PASSWORD") or len(ADMIN_PASSWORD) < 12:
+        raise RuntimeError("Set a strong ADMIN_PASSWORD (12+ characters) in production (Render env vars).")
 else:
-    if JWT_SECRET.startswith("super-secret") or ADMIN_PASSWORD == "1012" or APP_PASSWORD == "1012":
+    if not os.getenv("JWT_SECRET") or not ADMIN_PASSWORD:
         logger.warning(
-            "Using default dev secrets — set JWT_SECRET and ADMIN_PASSWORD in .env before deploying."
+            "Using a process-local development JWT secret or no admin password. Set JWT_SECRET and ADMIN_PASSWORD in .env for persistent local logins."
         )

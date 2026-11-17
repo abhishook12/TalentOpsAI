@@ -183,18 +183,22 @@ DEGREE_KEYWORDS = re.compile(
 
 TITLE_KEYWORDS = re.compile(
     r"\b(?:director|manager|recruiter|recruiting|sourcer|engineer|engineering|"
-    r"developer|specialist|consultant|analyst|officer|lead|head|vp|president|"
-    r"designer|scientist|architect|advisor|partner|technician|intern|assistant|"
-    r"chairman|chairperson|chair|executive|founder|co-founder|chief|ceo|cto|cfo|coo|cro|cmo|"
+    r"developer|specialist|generalist|consultant|analyst|officer|lead|head|vp|president|"
+    r"designer|scientist|architect|advisor|partner|technician|technologist|intern|assistant|"
+    r"chairman|chairperson|chair|executive|founder|co-founder|chief|ceo|cto|cfo|coo|cro|cmo|cio|cpo|"
     r"principal|fellow|associate|administrator|coordinator|strategist|leader|counsel|"
-    r"supervisor|expert|educator|instructor|teacher|professor|trainer|coach|"
-    r"writer|editor|producer|artist|marketer|accountant|auditor|lawyer|attorney|"
-    r"physician|doctor|nurse|therapist|pharmacist|practitioner|operator|representative|"
+    r"supervisor|expert|educator|instructor|teacher|professor|trainer|coach|mentor|tutor|lecturer|"
+    r"writer|editor|producer|artist|marketer|accountant|auditor|lawyer|attorney|paralegal|"
+    r"physician|doctor|nurse|therapist|pharmacist|practitioner|clinician|operator|representative|"
     r"advocate|agent|buyer|trader|underwriter|broker|investor|statistician|economist|researcher|scholar|"
     r"headhunter|staffing|professional|planner|dispatcher|scheduler|handler|negotiator|"
     r"evangelist|ambassador|steward|custodian|warden|ranger|pilot|captain|lieutenant|"
     r"sergeant|corporal|surveyor|estimator|appraiser|adjuster|inspector|examiner|"
-    r"fabricator|welder|machinist|electrician|plumber|carpenter|painter|roofer)\b",
+    r"fabricator|welder|machinist|electrician|plumber|carpenter|painter|roofer|mechanic|"
+    r"scrum\s*master|agile\s*coach|product\s*owner|business\s*owner|delivery\s*lead|release\s*manager|"
+    r"proprietor|curator|archivist|librarian|author|copywriter|journalist|reporter|"
+    r"actuary|chemist|biologist|physicist|geologist|dentist|hygienist|optometrist|chiropractor|"
+    r"veterinarian|paramedic|fitter|millwright|pipefitter|mason|driver|chauffeur|courier|clerk)\b",
     re.IGNORECASE,
 )
 
@@ -644,7 +648,15 @@ def is_plausible_title(text: Optional[str]) -> bool:
     t = clean_job_title(text) or text.strip()
     if len(t) < 3 or len(t) > 75:
         return False
-    return bool(TITLE_KEYWORDS.search(t))
+    # 1. Primary Keyword / Standard Occupation Match
+    if TITLE_KEYWORDS.search(t):
+        return True
+    # 2. Seniority Prefix + Functional Word (e.g. "Senior Account Lead", "Associate Partner")
+    if re.search(r"\b(?:senior|sr|junior|jr|lead|chief|head|principal|staff|executive|associate|assistant|global|regional|group)\b", t, re.IGNORECASE):
+        words = [w for w in t.split() if w.isalpha()]
+        if len(words) >= 2 and not is_valid_location(t) and not is_noise_text(t):
+            return True
+    return False
 
 
 def clean_location_text(text: Optional[str]) -> Optional[str]:
@@ -662,6 +674,9 @@ def clean_location_text(text: Optional[str]) -> Optional[str]:
     cleaned = re.sub(r"\s*[-–—]\s*[a-zA-Z]{1,4}$", "", cleaned)
     # Strip single-letter prefix before comma e.g. "D, "
     cleaned = re.sub(r"^[a-zA-Z],\s*", "", cleaned)
+    # Repair common dark-mode OCR character swaps on United States
+    cleaned = re.sub(r"\bUnited\s+(?:Yates|Stotes|Stutes|Sates|Stata|Statas)\b", "United States", cleaned, flags=re.I)
+    cleaned = re.sub(r"\bUnit[ae]d\s+States\b", "United States", cleaned, flags=re.I)
     cleaned = re.sub(r"^[\s\-_,·•|:]+|[\s\-_,·•|:]+$", "", cleaned)
     cleaned = re.sub(r"\s+", " ", cleaned).strip()
     return cleaned if len(cleaned) >= 3 else None
@@ -766,7 +781,13 @@ def explicit_employment(line: str) -> Optional[Tuple[str, str]]:
     if len(pair) != 2 or EMAIL_REGEX.search(segment):
         return None
     role, company = clean_job_title(pair[0]), clean_company_name(pair[1])
-    if role and company and is_plausible_title(role) and is_valid_company_name(company):
+    if not (role and company and is_valid_company_name(company)):
+        return None
+    if is_plausible_title(role):
+        return role, company
+    # Generalize: in "Role at VerifiedCompany", accept clean 1-4 word role not location/noise/action
+    role_words = [w for w in role.split() if w]
+    if 1 <= len(role_words) <= 4 and not is_valid_location(role) and not is_noise_text(role) and not UI_ACTIONS.search(role):
         return role, company
     return None
 
@@ -805,12 +826,13 @@ def clean_title_and_company(headline: Optional[str], raw_company: Optional[str] 
                         t_cand = rep_t
                 except Exception:
                     pass
-            if not best_title and t_cand and is_plausible_title(t_cand):
-                best_title = t_cand
-            if not best_company and c_cand:
-                cleaned_c = clean_company_name(c_cand)
-                if cleaned_c and is_valid_company_name(cleaned_c):
-                    best_company = cleaned_c
+            cleaned_c = clean_company_name(c_cand) if c_cand else None
+            is_valid_c = cleaned_c and is_valid_company_name(cleaned_c)
+            if not best_title and t_cand:
+                if is_plausible_title(t_cand) or (is_valid_c and 1 <= len(t_cand.split()) <= 4 and not is_valid_location(t_cand) and not is_noise_text(t_cand) and not UI_ACTIONS.search(t_cand)):
+                    best_title = t_cand
+            if not best_company and is_valid_c:
+                best_company = cleaned_c
         elif re.search(r"\s+at\s+", seg, re.IGNORECASE):
             parts = re.split(r"\s+at\s+", seg, maxsplit=1, flags=re.IGNORECASE)
             t_cand = clean_job_title(parts[0])
@@ -823,12 +845,13 @@ def clean_title_and_company(headline: Optional[str], raw_company: Optional[str] 
                         t_cand = rep_t
                 except Exception:
                     pass
-            if not best_title and t_cand and is_plausible_title(t_cand):
-                best_title = t_cand
-            if not best_company and c_cand:
-                cleaned_c = clean_company_name(c_cand)
-                if cleaned_c and is_valid_company_name(cleaned_c):
-                    best_company = cleaned_c
+            cleaned_c = clean_company_name(c_cand) if c_cand else None
+            is_valid_c = cleaned_c and is_valid_company_name(cleaned_c)
+            if not best_title and t_cand:
+                if is_plausible_title(t_cand) or (is_valid_c and 1 <= len(t_cand.split()) <= 4 and not is_valid_location(t_cand) and not is_noise_text(t_cand) and not UI_ACTIONS.search(t_cand)):
+                    best_title = t_cand
+            if not best_company and is_valid_c:
+                best_company = cleaned_c
         else:
             # Segment has NO '@' and NO 'at'
             t_cand = clean_job_title(seg)
@@ -1044,6 +1067,10 @@ def is_valid_company_name(text: Optional[str]) -> bool:
 
     # Reject leading notification digits e.g. "355 M Inbox", "54 Ri"
     if re.match(r"^\d+\s+[A-Za-z0-9]\b", t):
+        return False
+
+    # Reject OCR misreads of UI words / buttons (e.g. "orotile", "orofile", "protile", "profle", "cannect", "messege")
+    if re.search(r"\b(?:orotile|orofile|protile|profle|profies|cannect|messege|inmail|fllow)\b", t_lower):
         return False
 
     # Reject short words that are pronouns, prepositions, or OCR fragments (e.g. "My", "In", "At", "By", "To", "iHHI")
@@ -1974,7 +2001,9 @@ def classify_semantic_entity(text: Optional[str]) -> Dict[str, Any]:
         return {"entity_type": "PERSON", "confidence": 0.95, "details": "Verified human person name"}
 
     if is_valid_company_name(t):
-        return {"entity_type": "COMPANY", "confidence": 0.85, "details": "Plausible company name"}
+        if has_explicit_commercial_marker or t_lower in KNOWN_STANDALONE_CORPS or t_lower in DYNAMIC_CORPS:
+            return {"entity_type": "COMPANY", "confidence": 0.95, "details": "Verified corporate entity with commercial marker"}
+        return {"entity_type": "COMPANY", "confidence": 0.50, "details": "Plausible unverified company name"}
 
     if is_valid_skill(t):
         return {"entity_type": "SKILL", "confidence": 0.70, "details": "Plausible professional skill"}

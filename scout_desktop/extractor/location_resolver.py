@@ -85,6 +85,10 @@ class LocationResolver:
         if re.fullmatch(r"Bengaluru,\s*Ka(?:rn|m)ata?k[a4]?,?\s+India", cleaned, re.I):
             cleaned = "Bengaluru, Karnataka, India"
 
+        # Repair common dark-mode OCR character swaps on United States
+        cleaned = re.sub(r"\bUnited\s+(?:Yates|Stotes|Stutes|Sates|Stata|Statas)\b", "United States", cleaned, flags=re.I)
+        cleaned = re.sub(r"\bUnit[ae]d\s+States\b", "United States", cleaned, flags=re.I)
+
         # Check for unreadable symbols or corrupted ASCII fragments
         bad_chars_count = sum(1 for c in cleaned if not (c.isalnum() or c in " ,.-'/"))
         if bad_chars_count > 0:

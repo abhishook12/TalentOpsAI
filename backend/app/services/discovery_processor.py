@@ -95,8 +95,8 @@ class DiscoveryProcessor:
                 'persons_committed': funnel_res.get('promoted_new', 0) + funnel_res.get('enriched_existing', 0),
                 'companies_committed': funnel_res.get('companies_routed', 0),
                 'jobs_captured': funnel_res.get('jobs_captured', 0),
-                'contacts_captured': 0,
-                'signals_captured': 0,
+                'contacts_captured': funnel_res.get('contacts_captured', 0),
+                'signals_captured': funnel_res.get('signals_captured', 0),
                 'noise_rejected': funnel_res.get('rejected_noise', 0),
                 'grounding_rejected': funnel_res.get('held_review', 0),
                 # Legacy compatibility keys

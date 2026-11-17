@@ -216,7 +216,7 @@ class TestEntityRoutingPipeline(unittest.TestCase):
         # Staging record status should be rejected
         self.session.refresh(rec)
         self.assertEqual(rec.processing_status, "rejected")
-        self.assertEqual(rec.decision, "REJECT_NOISE")
+        self.assertEqual(rec.decision, "REJECT_GATE_2_NOISE")
 
 
 if __name__ == "__main__":

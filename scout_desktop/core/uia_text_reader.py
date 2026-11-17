@@ -124,10 +124,15 @@ class UIATextReader:
 
     @staticmethod
     def _is_high_memory_pressure() -> bool:
-        """Returns True if system RAM is >= 80%, avoiding deep recursive Chromium DOM walks."""
+        """
+        Returns True only if physical system memory is genuinely critically exhausted,
+        avoiding deep DOM walks during genuine low-memory starvation.
+        Threshold: >= 98% utilization or < 250MB available RAM.
+        """
         try:
             import psutil
-            return psutil.virtual_memory().percent >= 80.0
+            vm = psutil.virtual_memory()
+            return vm.percent >= 98.0 or vm.available < 250 * 1024 * 1024
         except Exception:
             return False
 

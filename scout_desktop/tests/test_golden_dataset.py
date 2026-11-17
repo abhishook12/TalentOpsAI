@@ -85,7 +85,7 @@ class TestGoldenDataset:
             "orotile TOI",
             "Yvonne Humphries",
             "Headhunter at Amundson Group",
-            "Houston, Texas, United States",
+            "Houston, Texas, United Yates · Contact info",
             "15,182 followers",
             "500+ connections",
             "Message",

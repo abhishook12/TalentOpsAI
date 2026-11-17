@@ -212,7 +212,7 @@ def scrape_and_enrich_company_site(db: Session, company_id: int) -> Dict[str, An
     }
 
     html_content = ""
-    with httpx.Client(timeout=5.0, follow_redirects=True, headers=headers, verify=False) as client:
+    with httpx.Client(timeout=5.0, follow_redirects=True, headers=headers) as client:
         for url in target_urls:
             try:
                 resp = client.get(url)

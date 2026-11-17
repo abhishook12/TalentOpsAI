@@ -886,6 +886,8 @@ class UniversalIngestionFunnel:
             "rejected_noise": 0,
             "companies_routed": 0,
             "jobs_captured": 0,
+            "contacts_captured": 0,
+            "signals_captured": 0,
         }
 
         promoted_records_for_parquet = []
@@ -909,6 +911,10 @@ class UniversalIngestionFunnel:
                         results["companies_routed"] += 1
                     elif e_type == ENTITY_JOB_POSTING:
                         results["jobs_captured"] += 1
+                    elif e_type == ENTITY_CONTACT_INFO:
+                        results["contacts_captured"] += 1
+                    elif e_type == ENTITY_MARKET_SIGNAL:
+                        results["signals_captured"] += 1
             except Exception as e:
                 logger.error("Error processing record #%s through Funnel: %s", staged.id, e)
                 db.rollback()

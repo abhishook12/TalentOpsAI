@@ -4,23 +4,24 @@ import { test, expect } from '@playwright/test';
 // but for E2E we usually want the real backend running. In a CI environment, we will boot both.
 
 test.describe('Critical Regression Paths', () => {
-  test.beforeEach(async ({ page }) => {
-    // Navigate to the app
-    await page.goto('/login');
-  });
-
   test('Search persistence across navigation (Regression)', async ({ page }) => {
-    // Since we are running the local server, we might hit auth walls.
-    // If auth is required, we need to mock it or login.
-    // For this test, let's assume we have a way to mock the auth response or we login.
-    
-    // We will intercept the auth check to force a logged-in state
-    await page.route('**/api/users/me', async (route) => {
-      const json = { id: 1, email: 'test@example.com', role: 'admin' };
-      await route.fulfill({ json });
+    await page.addInitScript(() => {
+      localStorage.setItem('auth_session', JSON.stringify({
+        id: 1,
+        email: 'test@example.com',
+        first_name: 'Test',
+        role: 'admin',
+      }));
     });
-    
-    await page.route('**/api/campaigns*', async (route) => {
+
+    await page.route('**:8000/auth/me', async (route) => {
+      await route.fulfill({ json: {
+        authenticated: true,
+        user: { id: 1, email: 'test@example.com', first_name: 'Test', role: 'admin' },
+      }});
+    });
+
+    await page.route('**:8000/campaigns**', async (route) => {
       await route.fulfill({ json: [] });
     });
 
@@ -28,24 +29,16 @@ test.describe('Critical Regression Paths', () => {
       await route.fulfill({ json: { counts: { all: 0, active: 0, draft: 0, paused: 0, completed: 0, failed: 0 } } });
     });
 
-    // Go to campaigns bypassing login redirect logic
     await page.goto('/campaigns');
 
-    // Type a search query
-    const searchInput = page.locator('input[placeholder="Search..."]');
+    const searchInput = page.getByPlaceholder(/Search old campaigns/i);
     await searchInput.waitFor({ state: 'visible' });
     await searchInput.fill('Regression Test Campaign');
     await expect(searchInput).toHaveValue('Regression Test Campaign');
 
-    // Navigate away
-    await page.click('text=Dashboard');
-    await page.waitForURL('**/'); // dashboard route
+    await page.goto('/');
+    await page.goto('/campaigns');
 
-    // Navigate back
-    await page.click('text=Campaigns');
-    await page.waitForURL('**/campaigns');
-
-    // Verify search query persisted
-    await expect(page.locator('input[placeholder="Search..."]')).toHaveValue('Regression Test Campaign');
+    await expect(page.getByPlaceholder(/Search old campaigns/i)).toHaveValue('Regression Test Campaign');
   });
 });

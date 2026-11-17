@@ -259,8 +259,8 @@ def get_optional_current_user(
 @router.get("/stats")
 def get_mailintel_stats(
     request: Request,
-    db: Session = Depends(get_db), 
-    current_user: Optional[User] = Depends(get_optional_current_user)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request)
 ):
     """
     Sub-10ms deliverability statistics across the entire database.
@@ -279,8 +279,8 @@ def get_mailintel_stats(
 def get_domain_reputation(
     request: Request,
     limit: int = 50,
-    db: Session = Depends(get_db), 
-    current_user: Optional[User] = Depends(get_optional_current_user)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request)
 ):
     """
     Sub-10ms domain reputation aggregates.
@@ -297,7 +297,7 @@ def get_domain_reputation(
 @router.get("/verification-progress")
 def get_verification_progress(
     request: Request,
-    current_user: Optional[User] = Depends(get_optional_current_user)
+    current_user: User = Depends(get_current_user_from_request)
 ):
     """
     Sub-5ms verification engine progress state.

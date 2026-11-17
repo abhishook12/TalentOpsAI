@@ -19,6 +19,8 @@ class TestGoldenDataset:
         ("Engineering Manager＠Myntra｜EX OLA", "Engineering Manager", "Myntra"),
         ("Senior Recruiter at Acme Corp", "Senior Recruiter", "Acme Corp"),
         ("Product Designer@Adobe I EX Example", "Product Designer", "Adobe"),
+        ("Headhunter at Amundson Group", "Headhunter", "Amundson Group"),
+        ("Staffing Professional at Kelly Services", "Staffing Professional", "Kelly Services"),
     ])
     def test_explicit_employment_across_layouts(self, headline, role, company):
         from scout_desktop.extractor.patterns import explicit_employment
@@ -72,6 +74,35 @@ class TestGoldenDataset:
         assert res.reason_code == "PROFILE_URL_PRESENT"
         assert "name" in res.field_evidence
         assert "company" in res.field_evidence
+
+
+    def test_banner_noise_does_not_override_headline_company(self):
+        """OCR garbage from banner images must not replace the headline employer."""
+        ocr_text = "\n".join([
+            "CONSTRUCTION",
+            "HEADHUNTING",
+            "EXPERTS",
+            "orotile TOI",
+            "Yvonne Humphries",
+            "Headhunter at Amundson Group",
+            "Houston, Texas, United States",
+            "15,182 followers",
+            "500+ connections",
+            "Message",
+            "Pending",
+            "Amundson Group",
+            "Texas State University",
+        ])
+        parsed = parse_with_modular_parsers(ocr_text, {
+            "source_url": "https://linkedin.com/in/yvonnehumphries/",
+            "window_title": "Yvonne Humphries | LinkedIn",
+            "platform": "LinkedIn",
+        })
+        assert parsed is not None
+        assert parsed["recruiter_name"] == "Yvonne Humphries"
+        assert parsed["title"] == "Headhunter"
+        assert parsed["company_name"] == "Amundson Group"
+        assert parsed["location"] == "Houston, Texas, United States"
 
     def test_linkedin_affiliation_rail_preserves_bare_employer_and_school(self):
         """A visible employer beside a school must not be discarded as a person name."""

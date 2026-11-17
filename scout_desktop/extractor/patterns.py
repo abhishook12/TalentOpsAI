@@ -190,7 +190,11 @@ TITLE_KEYWORDS = re.compile(
     r"supervisor|expert|educator|instructor|teacher|professor|trainer|coach|"
     r"writer|editor|producer|artist|marketer|accountant|auditor|lawyer|attorney|"
     r"physician|doctor|nurse|therapist|pharmacist|practitioner|operator|representative|"
-    r"advocate|agent|buyer|trader|underwriter|broker|investor|statistician|economist|researcher|scholar)\b",
+    r"advocate|agent|buyer|trader|underwriter|broker|investor|statistician|economist|researcher|scholar|"
+    r"headhunter|staffing|professional|planner|dispatcher|scheduler|handler|negotiator|"
+    r"evangelist|ambassador|steward|custodian|warden|ranger|pilot|captain|lieutenant|"
+    r"sergeant|corporal|surveyor|estimator|appraiser|adjuster|inspector|examiner|"
+    r"fabricator|welder|machinist|electrician|plumber|carpenter|painter|roofer)\b",
     re.IGNORECASE,
 )
 

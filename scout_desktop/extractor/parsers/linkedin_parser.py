@@ -122,7 +122,7 @@ class LinkedInParser(BasePlatformParser):
                 if not company and c_cand:
                     c_clean = clean_company_name(c_cand)
                     company_check = classify_semantic_entity(c_clean) if c_clean else {}
-                    if c_clean and is_valid_company_name(c_clean) and company_check.get("entity_type") == "COMPANY" and company_check.get("confidence", 0) >= 0.85:
+                    if c_clean and is_valid_company_name(c_clean) and company_check.get("entity_type") == "COMPANY" and company_check.get("confidence", 0) >= 0.90:
                         company = c_clean
                 elif not title and is_plausible_title(line):
                     title = clean_job_title(line) or line.strip()
@@ -134,7 +134,7 @@ class LinkedInParser(BasePlatformParser):
                     co = clean_company_name(line)
                     if co and is_valid_company_name(co):
                         se = classify_semantic_entity(co)
-                        if se.get("entity_type") == "COMPANY" and se.get("confidence", 0) >= 0.85:
+                        if se.get("entity_type") == "COMPANY" and se.get("confidence", 0) >= 0.90:
                             company = co
 
         # OCR line ordering can vary (and browser titles are not always exposed
@@ -148,7 +148,7 @@ class LinkedInParser(BasePlatformParser):
             if not company and c_cand:
                 c_clean = clean_company_name(c_cand)
                 company_check = classify_semantic_entity(c_clean) if c_clean else {}
-                if c_clean and is_valid_company_name(c_clean) and company_check.get("entity_type") == "COMPANY" and company_check.get("confidence", 0) >= 0.85:
+                if c_clean and is_valid_company_name(c_clean) and company_check.get("entity_type") == "COMPANY" and company_check.get("confidence", 0) >= 0.90:
                     company = c_clean
             if not location:
                 loc_cand = clean_location_text(line)

@@ -15,6 +15,24 @@ def load_fixture(filename: str) -> dict:
 class TestGoldenDataset:
     """Automated regression tests across the permanent golden dataset."""
 
+    @pytest.mark.parametrize("headline, role, company", [
+        ("Engineering Manager＠Myntra｜EX OLA", "Engineering Manager", "Myntra"),
+        ("Senior Recruiter at Acme Corp", "Senior Recruiter", "Acme Corp"),
+        ("Product Designer@Adobe I EX Example", "Product Designer", "Adobe"),
+    ])
+    def test_explicit_employment_across_layouts(self, headline, role, company):
+        from scout_desktop.extractor.patterns import explicit_employment
+        assert explicit_employment(headline) == (role, company)
+        assert explicit_employment("contact@example.com") is None
+
+    def test_contact_table_keeps_people_and_empty_cells_separate(self):
+        from scout_desktop.extractor.contact_table import extract_contact_table
+        rows = ["Company\tFull Name\tTitle", "Acme Corp\tMorgan Reed\t",
+                "\tJordan Hayes\tSenior Recruiter", "Adobe\tshifted\textra\tcells"]
+        people = extract_contact_table(rows, "fixture", "")
+        assert [(p.canonical_name, p.current_company, p.current_title) for p in people] == [
+            ("Morgan Reed", "Acme Corp", None), ("Jordan Hayes", None, "Senior Recruiter")]
+
     def test_all_fixtures_exist(self):
         expected = [
             "linkedin_profile.json",
@@ -37,6 +55,8 @@ class TestGoldenDataset:
         assert parsed is not None
         assert parsed["recruiter_name"] == fix["expected_name"]
         assert parsed["company_name"] == fix["expected_company"]
+        assert parsed["title"] == fix["expected_title"]
+        assert parsed["location"] == fix["expected_location"]
 
         res = create_candidate_if_valid({
             "name": parsed["recruiter_name"],
@@ -52,6 +72,27 @@ class TestGoldenDataset:
         assert res.reason_code == "PROFILE_URL_PRESENT"
         assert "name" in res.field_evidence
         assert "company" in res.field_evidence
+
+    def test_linkedin_affiliation_rail_preserves_bare_employer_and_school(self):
+        """A visible employer beside a school must not be discarded as a person name."""
+        ocr_text = "\n".join([
+            "Katie Malone",
+            "Principal Technology Consultant | ERP / MES / PLM",
+            "Cork, County Cork, Ireland",
+            "Morgan McKinley",
+            "University College Cork",
+            "About",
+            "ERP and technology recruitment specialist.",
+        ])
+        parsed = parse_with_modular_parsers(ocr_text, {
+            "source_url": "https://www.linkedin.com/in/katie-malone-049410189/",
+            "window_title": "Katie Malone | LinkedIn",
+            "platform": "LinkedIn",
+        })
+        assert parsed is not None
+        assert parsed["company_name"] == "Morgan McKinley"
+        assert parsed["education"] == "University College Cork"
+        assert parsed["location"] == "Cork, County Cork, Ireland"
 
     def test_zoominfo_contact_golden_fixture(self):
         fix = load_fixture("zoominfo_contact.json")

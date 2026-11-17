@@ -30,6 +30,12 @@ if sys.platform == "win32":
             ctypes.windll.user32.SetProcessDPIAware()
         except Exception:
             pass
+    try:
+        import ctypes
+        # Run background desktop scout at BELOW_NORMAL priority so foreground UI never lags
+        ctypes.windll.kernel32.SetPriorityClass(ctypes.windll.kernel32.GetCurrentProcess(), 0x00004000)
+    except Exception:
+        pass
 
 class NullWriter:
     def write(self, text): pass
@@ -1487,37 +1493,28 @@ class ScoutDesktopApp:
 
         # Layer 2: Fall back to OCR with image preprocessing
         if not uia_used and capture_item and os.path.exists(capture_item.file_path):
+            # OCR must see the whole visible source window.  A delta rectangle is
+            # useful for deciding *when* to scan, but not for deciding *what* is
+            # on a profile: the name/header often remains outside a scroll delta.
+            # Full-frame OCR prevents half profiles and keeps every visible field
+            # available to the layout, quality, and evidence gates.
             ocr_target_path = capture_item.file_path
-            if bbox:
-                bx1, by1, bx2, by2 = bbox
-                box_area = (bx2 - bx1) * (by2 - by1)
-                total_area = img.width * img.height
-                if total_area > 0 and 0.10 <= (box_area / total_area) <= 0.85:
-                    try:
-                        crop_img = img.crop(bbox)
-                        # 2x upscale for OCR: at 1080p, letters are 5-7px tall.
-                        # Doubling gives 10-14px glyphs — dramatically better recognition.
-                        upscale_w = crop_img.width * 2
-                        upscale_h = crop_img.height * 2
-                        crop_img = crop_img.resize((upscale_w, upscale_h), Image.Resampling.LANCZOS)
-                        crop_path = capture_item.file_path.replace(".png", "_crop.png")
-                        crop_img.save(crop_path, "PNG")
-                        ocr_target_path = crop_path
-                        logger.debug("Running OCR on regional delta crop (%s)", bbox)
-                    except Exception as ce:
-                        logger.debug("Regional crop failed, falling back to full frame: %s", ce)
-
             ocr_lines = self.ocr_engine.extract_text_from_image(ocr_target_path)
-            if ocr_target_path != capture_item.file_path and os.path.exists(ocr_target_path):
-                try:
-                    os.remove(ocr_target_path)
-                except Exception:
-                    pass
 
-        lines = list(ocr_lines)
+        from scout_desktop.extractor.patterns import normalize_capture_line
+        lines = [normalize_capture_line(line) for line in ocr_lines]
+
+        # Record the visible LinkedIn sections.  This lets context memory know
+        # whether a later scroll is genuinely adding profile evidence instead
+        # of repeatedly trying to rediscover the header.
+        for section_name in ("About", "Experience", "Education", "Skills", "Contact info"):
+            if any(line.strip().lower() == section_name.lower() for line in lines):
+                self.context_memory.mark_section_seen(section_name)
 
         # High-Precision Semantic Extraction Engine (Structure & Meaning Aware)
-        canonical_cands, engine_telemetry = self.extraction_engine.process_frame(
+        from scout_desktop.extractor.contact_table import extract_contact_table
+        table_clusters = None if cand_name else extract_contact_table(lines, capture_id, page_url)
+        canonical_cands, engine_telemetry = ([], {}) if table_clusters is not None else self.extraction_engine.process_frame(
             img=img,
             delta=delta,
             ocr_lines=lines,
@@ -1528,8 +1525,8 @@ class ScoutDesktopApp:
             uia_candidate=uia_candidate,
         )
 
-        clusters = [c.raw_cluster for c in canonical_cands if c.raw_cluster]
-        if not clusters:
+        clusters = table_clusters if table_clusters is not None else [c.raw_cluster for c in canonical_cands if c.raw_cluster]
+        if table_clusters is None and not clusters:
             # Universal resilient fallback: entity_extractor handles multi-candidate cards
             # (e.g. Company People directories), chat streams, job postings, and single profiles
             clusters = self.entity_extractor.extract_from_lines(
@@ -1551,6 +1548,7 @@ class ScoutDesktopApp:
             self.evidence_store.update_status(capture_id, "EXTRACTED", clusters)
 
             for c in clusters:
+                entity_state = None
                 # Track observations through grounding gate
                 for obs in c.observations:
                     self.cnt_observed += 1
@@ -1594,6 +1592,14 @@ class ScoutDesktopApp:
                     })
 
                 staged_contact = c.to_staged_contact_dict()
+                if entity_state:
+                    # A single visible frame often contains only one section of
+                    # a LinkedIn profile.  Carry prior, same-profile evidence
+                    # forward so the staged record represents the full profile,
+                    # never a partial header or a partial Education scroll.
+                    staged_contact = self.context_memory.enrich_staged_profile(
+                        entity_state.entity_id, staged_contact
+                    )
                 staged_contact["capture_id"] = capture_id
                 staged_contact["source_url"] = page_url
                 staged_contact["source_page_title"] = page_title
@@ -1697,6 +1703,14 @@ class ScoutDesktopApp:
                     resolved_entity_type = classification.get("entity_type", ENTITY_PERSON)
 
                 staged_contact["entity_type"] = resolved_entity_type
+                from scout_desktop.extractor.capture_intelligence_router import CaptureIntelligenceRouter, ROUTE_DROP
+                routing = CaptureIntelligenceRouter.decide(staged_contact)
+                if routing.route == ROUTE_DROP:
+                    logger.debug("Intelligence router dropped non-actionable capture %s", capture_id)
+                    continue
+                staged_contact["intelligence_route"] = routing.route
+                staged_contact["intelligence_destinations"] = routing.destinations
+                staged_contact["intelligence_reason"] = routing.reason
 
                 if resolved_entity_type == ENTITY_NOISE:
                     logger.info("Quality Gate: Dropped observation '%s' as NOISE", raw_n)
@@ -1707,6 +1721,8 @@ class ScoutDesktopApp:
                     staged_contact["candidate_gate_decision"] = "COMPANY_VERIFIED"
                     staged_contact["candidate_gate_reasons"] = ["Classified as COMPANY entity"]
                     staged_contact["field_confidence"] = {"name": 0.95, "company": 0.95}
+                    staged_contact["quality_score"] = 90
+                    staged_contact["identity_confidence"] = 0.90
                     qid = self.local_queue.enqueue_cluster(staged_contact)
                     if qid != -1:
                         self.cnt_staged += 1
@@ -1718,6 +1734,8 @@ class ScoutDesktopApp:
                     staged_contact["candidate_gate_decision"] = "JOB_VERIFIED"
                     staged_contact["candidate_gate_reasons"] = ["Classified as JOB_POSTING entity"]
                     staged_contact["field_confidence"] = {"name": 0.90, "title": 0.90}
+                    staged_contact["quality_score"] = 85
+                    staged_contact["identity_confidence"] = 0.85
                     qid = self.local_queue.enqueue_cluster(staged_contact)
                     if qid != -1:
                         self.cnt_staged += 1
@@ -1727,6 +1745,8 @@ class ScoutDesktopApp:
                 elif resolved_entity_type in (ENTITY_CONTACT_INFO, ENTITY_MARKET_SIGNAL):
                     staged_contact["candidate_gate_status"] = "VERIFIED"
                     staged_contact["candidate_gate_decision"] = f"{resolved_entity_type}_VERIFIED"
+                    staged_contact["quality_score"] = 80
+                    staged_contact["identity_confidence"] = 0.80
                     qid = self.local_queue.enqueue_cluster(staged_contact)
                     if qid != -1:
                         self.cnt_staged += 1
@@ -1763,6 +1783,8 @@ class ScoutDesktopApp:
                     staged_contact["candidate_gate_reasons"] = gate_res.reasons
                     staged_contact["field_confidence"] = gate_res.field_confidence
                     staged_contact["evidence_checklist"] = gate_res.audit_checklist
+                    staged_contact["quality_score"] = gate_res.quality_score
+                    staged_contact["identity_confidence"] = gate_res.identity_confidence
 
                     # Geographic enforcement gate
                     geo_region = getattr(c, 'geo_region', None) or classify_location_region(getattr(c, 'location', ''))
@@ -2161,6 +2183,7 @@ class ScoutDesktopApp:
         self._is_heartbeating = True
         try:
             b_ctx = self.current_browser_context
+            queue_stats = self.local_queue.get_queue_stats()
             from .core.health_monitor import HealthMonitor
             load_vitals = HealthMonitor.get_instance().get_process_load(
                 queue_pending=self.frame_queue.depth,
@@ -2183,6 +2206,8 @@ class ScoutDesktopApp:
                     "intelligence_level": self.intelligence_router.stats.get("total_decisions", 0),
                     "context_entities": len(self.context_memory.get_all_entities()),
                     "frame_queue_depth": self.frame_queue.depth,
+                    "queue_pending": queue_stats.get("pending", 0),
+                    "queue_dlq": queue_stats.get("dlq", 0),
                     "cpu_percent": load_vitals.get("cpu_percent", 0.0),
                     "memory_mb": load_vitals.get("memory_mb", 0.0),
                     "load_level": load_vitals.get("load_level", "OPTIMAL"),

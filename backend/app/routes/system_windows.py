@@ -47,7 +47,7 @@ def _get_scout_hwnd():
     _attach_interactive_desktop()
     if sys.platform == "win32":
         import win32gui
-        for title in ["TalentOps Scout v2.14.1", "TalentOps Scout", "Scout Desktop"]:
+        for title in ["TalentOps Scout v2.14.2", "TalentOps Scout", "Scout Desktop"]:
             h = win32gui.FindWindow(None, title)
             if h and win32gui.IsWindow(h):
                 return h

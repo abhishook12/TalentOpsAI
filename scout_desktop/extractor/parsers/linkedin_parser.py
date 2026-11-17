@@ -13,6 +13,7 @@ from scout_desktop.extractor.patterns import (
     clean_company_name,
     is_valid_company_name,
     clean_title_and_company,
+    explicit_employment,
     clean_job_title,
     classify_semantic_entity,
     clean_location_text,
@@ -22,6 +23,7 @@ from scout_desktop.extractor.patterns import (
     EMAIL_REGEX,
     PHONE_REGEX,
 )
+from scout_desktop.extractor.field_classifier import FieldClassifier
 
 
 class LinkedInParser(BasePlatformParser):
@@ -89,16 +91,26 @@ class LinkedInParser(BasePlatformParser):
         # 2. Extract from OCR lines (Header block heuristic)
         # In LinkedIn, line 0 or line 1 is usually the name, followed by headline (title at company), then location
         name_idx = -1
-        for i, line in enumerate(lines[:8]):
-            # Ignore navigation lines
-            if any(nav in line.lower() for nav in ("feed", "mynetwork", "jobs", "messaging", "notifications", "search", "skip to")):
-                continue
-            cleaned = clean_person_name(line)
-            if cleaned and is_valid_person_name(cleaned):
-                if not name:
+        if name:
+            # The browser title is the strongest source for the identity.  Find
+            # that exact line rather than letting a long job headline masquerade
+            # as a second person's name and shift the header window downward.
+            expected = name.casefold()
+            for i, line in enumerate(lines[:8]):
+                cleaned = clean_person_name(line)
+                if cleaned and cleaned.casefold() == expected:
+                    name_idx = i
+                    break
+        else:
+            for i, line in enumerate(lines[:8]):
+                # Ignore navigation lines
+                if any(nav in line.lower() for nav in ("feed", "mynetwork", "jobs", "messaging", "notifications", "search", "skip to")):
+                    continue
+                cleaned = clean_person_name(line)
+                if cleaned and is_valid_person_name(cleaned):
                     name = cleaned
-                name_idx = i
-                break
+                    name_idx = i
+                    break
 
         # If name found in OCR lines, inspect subsequent lines for Title and Company
         if name_idx >= 0:
@@ -109,7 +121,8 @@ class LinkedInParser(BasePlatformParser):
                     title = t_cand
                 if not company and c_cand:
                     c_clean = clean_company_name(c_cand)
-                    if c_clean and is_valid_company_name(c_clean) and classify_semantic_entity(c_clean).get("entity_type") == "COMPANY":
+                    company_check = classify_semantic_entity(c_clean) if c_clean else {}
+                    if c_clean and is_valid_company_name(c_clean) and company_check.get("entity_type") == "COMPANY" and company_check.get("confidence", 0) >= 0.85:
                         company = c_clean
                 elif not title and is_plausible_title(line):
                     title = clean_job_title(line) or line.strip()
@@ -121,8 +134,56 @@ class LinkedInParser(BasePlatformParser):
                     co = clean_company_name(line)
                     if co and is_valid_company_name(co):
                         se = classify_semantic_entity(co)
-                        if se.get("entity_type") == "COMPANY" and se.get("confidence", 0) >= 0.90:
+                        if se.get("entity_type") == "COMPANY" and se.get("confidence", 0) >= 0.85:
                             company = co
+
+        # OCR line ordering can vary (and browser titles are not always exposed
+        # through UIA), so make a second independent pass over the visible header.
+        # This enriches a confirmed identity; it never creates a person from a
+        # headline alone.
+        for line in lines[:8]:
+            t_cand, c_cand = clean_title_and_company(line)
+            if not title and t_cand and is_plausible_title(t_cand):
+                title = t_cand
+            if not company and c_cand:
+                c_clean = clean_company_name(c_cand)
+                company_check = classify_semantic_entity(c_clean) if c_clean else {}
+                if c_clean and is_valid_company_name(c_clean) and company_check.get("entity_type") == "COMPANY" and company_check.get("confidence", 0) >= 0.85:
+                    company = c_clean
+            if not location:
+                loc_cand = clean_location_text(line)
+                if loc_cand and is_valid_location(loc_cand):
+                    location = loc_cand
+
+        # LinkedIn can render a bare employer label in the compact right-hand
+        # affiliation rail.  Its value is visible but has no "at" connector,
+        # so recover it from the employer -> school layout relationship.
+        if not company:
+            company = FieldClassifier.extract_linkedin_affiliation_company(lines[:16])
+
+        # Full-window OCR can interleave browser tabs with the profile header.
+        # The contact-info row anchors the end of the person's own headline.
+        anchored_employment = False
+        if name and page_type == "PROFILE_PAGE":
+            for i, row in enumerate(lines):
+                if not re.search(r"\bcontact\s+info\b", row, re.I):
+                    continue
+                if not any(name.casefold() in s.casefold() for s in lines[:i]):
+                    break
+                for headline in lines[max(0, i-3):i]:
+                    pair = explicit_employment(headline)
+                    if pair:
+                        title, company = pair
+                        anchored_employment = True
+                        break
+                break
+
+        education = None
+        for line in lines[:24]:
+            if "university" in line.lower() or "college" in line.lower() or "institute" in line.lower() or "school" in line.lower():
+                if not is_valid_location(line):
+                    education = line.strip()
+                    break
 
         # Regex scan for emails and phones anywhere in profile text
         for line in lines:
@@ -155,7 +216,9 @@ class LinkedInParser(BasePlatformParser):
             "canonical_name": name,
             "title": title,
             "company_name": company,
+            "anchored_employment": anchored_employment,
             "location": location,
+            "education": education,
             "email": email,
             "phone": phone,
             "platform": "LinkedIn",

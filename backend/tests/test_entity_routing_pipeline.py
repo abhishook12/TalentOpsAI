@@ -73,13 +73,20 @@ class TestEntityRoutingPipeline(unittest.TestCase):
         self.session.close()
 
     def test_extension_contact_schema(self):
-        """Verify ExtensionContact schema accepts entity_type."""
+        """Verify the Scout hand-off retains entity classification and evidence scores."""
         contact = ExtensionContact(
             recruiter_name="Acme Corp",
             title="Biotech",
             entity_type=ENTITY_COMPANY,
+            quality_score=90,
+            identity_confidence=0.90,
+            intelligence_route="COMPANY_INTELLIGENCE",
+            intelligence_destinations=["company_intelligence"],
         )
         self.assertEqual(contact.entity_type, ENTITY_COMPANY)
+        self.assertEqual(contact.quality_score, 90)
+        self.assertEqual(contact.identity_confidence, 0.90)
+        self.assertEqual(contact.intelligence_route, "COMPANY_INTELLIGENCE")
 
         contact_person = ExtensionContact(
             recruiter_name="Sarah Chen",

@@ -63,7 +63,33 @@ class ChangeDetector:
     assigns queue priority (HIGH/MEDIUM/LOW).
     """
 
-    RELEVANT_FIELDS = ["name", "title", "company", "location", "email", "phone", "skills", "about_summary"]
+    # Canonical facts that can create real value downstream.  They are kept
+    # source-neutral so LinkedIn, Dice, SimplyHired, and direct UIA captures
+    # all produce the same semantic delta.
+    RELEVANT_FIELDS = [
+        "name", "title", "company", "location", "email", "phone",
+        "linkedin_url", "education", "skills", "experience_history",
+        "about_summary", "entity_type", "page_type",
+    ]
+
+    @classmethod
+    def normalize_entity(cls, entity_data: dict[str, Any]) -> dict[str, Any]:
+        """Convert source-specific field aliases into one comparable profile."""
+        return {
+            "name": entity_data.get("name") or entity_data.get("canonical_name") or entity_data.get("recruiter_name") or "",
+            "title": entity_data.get("title") or entity_data.get("current_title") or entity_data.get("raw_title") or "",
+            "company": entity_data.get("company") or entity_data.get("company_name") or entity_data.get("current_company") or entity_data.get("raw_company") or "",
+            "location": entity_data.get("location") or entity_data.get("raw_location") or "",
+            "email": entity_data.get("email") or entity_data.get("primary_email") or entity_data.get("raw_email") or "",
+            "phone": entity_data.get("phone") or entity_data.get("primary_phone") or entity_data.get("raw_phone") or "",
+            "linkedin_url": entity_data.get("linkedin_url") or entity_data.get("canonical_profile_url") or entity_data.get("raw_linkedin") or "",
+            "education": entity_data.get("education") or "",
+            "skills": entity_data.get("skills") or [],
+            "experience_history": entity_data.get("experience_history") or [],
+            "about_summary": entity_data.get("about_summary") or "",
+            "entity_type": entity_data.get("entity_type") or "PERSON",
+            "page_type": entity_data.get("page_type") or "",
+        }
 
     def __init__(self, cache_file_path: Optional[str] = None) -> None:
         self.cache_file_path = cache_file_path
@@ -98,7 +124,8 @@ class ChangeDetector:
     @classmethod
     def compute_content_hash(cls, entity_data: dict[str, Any]) -> str:
         """Computes deterministic SHA-256 hash across relevant semantic fields."""
-        subset = {k: entity_data.get(k, "") for k in cls.RELEVANT_FIELDS}
+        normalized = cls.normalize_entity(entity_data)
+        subset = {k: normalized.get(k, "") for k in cls.RELEVANT_FIELDS}
         # Sort lists if any (e.g. skills)
         if isinstance(subset.get("skills"), list):
             subset["skills"] = sorted([str(s) for s in subset["skills"]])
@@ -129,8 +156,9 @@ class ChangeDetector:
         - IGNORE if identical content hash
         - UPDATE with delta and priority if content differs
         """
-        entity_id = self.derive_entity_id(entity_data)
-        current_hash = self.compute_content_hash(entity_data)
+        normalized = self.normalize_entity(entity_data)
+        entity_id = self.derive_entity_id(normalized)
+        current_hash = self.compute_content_hash(normalized)
 
         # 1. Check if entity is already known
         cached = self._cache.get(entity_id)
@@ -138,7 +166,7 @@ class ChangeDetector:
             # Brand new entity -> INSERT, HIGH priority
             self._cache[entity_id] = {
                 "hash": current_hash,
-                "data": copy.deepcopy(entity_data),
+                "data": copy.deepcopy(normalized),
                 "last_seen": time.time(),
                 "observation_count": 1,
             }
@@ -148,7 +176,7 @@ class ChangeDetector:
                 priority=DeltaPriority.HIGH,
                 entity_id=entity_id,
                 changed_fields=[],
-                delta=entity_data,
+                delta=normalized,
                 content_hash=current_hash,
                 reason="New entity discovered on edge",
             )
@@ -169,13 +197,13 @@ class ChangeDetector:
             )
 
         # 3. Content changed -> compute field-level delta
-        old_data = cached.get("data", {})
+        old_data = self.normalize_entity(cached.get("data", {}))
         changed_fields: list[str] = []
         delta: dict[str, Any] = {}
 
         for key in self.RELEVANT_FIELDS:
             old_val = old_data.get(key)
-            new_val = entity_data.get(key)
+            new_val = normalized.get(key)
             if old_val != new_val:
                 changed_fields.append(key)
                 delta[key] = {
@@ -187,16 +215,16 @@ class ChangeDetector:
         priority = DeltaPriority.LOW
         reason = "Minor profile field update"
 
-        if "company" in changed_fields or "title" in changed_fields:
+        if "company" in changed_fields or "title" in changed_fields or "experience_history" in changed_fields:
             priority = DeltaPriority.HIGH
             reason = "Critical career move or role promotion detected"
-        elif "email" in changed_fields or "phone" in changed_fields or "skills" in changed_fields:
+        elif any(field in changed_fields for field in ("email", "phone", "skills", "education", "about_summary")):
             priority = DeltaPriority.MEDIUM
             reason = "Valuable contact or skills intelligence enrichment"
 
         # Update cache
         cached["hash"] = current_hash
-        cached["data"] = copy.deepcopy(entity_data)
+        cached["data"] = copy.deepcopy(normalized)
         cached["last_seen"] = time.time()
         cached["observation_count"] = cached.get("observation_count", 1) + 1
         self.save_cache()

@@ -56,6 +56,27 @@ PERSON_CRITICAL_FIELDS = {
     "about": ["about_summary"],
 }
 
+# The extractor speaks in evidence predicates while the profile store speaks in
+# canonical fields.  Keeping this translation in one place is what lets a
+# profile accumulate safely across header, About, Experience, and Education
+# captures instead of treating every scroll as a separate incomplete person.
+PREDICATE_FIELD_MAP = {
+    "HAS_TITLE": "current_title",
+    "WORKS_AT": "current_company",
+    "LOCATED_IN": "location",
+    "STUDIED_AT": "education",
+    "HAS_DEGREE": "education_degree",
+    "HAS_ABOUT": "about_summary",
+    "HAS_ABOUT_SUMMARY": "about_summary",
+    "HAS_EMAIL": "email",
+    "HAS_PHONE": "phone",
+    "HAS_LINKEDIN": "linkedin_url",
+    "HAS_SKILL": "skills",
+    "PREVIOUSLY_WORKED_AT": "employment_history",
+}
+
+MULTI_VALUE_FIELDS = {"skills", "employment_history"}
+
 # Field importance weights for completeness calculation
 FIELD_WEIGHTS = {
     "identity": 0.30,           # Name is the most critical
@@ -95,6 +116,14 @@ class EntityState:
 
     def update_field(self, field_name: str, value: Any, predicate: str = ""):
         """Records a known field value and its predicate."""
+        if field_name in MULTI_VALUE_FIELDS:
+            existing = self.known_fields.get(field_name, [])
+            existing_values = existing if isinstance(existing, list) else [existing]
+            incoming_values = value if isinstance(value, list) else [value]
+            for incoming in incoming_values:
+                if incoming not in existing_values:
+                    existing_values.append(incoming)
+            value = existing_values
         self.known_fields[field_name] = value
         if predicate:
             self.known_predicates.add(predicate)
@@ -391,14 +420,17 @@ class ContextMemory:
             logger.warning("Cannot update field on unknown entity: %s", entity_id)
             return False
 
-        # Check for redundancy
-        field_hash = f"{entity_id}:{field_name}:{str(value).strip().lower()}"
+        canonical_field = PREDICATE_FIELD_MAP.get(predicate or field_name, field_name)
+
+        # Check for redundancy using the canonical profile field.  This means
+        # HAS_TITLE and current_title cannot be double-counted as two facts.
+        field_hash = f"{entity_id}:{canonical_field}:{str(value).strip().lower()}"
         if field_hash in self._seen_field_hashes:
             self._stats["total_observations_deduplicated"] += 1
             return False
 
         self._seen_field_hashes.add(field_hash)
-        entity.update_field(field_name, value, predicate)
+        entity.update_field(canonical_field, value, predicate)
         return True
 
     def get_information_gaps(self, entity_id: str) -> List[str]:
@@ -467,11 +499,45 @@ class ContextMemory:
         Returns:
             True if this observation is redundant and should be skipped.
         """
-        field_hash = f"{entity_id}:{predicate}:{str(value).strip().lower()}"
+        canonical_field = PREDICATE_FIELD_MAP.get(predicate, predicate)
+        field_hash = f"{entity_id}:{canonical_field}:{str(value).strip().lower()}"
         if field_hash in self._seen_field_hashes:
             self._stats["total_observations_deduplicated"] += 1
             return True
         return False
+
+    def enrich_staged_profile(self, entity_id: str, profile: Dict[str, Any]) -> Dict[str, Any]:
+        """Fill only blank profile fields from evidence captured on this page.
+
+        No guessing happens here.  A value may be carried forward only when it
+        was previously observed for the same in-memory entity on the same URL.
+        That makes a sequence of scrolls behave like one profile reading while
+        preventing fields from leaking between people or tabs.
+        """
+        entity = self._entities.get(entity_id)
+        if not entity:
+            return profile
+
+        filled = dict(profile)
+        source = entity.known_fields
+        field_map = {
+            "current_title": "title",
+            "current_company": "company_name",
+            "location": "location",
+            "education": "education",
+            "about_summary": "about_summary",
+            "email": "email",
+            "phone": "phone",
+            "linkedin_url": "linkedin_url",
+            "skills": "skills",
+            "employment_history": "experience_history",
+        }
+        for memory_key, profile_key in field_map.items():
+            if profile_key not in filled or filled.get(profile_key) in (None, "", [], {}):
+                value = source.get(memory_key)
+                if value not in (None, "", [], {}):
+                    filled[profile_key] = value
+        return filled
 
     def should_process_frame(self, page_url: str, visual_delta: float) -> bool:
         """

@@ -224,7 +224,7 @@ export default function DownloadScout() {
 
   // Dynamic Release Info from Authoritative DB Registry (Defaults match exact v2.11.0 build)
   const [releaseInfo, setReleaseInfo] = useState({
-    version: '2.14.1',
+    version: '2.14.2',
     extractor_version: '4.8.0',
     download_url: 'https://qpetzpxmuofuepvrqedk.supabase.co/storage/v1/object/public/data-assets/TalentOpsScoutSetup.exe',
     size_bytes: 50084798,

@@ -419,7 +419,7 @@ def create_short_lived_claim_code(
         "expires_in_seconds": 600,
         "user_email": current_user.email,
         "user_name": user_display,
-        "organization": "TalentOps AI",
+        "organization": "TalentOps",
     }
 
 
@@ -642,7 +642,7 @@ def consume_claim_code_and_bind_device(
         "user_id": owner.id,
         "user_email": owner.email,
         "user_name": user_display,
-        "organization": getattr(owner, "company", None) or "TalentOps AI",
+        "organization": getattr(owner, "company", None) or "TalentOps",
         "status": "CLAIMED",
         "message": f"Successfully connected to {owner.email} ({installation_id})",
     }
@@ -739,7 +739,7 @@ def account_signin_and_bind_device(
         "user_id": user.id,
         "user_email": user.email,
         "user_name": user_display,
-        "organization": getattr(user, "company", None) or "TalentOps AI",
+        "organization": getattr(user, "company", None) or "TalentOps",
         "status": "CLAIMED",
         "message": f"Successfully connected as {user.email}",
     }

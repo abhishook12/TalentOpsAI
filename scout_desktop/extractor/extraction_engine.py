@@ -269,6 +269,11 @@ class ScoutExtractionEngine:
                 company = uia_candidate["company"]
                 company_conf = 0.95
 
+        if (modular_res and modular_res.get("anchored_employment")
+                and modular_res["recruiter_name"].casefold() == name.casefold()):
+            title, company = modular_res["title"], modular_res["company_name"]
+            title_conf = company_conf = 0.95
+
         # Fallback Post-OCR Neural Lexicon Healing: ONLY run if title is NOT already plausible or has OCR corruption
         if title and not is_plausible_title(title) and (not uia_candidate or not uia_candidate.get("title")):
             from .neural_lexicon_repair import lexicon_repair
@@ -299,6 +304,10 @@ class ScoutExtractionEngine:
         if uia_candidate and uia_candidate.get("location"):
             clean_location = uia_candidate["location"]
             loc_conf = 0.95
+        if clean_location:
+            normalized = LocationResolver.resolve(clean_location)
+            if normalized.display_name:
+                clean_location = normalized.display_name
 
         # Canonical Profile URL
         canonical_url, url_conf = FieldClassifier.extract_canonical_profile_url(source_url, platform=p_class["platform"])
@@ -400,6 +409,8 @@ class ScoutExtractionEngine:
                 cluster.email = modular_res["email"]
             if modular_res.get("phone"):
                 cluster.phone = modular_res["phone"]
+            if modular_res.get("education"):
+                cluster.education = modular_res["education"]
 
         # Step 8: Centralized Candidate Creation Gate Enforcement (Rule 2)
         from scout_desktop.extractor.candidate_gate import create_candidate_if_valid

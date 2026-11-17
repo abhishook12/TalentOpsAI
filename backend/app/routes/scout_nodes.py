@@ -19,7 +19,7 @@ import logging
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, Any, List
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Header, Request, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Header, Request, Response
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -181,18 +181,16 @@ def generate_scout_activation_code(
     part2 = "".join(secrets.choice(charset) for _ in range(4))
     code = f"TOS-{part1}-{part2}"
 
-    if req.target_user_email or req.expires_minutes <= 0:
-        expires_at = None  # Permanent — never expires!
-        max_uses_val = -1  # Unlimited uses
-    else:
-        exp_mins = max(1, min(10080, req.expires_minutes))
-        expires_at = datetime.now(timezone.utc) + timedelta(minutes=exp_mins)
-        max_uses_val = max(1, req.max_uses or 1)
+    # Pairing codes are credentials, never permanent installation shortcuts.
+    # One device, one code, and a bounded lifetime limits accidental sharing.
+    exp_mins = max(1, min(10080, req.expires_minutes or 1440))
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=exp_mins)
+    max_uses_val = 1
 
     label = req.label
     if not label or label == "Desktop Scout Node":
         if owner_user.id != current_user.id:
-            label = f"Admin Force-Provisioned for {owner_user.email} (Permanent)"
+            label = f"Admin-provisioned Scout activation for {owner_user.email}"
         else:
             label = f"Scout Activation for {owner_user.email}"
 
@@ -217,7 +215,7 @@ def generate_scout_activation_code(
         "code": record.code,
         "expires_at": record.expires_at.isoformat() if record.expires_at else None,
         "expires_in_seconds": int((expires_at - datetime.now(timezone.utc)).total_seconds()) if expires_at else None,
-        "is_permanent": record.expires_at is None,
+        "is_permanent": False,
         "deep_link": deep_link,
         "owner_user_id": owner_user.id,
         "owner_email": owner_user.email,
@@ -247,22 +245,7 @@ def activate_scout_desktop(
     )
 
     if not code_record:
-        if clean_code == "TALENTOPS-AUTO-SCOUT":
-            admin = db.query(User).filter(User.email == "abhishekjadon824@gmail.com").first() or db.query(User).first()
-            owner_id = admin.id if admin else 1
-            code_record = ExtensionActivationCode(
-                code="TALENTOPS-AUTO-SCOUT",
-                label="Universal Auto-Activation Scout",
-                owner_user_id=owner_id,
-                max_uses=-1,
-                use_count=0,
-                is_active=True,
-            )
-            db.add(code_record)
-            db.commit()
-            db.refresh(code_record)
-        else:
-            raise HTTPException(status_code=403, detail="Invalid or expired activation code")
+        raise HTTPException(status_code=403, detail="Invalid or expired activation code")
 
     if code_record.max_uses != -1 and code_record.use_count >= code_record.max_uses:
         raise HTTPException(status_code=403, detail="Activation code has already been used")
@@ -312,14 +295,14 @@ def activate_scout_desktop(
     db.commit()
     db.refresh(device)
 
-    # Issue permanent scoped token (100-year validity — never requires re-pairing)
+    # Scoped device credential.  The desktop stores it with Windows DPAPI.
     token = create_access_token(
         data={"sub": str(owner.id), "scope": "scout_desktop", "device_id": req.device_id},
-        expires_delta=timedelta(days=36500),
+        expires_delta=timedelta(days=90),
     )
 
     scout_id = f"SCOUT-{device.id:04d}"
-    logger.info("Successfully activated Scout Desktop device=%s (scout_id=%s) for user=%s (Permanent)", req.device_id, scout_id, owner.email)
+    logger.info("Successfully activated Scout Desktop device=%s (scout_id=%s) for user=%s", req.device_id, scout_id, owner.email)
 
     return {
         "status": "ACTIVATED",
@@ -331,8 +314,8 @@ def activate_scout_desktop(
         "user_email": owner.email,
         "user_name": f"{owner.first_name or ''} {owner.last_name or ''}".strip() or owner.email.split('@')[0],
         "environment": "PRODUCTION",
-        "is_permanent": True,
-        "expires_in_days": 36500,
+        "is_permanent": False,
+        "expires_in_days": 90,
     }
 
 
@@ -549,10 +532,10 @@ def verify_device_flow_code(
     db.commit()
     db.refresh(device)
 
-    # Issue permanent scoped token for effective_user (100-year validity — never expires)
+    # Device-flow credentials follow the same short, renewable lifetime.
     token = create_access_token(
         data={"sub": str(effective_user.id), "scope": "scout_desktop", "device_id": device_id},
-        expires_delta=timedelta(days=36500),
+        expires_delta=timedelta(days=90),
     )
 
     user_name = f"{effective_user.first_name or ''} {effective_user.last_name or ''}".strip() or effective_user.email.split("@")[0]
@@ -846,6 +829,7 @@ from .extension import BatchRequest, ingest_extension_batch
 def scout_ingest_batch(
     req: BatchRequest,
     request: Request,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_from_request),
     x_device_id: Optional[str] = Header(None),
@@ -864,6 +848,7 @@ def scout_ingest_batch(
     return ingest_extension_batch(
         req=req,
         request=request,
+        background_tasks=background_tasks,
         db=db,
         current_user=current_user,
         x_device_id=x_device_id,

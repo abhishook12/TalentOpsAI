@@ -7,6 +7,7 @@ and school detection.
 """
 
 import re
+import unicodedata
 from typing import Optional, Tuple, List, Dict, Any, Set
 
 # Rejection keywords for locations (prevents "Power Engineering" distractor bug and educational institute overlap)
@@ -746,6 +747,26 @@ def extract_connection_degree(text: Optional[str]) -> Optional[str]:
     return m.group(1).lower() if m else None
 
 
+def normalize_capture_line(line: str) -> str:
+    """Normalize display characters without flattening columns or changing stored source text."""
+    return unicodedata.normalize("NFC", line).translate(_CAPTURE_TRANSLATION).strip(" \r\n")
+
+
+_CAPTURE_TRANSLATION = str.maketrans({"＠": "@", "｜": "|", "\u00a0": " ", "\u202f": " ", "\u200b": "", "\ufeff": ""})
+
+
+def explicit_employment(line: str) -> Optional[Tuple[str, str]]:
+    """Read an explicit role/employer pair from the first headline segment."""
+    segment = re.split(r"[|•·]|\s+I\s+(?=(?:ex\b|former\b))", normalize_capture_line(line), maxsplit=1, flags=re.I)[0]
+    pair = re.split(r"\s*@\s*|\s+at\s+", segment, maxsplit=1, flags=re.I)
+    if len(pair) != 2 or EMAIL_REGEX.search(segment):
+        return None
+    role, company = clean_job_title(pair[0]), clean_company_name(pair[1])
+    if role and company and is_plausible_title(role) and is_valid_company_name(company):
+        return role, company
+    return None
+
+
 def clean_title_and_company(headline: Optional[str], raw_company: Optional[str] = None) -> Tuple[Optional[str], Optional[str]]:
     """
     Decomposes headline into clean title and employer.
@@ -754,7 +775,10 @@ def clean_title_and_company(headline: Optional[str], raw_company: Optional[str] 
     if not headline:
         return None, clean_company_name(raw_company) if raw_company else None
 
-    h = headline.strip()
+    h = normalize_capture_line(headline)
+    explicit = explicit_employment(h)
+    if explicit and not raw_company:
+        return explicit
     # Split headline into pipe/bullet/en-dash delimited segments
     segments = [s.strip() for s in re.split(r"\s*[|•·\u2022\u00B7]\s*", h) if s.strip()]
     if not segments:
@@ -765,8 +789,8 @@ def clean_title_and_company(headline: Optional[str], raw_company: Optional[str] 
 
     for seg in segments:
         # Check if segment has explicit '@' or 'at'
-        if re.search(r"(?:^|\s+)@\s+", seg):
-            parts = re.split(r"(?:^|\s+)@\s+", seg, maxsplit=1)
+        if re.search(r"\s+@\s*(?=\w)", seg):
+            parts = re.split(r"\s+@\s*(?=\w)", seg, maxsplit=1)
             t_cand = clean_job_title(parts[0])
             c_cand = parts[1].strip() if len(parts) > 1 else ""
             if t_cand and not is_plausible_title(t_cand):
@@ -1326,6 +1350,7 @@ def is_valid_company_name(text: Optional[str]) -> bool:
     comp_tokens_lower = {re.sub(r"[^a-zA-Z0-9]", "", tok).lower() for tok in comp_tokens if tok}
     has_any_corp_marker = (
         t_lower in KNOWN_STANDALONE_CORPS
+        or t_lower in DYNAMIC_CORPS
         or any(d in comp_tokens_lower for d in EXPANDED_CORP_DESIGNATORS)
         or bool(re.search(r"\b(?:inc|llc|ltd|corp|corporation|technologies|technology|tech|tek|solutions|services|group|partners|holdings|labs|ventures|consulting|agency|capital|systems|analytics|logistics|cloud|digital|media|interactive|studios|infotech|ai)\b", t, re.IGNORECASE))
     )

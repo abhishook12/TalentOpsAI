@@ -80,7 +80,10 @@ class OcrEngine:
             startupinfo = None
             creationflags = 0
             if sys.platform == "win32":
-                creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+                creationflags = (
+                    getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+                    | getattr(subprocess, "BELOW_NORMAL_PRIORITY_CLASS", 0x00004000)
+                )
                 startupinfo = subprocess.STARTUPINFO()
                 startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
                 startupinfo.wShowWindow = subprocess.SW_HIDE
@@ -202,14 +205,11 @@ class OcrEngine:
             from PIL import Image, ImageFilter, ImageOps
             img = Image.open(image_path)
 
-            # Skip preprocessing if image is already large (e.g. pre-upscaled crop)
-            if img.width >= 3000 and img.height >= 2000:
-                return image_path
-
-            # 2x LANCZOS upscale for sharper glyph edges
-            new_w = img.width * 2
-            new_h = img.height * 2
-            img = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+            # Smaller desktop captures need enlargement for legible 5-7px text.
+            # Large captures keep their native resolution to avoid unnecessary
+            # memory pressure, but still receive the contrast/sharpening pass.
+            if img.width < 2400 or img.height < 1400:
+                img = img.resize((img.width * 2, img.height * 2), Image.Resampling.LANCZOS)
 
             # Convert to grayscale to eliminate ClearType RGB subpixel colors
             img = img.convert("L")
@@ -246,13 +246,17 @@ class OcrEngine:
         import time
         now = time.time()
         if now - self._last_ocr_time < self.cooldown_sec:
-            logger.debug("OCR debounced (cooldown active); returning cached lines.")
-            return list(self._last_lines)
+            # Never attach text from a previous screenshot to a new screenshot.
+            # The sampler will submit a later full frame after the short cooldown.
+            logger.debug("OCR deferred by cooldown; waiting for a fresh frame.")
+            return []
 
         acquired = self._lock.acquire(blocking=False)
         if not acquired:
-            logger.debug("OCR already running; returning cached/empty lines to prevent pileup.")
-            return list(self._last_lines)
+            # A stale OCR result is worse than a skipped frame: it can create a
+            # candidate from the wrong page.  Single-flight callers retry later.
+            logger.debug("OCR already running; deferring this frame.")
+            return []
 
         prep_path = None
         try:

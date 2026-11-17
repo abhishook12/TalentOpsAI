@@ -31,7 +31,7 @@ logger = logging.getLogger("talentops.scout_updates")
 router = APIRouter(prefix="/scout", tags=["Scout Auto-Update & Fleet"])
 
 # Production Fallbacks
-DEFAULT_RELEASE_VERSION = "2.14.1"
+DEFAULT_RELEASE_VERSION = "2.14.2"
 DEFAULT_MINIMUM_VERSION = "1.0.0"
 DEFAULT_DOWNLOAD_URL = "https://qpetzpxmuofuepvrqedk.supabase.co/storage/v1/object/public/data-assets/TalentOpsScoutSetup.exe"
 DEFAULT_SHA256 = "f060e23435a40fc369206b25d97e139295fe39da737361cd30d06e52f32f6cc7"
@@ -535,7 +535,7 @@ def download_latest_installer(
         "X-Content-Type-Options": "nosniff",
         "X-Checksum-SHA256": info.get("sha256") or DEFAULT_SHA256,
         "X-Download-Options": "noopen",
-        "X-Publisher": "TalentOps AI Inc.",
+        "X-Publisher": "TalentOps Inc.",
         "X-Security-Scan": "Windows Defender: Clean",
         "Cache-Control": "private, no-transform, max-age=60",
     }
@@ -585,7 +585,7 @@ def download_latest_installer_zip(
     headers = {
         "Content-Disposition": 'attachment; filename="TalentOpsScoutSetup.zip"',
         "X-Content-Type-Options": "nosniff",
-        "X-Publisher": "TalentOps AI Inc.",
+        "X-Publisher": "TalentOps Inc.",
         "Cache-Control": "private, no-transform, max-age=60",
     }
     return RedirectResponse(url=zip_url, status_code=307, headers=headers)

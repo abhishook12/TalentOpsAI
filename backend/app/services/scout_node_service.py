@@ -128,6 +128,14 @@ def record_scout_heartbeat(
         inst.last_check_at = now
         if version_str:
             inst.scout_version = str(version_str)
+        if client_metrics:
+            pending = max(0, int(client_metrics.get("queue_pending", 0) or 0))
+            dead_letter = max(0, int(client_metrics.get("queue_dlq", 0) or 0))
+            inst.queue_size = pending
+            # A device can be online but still require attention if items cannot
+            # synchronize.  Preserve that distinction in the Fleet view.
+            inst.health_status = "NEEDS_ATTENTION" if dead_letter else "HEALTHY"
+            inst.error_message = f"{dead_letter} item(s) need sync review" if dead_letter else None
 
     # Check for active fleet-wide update broadcast
     update_notification = None

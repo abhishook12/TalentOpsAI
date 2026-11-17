@@ -378,6 +378,11 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
                             }}>
                               {dev.is_active ? 'ACTIVE' : 'REVOKED'}
                             </span>
+                            {dev.sync_attention && (
+                              <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: 'rgba(245,158,11,0.15)', color: '#f59e0b' }}>
+                                SYNC NEEDS ATTENTION
+                              </span>
+                            )}
                             <span style={{ fontSize: 11, color: 'var(--text-muted, #71717a)' }}>v{dev.scout_version}</span>
                           </div>
 
@@ -386,6 +391,7 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
                             <span>OS: <strong style={{ color: 'var(--text-secondary, #a1a1aa)' }}>{dev.os}</strong></span>
                             <span>Queue: <strong style={{ color: 'var(--text-secondary, #a1a1aa)' }}>{dev.queue_size} items</strong></span>
                             <span>Last Seen: <strong style={{ color: 'var(--text-secondary, #a1a1aa)' }}>{dev.last_seen ? dev.last_seen.slice(0, 16).replace('T', ' ') : '—'}</strong></span>
+                            {dev.sync_attention && <span style={{ color: '#f59e0b' }}>{dev.sync_message || 'Some items need sync review'}</span>}
                           </div>
                         </div>
 

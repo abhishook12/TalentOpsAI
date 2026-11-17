@@ -556,7 +556,7 @@ def get_detailed_scout_user_profile(db: Session, user_id: int) -> Dict[str, Any]
             d_aware = d.last_seen_at.replace(tzinfo=timezone.utc) if d.last_seen_at.tzinfo is None else d.last_seen_at
             hb_sec = int((now - d_aware).total_seconds())
 
-        health = "HEALTHY"
+        health = getattr(inst, "health_status", None) or "HEALTHY"
         if hb_sec is not None and hb_sec > 900:
             health = "OFFLINE"
 
@@ -575,6 +575,8 @@ def get_detailed_scout_user_profile(db: Session, user_id: int) -> Dict[str, Any]
             "total_submitted": d.total_submitted,
             "total_accepted": d.total_accepted,
             "queue_size": getattr(inst, "queue_size", 0),
+            "sync_attention": health == "NEEDS_ATTENTION",
+            "sync_message": getattr(inst, "error_message", None) if health == "NEEDS_ATTENTION" else None,
             "update_status": getattr(inst, "update_status", "UP_TO_DATE"),
         })
 
@@ -759,7 +761,7 @@ def get_detailed_scout_user_profile(db: Session, user_id: int) -> Dict[str, Any]
             "name": name,
             "email": user.email,
             "role": getattr(getattr(user, "role", None), "name", "Admin"),
-            "tenant": getattr(user, "company_name", None) or "TalentOps AI",
+            "tenant": getattr(user, "company_name", None) or "TalentOps",
             "account_created": user.created_at.strftime("%Y-%m-%d") if user.created_at else "—",
             "first_scout_registration": devices[0].first_seen_at.strftime("%Y-%m-%d") if devices and devices[0].first_seen_at else "—",
             "last_active": devices[0].last_seen_at.strftime("%Y-%m-%d %I:%M:%S %p") if devices and devices[0].last_seen_at else "—",

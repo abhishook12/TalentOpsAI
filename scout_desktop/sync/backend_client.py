@@ -24,12 +24,16 @@ import requests
 
 try:
     from ..core.paths import get_config_path, get_user_state_path
+    from ..core.credential_store import protect_token, unprotect_token
 except Exception:
     try:
         from core.paths import get_config_path, get_user_state_path
+        from core.credential_store import protect_token, unprotect_token
     except Exception:
         get_config_path = None
         get_user_state_path = None
+        protect_token = None
+        unprotect_token = None
 
 logger = logging.getLogger("scout.backend_client")
 
@@ -202,7 +206,9 @@ class BackendClient:
                 if os.path.exists(state_path):
                     with open(state_path, "r", encoding="utf-8") as f:
                         sdata = json.load(f)
-                        self.auth_token = sdata.get("auth_token") or self.auth_token
+                        protected_token = sdata.get("auth_token_protected")
+                        if protected_token and unprotect_token:
+                            self.auth_token = unprotect_token(protected_token) or self.auth_token
                         self.user_email = sdata.get("user_email") or self.user_email
                         GENERIC_DEFAULTS = {"DESKTOP-SCOUT-WIN", "DEVICE-ENTERPRISE-VERIFY-99", "SCOUT-NODE-01"}
                         if (not self.device_id or self.device_id in GENERIC_DEFAULTS) and sdata.get("device_id"):
@@ -219,7 +225,9 @@ class BackendClient:
             try:
                 with open(self.config_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                    self.auth_token = data.get("auth_token") or None
+                    # Distribution and runtime config files must never be used as
+                    # credential stores.  A legacy plaintext token is deliberately
+                    # ignored; the user can pair again and receives DPAPI storage.
                     self.user_email = data.get("user_email") or self.user_email
                     self.user_name = data.get("user_name") or self.user_name
             except Exception:
@@ -363,7 +371,11 @@ class BackendClient:
                             sdata = json.load(sf)
                     except Exception:
                         sdata = {}
-                sdata["auth_token"] = token
+                protected_token = protect_token(token) if protect_token else None
+                if not protected_token:
+                    raise RuntimeError("Windows credential protection is unavailable; refusing to persist access token")
+                sdata.pop("auth_token", None)  # remove legacy plaintext token on upgrade
+                sdata["auth_token_protected"] = protected_token
                 sdata["user_email"] = self.user_email
                 sdata["user_name"] = self.user_name
                 sdata["device_id"] = self.device_id
@@ -487,9 +499,11 @@ class BackendClient:
             data = res.json() if res.content else {}
             if res.status_code == 200 and data.get("ok"):
                 token = data.get("access_token")
-                inst_id = data.get("installation_id", "Installation #483")
-                u_email = data.get("user_email", "prashant@talentops.ai")
-                u_name = data.get("user_name", "Prashant")
+                if not token:
+                    return False, {"error": "Pairing response did not include a credential"}
+                inst_id = data.get("installation_id") or self.installation_id
+                u_email = data.get("user_email")
+                u_name = data.get("user_name")
                 self.installation_id = inst_id
                 self._save_credentials_to_config(
                     token=token,
@@ -498,58 +512,13 @@ class BackendClient:
                     user_name=u_name
                 )
                 logger.info("🎉 Scout Desktop device claimed successfully! %s -> %s (%s)", self.device_id, u_email, inst_id)
+                return True, data
             else:
                 err_msg = data.get("detail") or f"Claim failed (HTTP {res.status_code})"
-                if res.status_code in (404, 502, 503):
-                    logger.info("Server returned HTTP %s (endpoint pending deployment); attempting local fallback", res.status_code)
-                    clean_digits = re.sub(r'[^A-Z0-9]', '', clean_code.upper())
-                    if len(clean_digits) >= 4:
-                        fallback_inst = "Installation #483"
-                        fallback_token = f"scout_token_{hashlib.sha256(clean_digits.encode()).hexdigest()[:24]}"
-                        self._save_credentials_to_config(
-                            token=fallback_token,
-                            scout_id=self.device_id,
-                            user_email="prashant@talentops.ai",
-                            user_name="Prashant"
-                        )
-                        return True, {
-                            "ok": True,
-                            "access_token": fallback_token,
-                            "device_id": self.device_id,
-                            "installation_id": fallback_inst,
-                            "user_email": "prashant@talentops.ai",
-                            "user_name": "Prashant",
-                            "organization": "TalentOps AI",
-                            "status": "CLAIMED",
-                            "offline": True,
-                        }
                 logger.warning("Claim rejected by server: %s", err_msg)
                 return False, {"error": err_msg}
         except Exception as e:
-            logger.info("Backend claim network call error (%s); attempting local fallback verification", e)
-            # Resilient fallback: If offline or local dev without active backend server,
-            # deterministic local pairing allows the user to proceed seamlessly
-            clean_digits = re.sub(r'[^A-Z0-9]', '', clean_code.upper())
-            if len(clean_digits) >= 4:
-                fallback_inst = "Installation #483"
-                fallback_token = f"scout_token_{hashlib.sha256(clean_digits.encode()).hexdigest()[:24]}"
-                self._save_credentials_to_config(
-                    token=fallback_token,
-                    scout_id=self.device_id,
-                    user_email="prashant@talentops.ai",
-                    user_name="Prashant"
-                )
-                return True, {
-                    "ok": True,
-                    "access_token": fallback_token,
-                    "device_id": self.device_id,
-                    "installation_id": fallback_inst,
-                    "user_email": "prashant@talentops.ai",
-                    "user_name": "Prashant",
-                    "organization": "TalentOps AI",
-                    "status": "CLAIMED",
-                    "offline": True,
-                }
+            logger.info("Backend claim network call failed: %s", e)
             return False, {"error": f"Connection failed: {e}"}
 
     def claim_with_account_credentials(

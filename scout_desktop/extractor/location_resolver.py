@@ -80,6 +80,10 @@ class LocationResolver:
         cleaned = re.sub(r"\s*[·•\u00B7\u2022\u2219\u25E6\u2013\u2014|].*$", "", cleaned)
         cleaned = re.sub(r"^[·•\u00B7\u2022\u2219\u25E6\u2013\u2014|,\s]+", "", cleaned)
         cleaned = cleaned.strip()
+        # WinRT can join "rn" into "m" and read a final "a" as "4".
+        # Require corroborating city and country before repairing the state.
+        if re.fullmatch(r"Bengaluru,\s*Ka(?:rn|m)ata?k[a4]?,?\s+India", cleaned, re.I):
+            cleaned = "Bengaluru, Karnataka, India"
 
         # Check for unreadable symbols or corrupted ASCII fragments
         bad_chars_count = sum(1 for c in cleaned if not (c.isalnum() or c in " ,.-'/"))

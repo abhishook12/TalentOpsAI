@@ -81,7 +81,7 @@ export default function ExtensionHub() {
     }
   };
 
-  const activeCode = (Array.isArray(codes) ? codes.find(c => c && c.is_active)?.code : null) || 'TALENTOPS-AUTO-SCOUT';
+  const activeCode = Array.isArray(codes) ? codes.find(c => c && c.is_active)?.code : null;
 
   return (
     <div className="page-container page-enter" style={{ padding: '0 32px 100px', maxWidth: 1100, margin: '0 auto', width: '100%' }}>
@@ -217,10 +217,12 @@ export default function ExtensionHub() {
             background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 8, padding: '8px 12px', marginTop: 6
           }}>
             <span style={{ fontFamily: 'monospace', fontSize: 15, fontWeight: 700, color: '#ffffff', letterSpacing: 1 }}>
-              {activeCode}
+              {activeCode || 'Generate a one-time code'}
             </span>
             <button
+              disabled={!activeCode}
               onClick={() => {
+                if (!activeCode) return;
                 navigator.clipboard.writeText(activeCode);
                 setCopiedCode(true);
                 toast.success('Activation code copied!');

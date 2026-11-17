@@ -89,15 +89,18 @@ class IntelligencePacket:
         journal: list[str] = []
         journal.append(f"Initialized Scout 2.0 packet {packet_id} for entity {entity_data.get('canonical_id', 'unknown')}")
 
-        # 1. Structure Observations
+        entity_type = str(entity_data.get("entity_type") or "PERSON").upper()
+
+        # 1. Structure observations according to what the capture actually is.
+        # A company, job, or market signal must not masquerade as a person.
         observations = []
-        if entity_data.get("title"):
+        if entity_type == "PERSON" and entity_data.get("title"):
             observations.append({
                 "type": "ROLE_MENTION",
                 "value": entity_data["title"],
                 "confidence": 0.90,
             })
-        if entity_data.get("company"):
+        if entity_type == "PERSON" and entity_data.get("company"):
             observations.append({
                 "type": "COMPANY_AFFILIATION",
                 "value": entity_data["company"],
@@ -109,6 +112,14 @@ class IntelligencePacket:
                 "value": str(skill),
                 "confidence": 0.80,
             })
+        if entity_type == "PERSON" and entity_data.get("education"):
+            observations.append({"type": "EDUCATION_MENTION", "value": entity_data["education"], "confidence": 0.85})
+        if entity_type == "PERSON" and entity_data.get("about_summary"):
+            observations.append({"type": "ABOUT_CONTEXT", "value": entity_data["about_summary"][:500], "confidence": 0.80})
+        if entity_type == "COMPANY":
+            observations.append({"type": "COMPANY_PROFILE", "value": entity_data.get("company_name") or entity_data.get("canonical_name"), "confidence": 0.90})
+        if entity_type == "JOB_POSTING":
+            observations.append({"type": "JOB_OPENING", "value": entity_data.get("title") or entity_data.get("raw_title"), "confidence": 0.88})
 
         # 2. Structure Changes from ChangeResult
         changes = []
@@ -141,9 +152,9 @@ class IntelligencePacket:
             })
             journal.append("Derived CAREER_VELOCITY signal (+0.88) due to role change")
 
-        # Signal: Hiring Intent if keywords in title or headline
+        # Signal: Hiring Intent if a job is observed or role/headline indicates hiring influence.
         title_lower = str(entity_data.get("title", "")).lower()
-        if any(kw in title_lower for kw in ["hiring", "talent", "recruiter", "head of", "director", "vp"]):
+        if entity_type == "JOB_POSTING" or any(kw in title_lower for kw in ["hiring", "talent", "recruiter", "head of", "director", "vp"]):
             signals.append({
                 "signal_type": "HIRING_INFLUENCE",
                 "score": 0.78,

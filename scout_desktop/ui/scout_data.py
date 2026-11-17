@@ -39,8 +39,8 @@ SYSTEM_STATE: Dict[str, Any] = {
     "is_paused": False,
     "user": {
         "name": "Abhishek Jadon",
-        "company": "TalentOps AI",
-        "display": "Abhishek Jadon · TalentOps AI",
+        "company": "TalentOps",
+        "display": "Abhishek Jadon · TalentOps",
         "installation_id": "Installation #483",
         "device_id": "DEV-98F2-A83B",
         "tenant_id": "TENANT-TALENTOPS-PROD",
@@ -692,7 +692,7 @@ SETTINGS_DATA: Dict[str, Any] = {
             ("Installation", "#483"),
             ("Device", "WIN-PRASHANT-01"),
             ("User", "prashant@talentops.ai"),
-            ("Tenant", "TalentOps AI"),
+            ("Tenant", "TalentOps"),
             ("Registered", "Aug 2, 2026"),
         ],
         "footnote": "🔒 Identity survives updates — no credentials are stored locally."
@@ -718,7 +718,7 @@ DEVICE_CLAIM_STATE: Dict[str, Any] = {
     "claim_code": "X X X X - X X X X",
     "user_email": "abhishekjadon706@gmail.com",
     "user_name": "Abhishek Jadon",
-    "organization": "TalentOps AI",
+    "organization": "TalentOps",
     "installation_id": "Installation #483",
     "subtitle": "Connect this installation to your workspace",
     "caption": "Generate a short-lived code in TalentOps Cloud under Fleet → Add device. It expires in 10 minutes and can be used once.",
@@ -806,7 +806,7 @@ def perform_device_claim(claim_code: str) -> Dict[str, Any]:
         if ok:
             user_name = res.get("user_name") or DEVICE_CLAIM_STATE.get("user_name", "Prashant")
             inst_id = res.get("installation_id") or DEVICE_CLAIM_STATE.get("installation_id", "Installation #483")
-            org = res.get("organization") or DEVICE_CLAIM_STATE.get("organization", "TalentOps AI")
+            org = res.get("organization") or DEVICE_CLAIM_STATE.get("organization", "TalentOps")
             DEVICE_CLAIM_STATE["claimed"] = True
             DEVICE_CLAIM_STATE["claim_code"] = clean_code
             DEVICE_CLAIM_STATE["user_name"] = user_name
@@ -839,7 +839,7 @@ def perform_device_claim(claim_code: str) -> Dict[str, Any]:
             "message": f"Device claimed successfully with code {clean_code}.",
             "user": DEVICE_CLAIM_STATE.get("user_name", "Prashant"),
             "installation_id": DEVICE_CLAIM_STATE.get("installation_id", "Installation #483"),
-            "organization": DEVICE_CLAIM_STATE.get("organization", "TalentOps AI"),
+            "organization": DEVICE_CLAIM_STATE.get("organization", "TalentOps"),
         }
 
 
@@ -851,7 +851,7 @@ def perform_account_signin(email: str, password: str) -> Dict[str, Any]:
         if ok:
             user_name = res.get("user_name") or email.split("@")[0].capitalize()
             inst_id = res.get("installation_id") or "Installation #483"
-            org = res.get("organization") or "TalentOps AI"
+            org = res.get("organization") or "TalentOps"
             DEVICE_CLAIM_STATE["claimed"] = True
             DEVICE_CLAIM_STATE["user_name"] = user_name
             DEVICE_CLAIM_STATE["user_email"] = email

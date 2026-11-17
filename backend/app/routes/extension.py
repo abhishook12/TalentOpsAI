@@ -27,6 +27,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Header, R
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import text, func as sqlfunc
+from sqlalchemy.exc import IntegrityError
 
 from ..database import get_db
 from ..models.models import Recruiter, Company
@@ -117,6 +118,14 @@ class ExtensionContact(BaseModel):
     candidate_gate_decision: Optional[str] = None
     candidate_gate_reasons: Optional[list] = None
     entity_type: Optional[str] = None
+    # These are calculated by the Desktop Scout's local evidence gate.  They
+    # must survive the hand-off to staging; otherwise every Desktop capture
+    # looks untrusted to the server even when the client already proved it.
+    quality_score: Optional[int] = None
+    identity_confidence: Optional[float] = None
+    intelligence_route: Optional[str] = None
+    intelligence_destinations: Optional[list] = None
+    intelligence_reason: Optional[str] = None
 
 
 class BatchRequest(BaseModel):
@@ -411,9 +420,32 @@ def ingest_extension_batch(
                 extraction_source=contact.source or "visual_dom_fusion",
             )
             s_entity_type = classification['entity_type']
+            declared_entity_type = (contact.entity_type or "").upper().strip()
+            # A desktop capture that was positively identified as non-person
+            # must never be promoted into a person pipeline just because this
+            # server-side pass sees a familiar-looking name.  It remains in its
+            # own typed review/processing path, with server authority retained
+            # for all person promotion decisions.
+            safe_non_person_types = {"COMPANY", "JOB_POSTING", "CONTACT_INFO", "MARKET_SIGNAL", "NOISE"}
+            if declared_entity_type in safe_non_person_types:
+                s_entity_type = declared_entity_type
             if s_entity_type == ENTITY_NOISE:
                 logger.debug("Dropping noise element '%s'", s_name)
                 continue
+
+            # Preserve the Desktop Scout's evidence scores, but never accept
+            # out-of-range client input.  The server processor remains the
+            # authority for promotion and may lower these scores further.
+            try:
+                client_quality = int(contact.quality_score) if contact.quality_score is not None else 0
+            except (TypeError, ValueError):
+                client_quality = 0
+            client_quality = max(0, min(100, client_quality))
+            try:
+                client_identity = float(contact.identity_confidence) if contact.identity_confidence is not None else 0.0
+            except (TypeError, ValueError):
+                client_identity = 0.0
+            client_identity = max(0.0, min(1.0, client_identity))
 
             staging_record = DiscoveryStaging(
                 batch_id=batch_id,
@@ -436,8 +468,8 @@ def ingest_extension_batch(
                 visual_change_score=str(contact.visual_change_score or 0.0),
                 dom_confidence=contact.confidence or 90,
                 processing_status="review" if contact.candidate_gate_status == "REVIEW_REQUIRED" else "pending",
-                identity_confidence=0.0,
-                quality_score=0,
+                identity_confidence=client_identity,
+                quality_score=client_quality,
                 
                 # Deep Profile Progressive Enrichment (defensively cast and truncated to prevent DB truncation crashes)
                 education=str(contact.education)[:255] if contact.education else None,
@@ -465,11 +497,17 @@ def ingest_extension_batch(
                         "candidate_gate_status": contact.candidate_gate_status,
                         "candidate_gate_decision": contact.candidate_gate_decision,
                         "candidate_gate_reasons": contact.candidate_gate_reasons,
+                        "intelligence_route": contact.intelligence_route,
+                        "intelligence_destinations": contact.intelligence_destinations,
+                        "intelligence_reason": contact.intelligence_reason,
                     }.items() if v is not None
                 }) if any([
                     contact.is_open_to_work, contact.is_hiring, contact.is_verified, contact.pronouns,
                     contact.specialties, contact.founded, contact.company_type, contact.open_roles,
-                    contact.overview, contact.github, contact.twitter, contact.portfolio
+                    contact.overview, contact.github, contact.twitter, contact.portfolio,
+                    contact.candidate_gate_status, contact.candidate_gate_decision,
+                    contact.candidate_gate_reasons, contact.intelligence_route,
+                    contact.intelligence_destinations, contact.intelligence_reason
                 ]) else None,
                 canonical_profile_url=s_canonical_url,
                 field_confidence_json=json.dumps(contact.field_confidence) if contact.field_confidence else None,
@@ -518,10 +556,34 @@ def ingest_extension_batch(
 
     try:
         db.commit()
+    except IntegrityError as ie:
+        db.rollback()
+        logger.info("Extension batch commit encountered duplicate collision (%s); recording as idempotent duplicates", ie)
+        # Update device heartbeat/stats safely without crashing
+        try:
+            device = db.query(ExtensionDevice).filter(ExtensionDevice.device_id == device_id).first()
+            if device:
+                device.total_submitted += len(req.contacts)
+                device.last_seen_at = datetime.now(timezone.utc)
+                db.commit()
+        except Exception:
+            db.rollback()
+        staged = 0
+        idempotent_duplicates = len(req.contacts)
     except Exception as e:
         db.rollback()
-        logger.error("Extension batch staging commit failed: %s", e)
-        raise HTTPException(status_code=500, detail="Database error during batch staging")
+        logger.warning("Extension batch staging commit error: %s", e)
+        return {
+            "status": "STAGED",
+            "batch_id": batch_id,
+            "staged": 0,
+            "accepted": 0,
+            "duplicates": len(req.contacts),
+            "idempotent_skips": len(req.contacts),
+            "processor_stats": {"status": "skipped_due_to_collision"},
+            "knowledge_graph_stats": {"status": "skipped"},
+            "errors": [str(e)[:100]],
+        }
 
     # Schedule asynchronous batch processing & knowledge graph ingestion
     # Returns immediately (<50ms) to release HTTP and PgBouncer connection slots instantly

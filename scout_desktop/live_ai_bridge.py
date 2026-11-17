@@ -84,7 +84,7 @@ class LiveAIVisionBridge:
             self.processed_files.add(os.path.abspath(f))
         
         print("\n" + "=" * 70)
-        print(">> TALENTOPS AI -- LIVE SCREENSHOT INGESTION & UPLOAD PIPELINE")
+        print(">> TALENTOPS -- LIVE SCREENSHOT INGESTION & UPLOAD PIPELINE")
         print("=" * 70)
         print(f"[*] Target Backend  : {self.backend_client.active_api_base}")
         print(f"[*] Captures Folder : {self.captures_dir}")

@@ -407,7 +407,7 @@ class NotificationsDialog(QDialog):
         lbl_title.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY};")
         title_col.addWidget(lbl_title)
 
-        lbl_sub = QLabel("Fleet broadcasts and platform announcements from TalentOps AI.")
+        lbl_sub = QLabel("Fleet broadcasts and platform announcements from TalentOps.")
         lbl_sub.setFont(QFont("Segoe UI", 8))
         lbl_sub.setStyleSheet(f"color: {COLOR_TEXT_MUTED};")
         title_col.addWidget(lbl_sub)

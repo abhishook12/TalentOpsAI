@@ -446,7 +446,7 @@ class MainWindow(QMainWindow):
         """Called by app.py to update signed-in user label"""
         try:
             name = user_name or (user_display if user_display and not user_display.startswith("User #") else "Prashant")
-            disp = f"{name} · TalentOps AI" if "·" not in name else name
+            disp = f"{name} · TalentOps" if "·" not in name else name
             if hasattr(self.top_bar, "lbl_user"):
                 self.top_bar.lbl_user.setText(disp)
             SYSTEM_STATE["user"]["display"] = disp

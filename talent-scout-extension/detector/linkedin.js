@@ -665,7 +665,9 @@ function parseTopCardInnerText() {
 
       // Company fallback from headline (e.g. "Director of Sales at Acme Corp")
       if (!result.company && result.headline) {
-        const atMatch = result.headline.match(/(?:\bat\b|\b@\b)\s+(.+)$/i);
+        const segment = result.headline.normalize('NFKC').split(/[·•|]|\s+I\s+(?=ex\b|former\b)/i)[0];
+        const atMatch = /[\w.+-]+@[\w.-]+\.[a-z]{2,}/i.test(segment)
+          ? null : segment.match(/(?:\s+at\s+|\s*@\s*)(.+)$/i);
         if (atMatch && atMatch[1]) {
           const comp = atMatch[1].replace(/[·•|].*$/, '').trim();
           if (comp.length >= 2 && comp.length <= 60) {

@@ -29,6 +29,9 @@ from scout_desktop.extractor.patterns import (
     BROWSER_CHROME_NOISE,
     QUALIFICATION_AND_REQUIREMENT_WORDS,
     CHECKMARK_AND_STATUS_SYMBOLS,
+    is_valid_location,
+    is_plausible_school,
+    register_learned_entity,
 )
 
 
@@ -271,7 +274,48 @@ class FieldClassifier:
                         comp_conf = 0.88
                         break
 
+        # Pass 4: LinkedIn's compact affiliation rail can show an employer as a
+        # bare proper name beside the profile, followed immediately by a school.
+        # A bare employer such as "Morgan McKinley" deliberately fails the
+        # generic company validator because it looks like a human name.  This
+        # layout relationship is independent, visible evidence, so it is safe
+        # to recognise it without weakening the global anti-noise rules.
+        if not best_company and header_lines:
+            best_company = cls.extract_linkedin_affiliation_company(header_lines)
+            if best_company:
+                comp_conf = 0.88
+
         return best_title, title_conf, best_company, comp_conf
+
+    @classmethod
+    def extract_linkedin_affiliation_company(cls, header_lines: List[str]) -> Optional[str]:
+        """Recover a current employer from LinkedIn's visible affiliation rail.
+
+        The recovery is intentionally narrow: the candidate must be a clean,
+        title-cased label directly followed by a visible educational institution.
+        That relationship occurs in LinkedIn's profile affiliation rail and
+        prevents a person card, button, title, or location from being accepted
+        as a company merely because it has capitalised words.
+        """
+        for idx, line in enumerate(header_lines[:-1]):
+            candidate = clean_company_name(line)
+            if not candidate or cls.is_ui_noise(candidate):
+                continue
+            if is_valid_company_name(candidate) or is_plausible_title(candidate) or is_valid_location(candidate):
+                continue
+            if len(candidate) < 3 or len(candidate) > 60:
+                continue
+            # Require a compact, proper-name label.  Company names with normal
+            # commercial suffixes are handled by the ordinary validator above.
+            words = candidate.replace("&", " ").split()
+            if not 2 <= len(words) <= 5 or not all(re.match(r"^[A-Z][A-Za-z'’-]*$", word) for word in words):
+                continue
+            next_line = header_lines[idx + 1].strip()
+            if not (is_plausible_school(next_line) or "university" in next_line.lower() or "college" in next_line.lower()):
+                continue
+            register_learned_entity("COMPANY", candidate)
+            return candidate
+        return None
 
     @classmethod
     def extract_canonical_profile_url(cls, raw_url: Optional[str], platform: str = "LINKEDIN") -> Tuple[Optional[str], float]:

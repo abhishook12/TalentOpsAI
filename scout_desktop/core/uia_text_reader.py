@@ -484,9 +484,9 @@ class UIATextReader:
         ]
         if adjacent_texts:
             t_res, t_conf, c_res, c_conf = FieldClassifier.extract_title_and_company(
-                headline_candidates=adjacent_texts,
-                header_lines=lines[:10],
-                experience_lines=lines[10:30] if len(lines) > 10 else [],
+                headline_lines=adjacent_texts,
+                header_lines=[candidate_name, *adjacent_texts],
+                experience_lines=[],
             )
             title = t_res or ""
             company = c_res or ""

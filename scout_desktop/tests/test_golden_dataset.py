@@ -15,6 +15,17 @@ def load_fixture(filename: str) -> dict:
 class TestGoldenDataset:
     """Automated regression tests across the permanent golden dataset."""
 
+    def test_team_heading_job_search_and_work_mode_are_not_personal_fields(self):
+        observed = dict(recruiter_name="Example Person", platform="LinkedIn",
+                        title="analyst On-site or Remote or Hybrid Jobs",
+                        company_name="Our Team - Example Associates", location="Remote")
+        result = create_candidate_if_valid(observed)
+        assert (result.title, result.company, result.location) == (None, None, None)
+        observed.update(title="Senior Recruiter", location="Boston, Massachusetts")
+        result = create_candidate_if_valid(observed, {
+            "window_title": "google.com/url?url=https%3A%2F%2Flinkedin.com%2Fin%2Fother-person-abc".replace("other-person", "other-candidate")})
+        assert result.status == "REJECTED"
+
     @pytest.mark.parametrize("headline, role, company", [
         ("Engineering Manager＠Myntra｜EX OLA", "Engineering Manager", "Myntra"),
         ("Senior Recruiter at Acme Corp", "Senior Recruiter", "Acme Corp"),

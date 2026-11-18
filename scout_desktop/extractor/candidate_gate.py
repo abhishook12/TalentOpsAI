@@ -309,6 +309,8 @@ def sanitize_location(raw_location: Optional[str]) -> Tuple[Optional[str], bool]
     if not raw_location or not isinstance(raw_location, str):
         return None, False
     loc = raw_location.strip()
+    if re.fullmatch(r"(?:remote|hybrid|on[ -]?site)(?:\s+(?:work|only))?", loc, re.I):
+        return None, False
     if not loc:
         return None, False
 
@@ -482,6 +484,17 @@ def create_candidate_if_valid(
                 )
 
     checklist.append(f"Valid candidate name verified: {cleaned_name}")
+    # Browser address suggestions and search redirects can expose a different
+    # profile while the previous person's OCR text is still visible.
+    from urllib.parse import unquote
+    address_caption = unquote(window_title or observation.get("source_page_title") or "")
+    displayed_profile = re.search(r"\b(?:[\w-]+\.)?linkedin\.com/in/[\w%-]+", address_caption, re.I)
+    if displayed_profile and not is_url_slug_compatible_with_name(displayed_profile.group(), cleaned_name):
+        return CandidateGateResult(
+            decision="REJECTED_OBSERVATION", is_valid_candidate=False,
+            reasons=["CROSS_TAB_MISMATCH: Address caption belongs to a different profile"],
+            audit_checklist=["Profile ownership requires a fresh capture"],
+        )
     field_conf["name"] = 0.95
 
     # 4. Organization / Company Validation (Rule 11, 20)
@@ -508,7 +521,8 @@ def create_candidate_if_valid(
         except Exception:
             pass
 
-        if c_clean and is_valid_company_name(c_clean) and c_type == "COMPANY":
+        heading = re.match(r"^\s*(?:our team|meet (?:the|our) team|careers|job openings)\s*[-–—|:]", raw_comp, re.I)
+        if not heading and c_clean and is_valid_company_name(c_clean) and c_type == "COMPANY":
             valid_company = c_clean
             field_conf["company"] = 0.90
             checklist.append(f"Plausible company verified: {valid_company}")
@@ -524,7 +538,8 @@ def create_candidate_if_valid(
     valid_title = None
     if raw_title and isinstance(raw_title, str):
         t_clean = clean_job_title(raw_title)
-        if t_clean and is_plausible_title(t_clean):
+        listing = re.search(r"\b(?:remote|hybrid|on[ -]?site)\b.*\b(?:jobs|vacancies|openings)\s*$", raw_title, re.I)
+        if not listing and t_clean and is_plausible_title(t_clean):
             valid_title = t_clean
             field_conf["title"] = 0.90
             checklist.append(f"Professional title verified: {valid_title}")

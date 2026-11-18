@@ -109,7 +109,7 @@ class StateChip(QFrame):
             bg = COLOR_CANONICAL_BG
             fg = COLOR_CANONICAL
             border = COLOR_CANONICAL_BORDER
-        elif st in ("HYPOTHESIS", "UPLOADING", "ACTIVE", "INFO"):
+        elif st in ("HYPOTHESIS", "UPLOADING", "QUEUED", "ACTIVE", "INFO"):
             bg = COLOR_HYPOTHESIS_BG
             fg = COLOR_HYPOTHESIS
             border = COLOR_HYPOTHESIS_BORDER

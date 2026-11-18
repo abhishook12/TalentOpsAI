@@ -393,11 +393,14 @@ class LocalQueue:
             profiles_count = max(len(unique_names), synced_count + pending_count)
             companies_count = max(len(unique_companies), 1 if profiles_count > 0 else 0)
 
-            # Stage Funnel counts
-            obs_stage = max(total_observations, profiles_count)
-            understood_stage = max(profiles_count + rejected_count, profiles_count)
-            validated_stage = profiles_count
-            canonical_stage = synced_count
+            # Stage funnel counts use one queue window and preserve the real
+            # lifecycle order. A record becomes cloud-acknowledged only after
+            # mark_batch_synced has committed its local acknowledgement.
+            terminal_count = pending_count + synced_count + dlq_count
+            obs_stage = total_observations
+            understood_stage = min(obs_stage, terminal_count + rejected_count)
+            validated_stage = min(understood_stage, pending_count + synced_count)
+            canonical_stage = min(validated_stage, synced_count)
 
             return {
                 "profiles": profiles_count,
@@ -422,7 +425,7 @@ class LocalQueue:
         from scout_desktop.extractor.candidate_gate import create_candidate_if_valid
 
         candidates: List[Dict[str, Any]] = []
-        seen_names = set()
+        seen_identities = set()
         with self._get_conn() as conn:
             cur = conn.execute(
                 "SELECT id, cluster_json, status, created_at FROM queued_observations WHERE status IN ('SYNCED', 'PENDING') ORDER BY id DESC LIMIT ?",
@@ -445,11 +448,12 @@ class LocalQueue:
                                 continue
 
                             name = gate_res.canonical_name
-                            if not name or len(name) < 3 or name.lower() in seen_names:
+                            identity_key = (gate_res.canonical_profile_url or name).strip().casefold()
+                            if not name or len(name) < 3 or identity_key in seen_identities:
                                 continue
 
-                            seen_names.add(name.lower())
-                            status = gate_res.status or "REVIEW_REQUIRED"
+                            seen_identities.add(identity_key)
+                            status = "QUEUED" if row[2] == "PENDING" else (gate_res.status or "REVIEW_REQUIRED")
                             conf_pct = int(round(gate_res.identity_confidence * 100)) if gate_res.identity_confidence else 50
                             if status == "VERIFIED" and conf_pct < 75:
                                 conf_pct = 85
@@ -459,6 +463,7 @@ class LocalQueue:
                                 "title": gate_res.title or "",
                                 "company": gate_res.company or "",
                                 "location": gate_res.location or "",
+                                "education": c.get("education") or "",
                                 "platform": gate_res.platform or "DESKTOP_CAPTURE",
                                 "status": status,
                                 "confidence": conf_pct,
@@ -469,16 +474,17 @@ class LocalQueue:
                             })
                         elif c_entity_type in ("COMPANY", "JOB_POSTING"):
                             name = c.get("name") or c.get("recruiter_name") or c.get("canonical_name") or c.get("company_name") or "Unknown"
-                            if not name or len(name) < 3 or name.lower() in seen_names:
+                            identity_key = (c.get("profile_url") or c.get("canonical_profile_url") or c.get("source_url") or name).strip().casefold()
+                            if not name or len(name) < 3 or identity_key in seen_identities:
                                 continue
-                            seen_names.add(name.lower())
+                            seen_identities.add(identity_key)
                             candidates.append({
                                 "name": name,
                                 "title": c.get("title") or c.get("industry") or ("Company Profile" if c_entity_type == "COMPANY" else "Job Posting"),
                                 "company": c.get("company_name") or c.get("company") or name,
                                 "location": c.get("location") or "",
                                 "platform": c.get("platform") or data.get("platform") or "DESKTOP_CAPTURE",
-                                "status": "VERIFIED",
+                                "status": "QUEUED" if row[2] == "PENDING" else "VERIFIED",
                                 "confidence": 90,
                                 "profile_url": c.get("profile_url") or c.get("canonical_profile_url") or c.get("source_url") or "",
                                 "field_confidence": c.get("field_confidence") or {"name": 0.90},

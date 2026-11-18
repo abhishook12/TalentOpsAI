@@ -23,6 +23,8 @@ jobs:
       - name: Run Pytest
         working-directory: ./backend
         run: python -m pytest tests/
+      - name: Check Scout identity isolation across captures
+        run: python -m pytest -q scout_desktop/tests/test_context_profile_memory.py
       - name: Verify Scout capture fixtures
         run: python -m pytest scout_desktop/tests/test_golden_dataset.py
       - name: Compile backend sources

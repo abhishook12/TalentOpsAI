@@ -449,24 +449,24 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleA
                     <i className="ti ti-sparkles" style={{ fontSize: 11 }} /> AI Inferred
                   </div>
                 )}
-                {r.email_status === 'PATTERN_VERIFIED' ? (
+                {['PATTERN_VERIFIED', 'CATCHALL_VERIFIED', 'synthesized_mx_verified'].includes(r.email_status) ? (
                   <div style={{ 
                     display: 'inline-flex', alignItems: 'center', gap: 4, 
                     padding: '2px 7px', borderRadius: 4, fontSize: 11.5, fontWeight: 500,
                     background: 'rgba(196, 181, 217, 0.14)', color: 'var(--accent-secondary)', border: '1px solid rgba(196, 181, 217, 0.35)'
-                  }} title={r.email_source ? `Pattern Verified | Source: ${r.email_source} | ${r.email_confidence || 0}% safe` : `Company Pattern Verified (${r.email_confidence || 0}%)`}>
-                    <i className="ti ti-bolt" style={{ fontSize: 11 }} /> Pattern Verified
+                  }} title="Address inferred from company email evidence">
+                    <i className="ti ti-bolt" style={{ fontSize: 11 }} /> Inferred address
                   </div>
-                ) : (r.email_status === 'MX_VERIFIED' || r.is_deliverable === true) ? (
+                ) : (r.email_status === 'MX_VERIFIED') ? (
                   <div style={{ 
                     display: 'inline-flex', alignItems: 'center', gap: 4, 
                     padding: '2px 7px', borderRadius: 4, fontSize: 11.5, fontWeight: 500,
                     background: 'rgba(255, 255, 255, 0.08)', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.2)'
-                  }} title="DNS MX Mail Server Pre-Validated & Deliverable">
-                    <i className="ti ti-circle-check" style={{ fontSize: 11 }} /> MX Verified
+                  }} title="The domain has a mail server. Mailbox availability is unknown.">
+                    <i className="ti ti-circle-check" style={{ fontSize: 11 }} /> Domain has mail service
                   </div>
                 ) : null}
-                {r.email_status && !['unknown', '', 'PATTERN_VERIFIED', 'MX_VERIFIED'].includes(r.email_status) && (
+                {r.email_status && !['unknown', '', 'PATTERN_VERIFIED', 'CATCHALL_VERIFIED', 'synthesized_mx_verified', 'MX_VERIFIED'].includes(r.email_status) && (
                   <div style={{ 
                     display: 'inline-flex', alignItems: 'center', gap: 4, 
                     padding: '2px 7px', borderRadius: 4, fontSize: 11.5, fontWeight: 500,
@@ -949,7 +949,7 @@ export default function Recruiters() {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                           <select value={filters.is_deliverable} onChange={e => updateFilter('is_deliverable', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--card-border)', fontSize: 13, background: 'var(--main-bg)', outline: 'none' }}>
                             <option value="">Any MX Deliverability</option>
-                            <option value="yes">Verified MX Deliverable (98.1%)</option>
+                            <option value="yes">Marked deliverable</option>
                             <option value="no">Unverified / Flagged</option>
                           </select>
                           <select value={filters.email_inference_status} onChange={e => updateFilter('email_inference_status', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--card-border)', fontSize: 13, background: 'var(--main-bg)', outline: 'none' }}>

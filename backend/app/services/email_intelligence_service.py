@@ -773,7 +773,7 @@ class EmailIntelligenceService:
                 from .smtp_prober import smtp_prober
                 probe = smtp_prober.probe_mailbox(best["email"])
                 if probe.smtp_code == 250:
-                    delivery_status = "SMTP_VERIFIED"
+                    delivery_status = "CATCHALL_VERIFIED" if probe.is_catchall else "SMTP_VERIFIED"
                     deliverability_score = 1.0 if not probe.is_catchall else 0.92
                     # Lock in newly validated pattern for this company
                     if not known_pattern and db and not probe.is_catchall:
@@ -785,7 +785,7 @@ class EmailIntelligenceService:
                         alt_probe = smtp_prober.probe_mailbox(alt["email"])
                         if alt_probe.smtp_code == 250:
                             best = alt
-                            delivery_status = "SMTP_VERIFIED"
+                            delivery_status = "CATCHALL_VERIFIED" if alt_probe.is_catchall else "SMTP_VERIFIED"
                             deliverability_score = 1.0 if not alt_probe.is_catchall else 0.92
                             found_working_alt = True
                             if not known_pattern and db and not alt_probe.is_catchall:
@@ -806,6 +806,7 @@ class EmailIntelligenceService:
         return {
             "email": best["email"] if delivery_status != "BOUNCED" else None,
             "status": delivery_status,
+            "mailbox_confirmed": delivery_status == "SMTP_VERIFIED",
             "confidence": round(deliverability_score, 2),
             "pattern": best["pattern"],
             "domain": domain,

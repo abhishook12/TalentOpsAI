@@ -509,9 +509,9 @@ class AutonomousProfileSweeper:
                         company_name=comp_name,
                         db=db
                     )
-                    if synth_res.get("email") and synth_res.get("has_mx"):
+                    if synth_res.get("email") and synth_res.get("status") == "SMTP_VERIFIED" and synth_res.get("mailbox_confirmed") is True:
                         updated["email"] = synth_res["email"]
-                        updated["email_status"] = "synthesized_mx_verified"
+                        updated["email_status"] = "SMTP_VERIFIED"
                         updated["email_confidence"] = int(synth_res.get("confidence", 0.9) * 100)
                         updated["is_deliverable"] = True
                         updated["email_source"] = "email_intelligence_sweeper"
@@ -524,7 +524,7 @@ class AutonomousProfileSweeper:
                     logger.debug("Email synthesis error for %s: %s", current_name, synth_err)
 
         # D. Learn Company Pattern from Observed Valid Corporate Email
-        elif current_name and current_email and "@" in str(current_email):
+        elif current_name and current_email and updated.get("email_status") == "SMTP_VERIFIED" and "@" in str(current_email):
             dom = str(current_email).split("@")[1].lower()
             if dom not in FREE_EMAIL_DOMAINS and dom not in MAILING_LIST_DOMAINS and "." in dom:
                 try:
@@ -684,7 +684,10 @@ class AutonomousProfileSweeper:
         # Once swept, records are stamped sentinel_status = 'swept_clean'.
         query = f"""
             SELECT * FROM read_parquet('{target_file}')
-            WHERE (sentinel_status IS NULL OR sentinel_status != 'swept_clean')
+            WHERE sentinel_status IS DISTINCT FROM 'swept_clean'
+               OR TRY_CAST(last_scan_at AS TIMESTAMP) IS NULL
+               OR TRY_CAST(last_scan_at AS TIMESTAMP) < CURRENT_TIMESTAMP - INTERVAL '7 days'
+            ORDER BY TRY_CAST(last_scan_at AS TIMESTAMP) ASC NULLS FIRST, recruiter_id
             LIMIT {limit}
         """
         
@@ -705,11 +708,7 @@ class AutonomousProfileSweeper:
         actual_repairs = 0
 
         # Open DB session for company lookup and candidate enrichment
-        db = None
-        try:
-            db = SessionLocal()
-        except Exception as e:
-            logger.warning("Could not establish Postgres session for sweeper: %s", e)
+        db = SessionLocal()
 
         try:
             for rec in records:
@@ -725,37 +724,20 @@ class AutonomousProfileSweeper:
                             self.recent_actions.append(log_entry)
                             logger.info(log_entry)
                             
-                        # Also sync to Postgres if session is live
-                        if db and clean_rec.get("recruiter_id"):
-                            try:
-                                pg_r = db.query(Recruiter).filter(Recruiter.recruiter_id == clean_rec["recruiter_id"]).first()
-                                if pg_r:
-                                    if clean_rec.get("recruiter_name"):
-                                        pg_r.recruiter_name = clean_rec["recruiter_name"]
-                                    if clean_rec.get("email"):
-                                        pg_r.email = clean_rec["email"]
-                                    if clean_rec.get("title"):
-                                        pg_r.title = clean_rec["title"]
-                                    if clean_rec.get("state"):
-                                        pg_r.state = clean_rec["state"]
-                                    if "is_active" in clean_rec:
-                                        pg_r.is_active = clean_rec["is_active"]
-                                    if "needs_review" in clean_rec:
-                                        pg_r.needs_review = clean_rec["needs_review"]
-                                    if clean_rec.get("review_reason"):
-                                        pg_r.review_reason = clean_rec["review_reason"]
-                                    pg_r.completeness_score = clean_rec.get("completeness_score", 0)
-                                    db.add(pg_r)
-                            except Exception:
-                                pass
+                    if clean_rec.get("recruiter_id"):
+                        pg_r = db.query(Recruiter).filter(Recruiter.recruiter_id == clean_rec["recruiter_id"]).first()
+                        if pg_r:
+                            pg_r.last_scan_at = datetime.fromisoformat(clean_rec["last_scan_at"])
+                            if acts:
+                                for field in ("recruiter_name", "title", "state", "is_active", "needs_review", "review_reason", "completeness_score"):
+                                    if field in clean_rec and str(clean_rec[field]) != str(rec.get(field)):
+                                        setattr(pg_r, field, clean_rec.get(field))
+                                if any(a.startswith("SYNTHESIZED_CORPORATE_EMAIL:") for a in acts) and not pg_r.email:
+                                    for field in ("email", "email_status", "email_generated", "email_source", "email_confidence"):
+                                        setattr(pg_r, field, clean_rec[field])
+                                    pg_r.email_verified_at = datetime.fromisoformat(clean_rec["email_verified_at"])
 
-            # Commit Postgres changes if any
-            if db:
-                try:
-                    db.commit()
-                except Exception as commit_err:
-                    logger.debug("Postgres commit note in sweeper: %s", commit_err)
-                    db.rollback()
+            db.commit()
 
             # Write updates back to Parquet
             if updated_records:

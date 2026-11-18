@@ -1259,7 +1259,7 @@ class DiscoveryProcessor:
 
                 # Check if email is from original source vs pattern-guessed
                 _email_is_generated = False
-                _email_mx_ok = False
+                _mailbox_confirmed = False
                 _p_meta = {}
                 if person.metadata_json:
                     try:
@@ -1269,14 +1269,14 @@ class DiscoveryProcessor:
                 _ei = _p_meta.get('email_intel', {})
                 if _ei:
                     _ei_status = _ei.get('status', '')
-                    _email_is_generated = _ei_status in ('PATTERN_VERIFIED', 'MX_VERIFIED', 'MX_UNREACHABLE')
-                    _email_mx_ok = _ei.get('has_mx', False) and _ei_status in ('PATTERN_VERIFIED', 'MX_VERIFIED')
+                    _email_is_generated = _ei_status in ("PATTERN_VERIFIED", "MX_VERIFIED", "MX_UNREACHABLE", "CATCHALL_VERIFIED", "SMTP_VERIFIED")
+                    _mailbox_confirmed = _ei.get('mailbox_confirmed') is True and _ei_status == 'SMTP_VERIFIED'
 
                 # A real email is one that was discovered from the source
-                # (not generated) OR one that was generated AND MX-verified
+                # (not generated) OR one that was generated AND mailbox-confirmed
                 has_real_email = bool(
                     _email and '@' in _email and not _is_noemail
-                    and (not _email_is_generated or _email_mx_ok)
+                    and (not _email_is_generated or _mailbox_confirmed)
                 )
                 has_linkedin = bool(
                     person.linkedin_url
@@ -1295,15 +1295,15 @@ class DiscoveryProcessor:
                         r.decision = 'REVIEW_NO_CONTACT_INTEL'
                         r.decision_reason = (
                             f'Person "{person.canonical_name}" has no actionable contact info: '
-                            f'no real email (generated={_email_is_generated}, mx_ok={_email_mx_ok}), '
+                            f'no real email (generated={_email_is_generated}, mailbox_confirmed={_mailbox_confirmed}), '
                             f'no LinkedIn profile URL, no phone number. '
                             f'Cannot be committed to Master DB without at least one contact channel.'
                         )
                     logger.info(
                         "[CONTACT GATE] Blocked %s from Master DB — zero contact intelligence "
-                        "(email=%s, generated=%s, mx_ok=%s, linkedin=%s, phone=%s)",
+                        "(email=%s, generated=%s, mailbox_confirmed=%s, linkedin=%s, phone=%s)",
                         person.canonical_name, _email or 'NONE',
-                        _email_is_generated, _email_mx_ok,
+                        _email_is_generated, _mailbox_confirmed,
                         bool(person.linkedin_url), bool(person.primary_phone),
                     )
                     continue
@@ -1468,10 +1468,12 @@ class DiscoveryProcessor:
                 ei_status = ei.get("status", "unknown") if ei else "unknown"
                 ei_conf = int(ei.get("confidence", 0) * 100) if ei else 0
                 ei_pattern = ei.get("pattern", "direct") if ei else "direct"
-                ei_has_mx = ei.get("has_mx", False) if ei else False
-                is_email_gen = bool(ei_status in ["PATTERN_VERIFIED", "MX_VERIFIED"])
+                mailbox_confirmed = ei.get("mailbox_confirmed") is True and ei_status == "SMTP_VERIFIED"
+                is_email_gen = bool(ei_status in ("PATTERN_VERIFIED", "MX_VERIFIED", "MX_UNREACHABLE", "CATCHALL_VERIFIED", "SMTP_VERIFIED"))
 
-                if is_email_gen and ei_has_mx and review_reason_val == "Discovered via Scout (awaiting email enrichment)":
+                if is_email_gen and not mailbox_confirmed:
+                    fallback_email = None
+                if mailbox_confirmed and review_reason_val == "Discovered via Scout (awaiting email enrichment)":
                     needs_review_val = False
                     review_reason_val = None
 
@@ -1488,11 +1490,11 @@ class DiscoveryProcessor:
                     email3=metadata_dict.get("email3") or (metadata_dict.get("all_emails", [])[2] if isinstance(metadata_dict.get("all_emails"), list) and len(metadata_dict.get("all_emails")) > 2 else None),
                     email4=metadata_dict.get("email4") or (metadata_dict.get("all_emails", [])[3] if isinstance(metadata_dict.get("all_emails"), list) and len(metadata_dict.get("all_emails")) > 3 else None),
                     alternate_emails=json.dumps(metadata_dict.get("all_emails")[4:]) if isinstance(metadata_dict.get("all_emails"), list) and len(metadata_dict.get("all_emails")) > 4 else None,
-                    email_status=ei_status if is_email_gen else ("verified" if fallback_email and not fallback_email.endswith('@noemail.talentops') else "unknown"),
+                    email_status=ei_status if is_email_gen and fallback_email else ("observed" if fallback_email and not fallback_email.endswith('@noemail.talentops') else "unknown"),
                     email_confidence=ei_conf if is_email_gen else (int(person.identity_confidence * 100) if fallback_email and not fallback_email.endswith('@noemail.talentops') else 0),
                     email_source=f"email_intel_{ei_pattern}" if is_email_gen else ("extension" if fallback_email and not fallback_email.endswith('@noemail.talentops') else None),
                     email_generated=is_email_gen,
-                    email_verified_at=datetime.now(timezone.utc) if (ei_has_mx or (fallback_email and not fallback_email.endswith('@noemail.talentops'))) else None,
+                    email_verified_at=datetime.now(timezone.utc) if mailbox_confirmed else None,
                     phone=person.primary_phone,
                     phone2=metadata_dict.get("phone2") or (metadata_dict.get("all_phones", [])[1] if isinstance(metadata_dict.get("all_phones"), list) and len(metadata_dict.get("all_phones")) > 1 else None),
                     phone3=metadata_dict.get("phone3") or (metadata_dict.get("all_phones", [])[2] if isinstance(metadata_dict.get("all_phones"), list) and len(metadata_dict.get("all_phones")) > 2 else None),
@@ -1522,12 +1524,12 @@ class DiscoveryProcessor:
                             recruiter_id=new_recruiter.recruiter_id,
                             email=fallback_email,
                             email_type="work",
-                            status=ei_status.lower() if is_email_gen else "verified",
+                            status=ei_status.lower() if is_email_gen else "observed",
                             confidence_score=ei_conf if is_email_gen else int(person.identity_confidence * 100),
                             is_primary=True,
                             is_generated=is_email_gen,
                             source=f"email_intel_{ei_pattern}" if is_email_gen else "extension",
-                            verified_at=datetime.now(timezone.utc) if (ei_has_mx or not is_email_gen) else None,
+                            verified_at=datetime.now(timezone.utc) if mailbox_confirmed else None,
                         ))
                 if person.primary_phone:
                     self.db.add(RecruiterPhone(
@@ -1628,12 +1630,6 @@ class DiscoveryProcessor:
                 fields_enriched = []
 
                 if person.primary_email and (not recruiter.email or recruiter.email.endswith("@noemail.talentops")):
-                    recruiter.email = person.primary_email
-                    fields_enriched.append("Email")
-                    if recruiter.review_reason == "Discovered via Scout (awaiting email enrichment)":
-                        recruiter.review_reason = None
-                        recruiter.needs_review = False
-
                     ei_p = None
                     if getattr(person, "metadata_json", None):
                         try:
@@ -1642,28 +1638,36 @@ class DiscoveryProcessor:
                         except Exception:
                             pass
 
-                    is_gen_p = bool(ei_p and ei_p.get("status") in ["PATTERN_VERIFIED", "MX_VERIFIED"])
-                    if ei_p:
-                        recruiter.email_status = ei_p.get("status", "verified")
-                        recruiter.email_confidence = int(ei_p.get("confidence", 0.85) * 100)
-                        recruiter.email_source = f"email_intel_{ei_p.get('pattern', 'direct')}"
-                        recruiter.email_generated = is_gen_p
-                        if ei_p.get("has_mx"):
-                            recruiter.email_verified_at = datetime.now(timezone.utc)
+                    is_gen_p = bool(ei_p and ei_p.get("status") in ("PATTERN_VERIFIED", "MX_VERIFIED", "MX_UNREACHABLE", "CATCHALL_VERIFIED", "SMTP_VERIFIED"))
+                    mailbox_confirmed = bool(ei_p and ei_p.get("mailbox_confirmed") is True and ei_p.get("status") == "SMTP_VERIFIED")
+                    if not is_gen_p or mailbox_confirmed:
+                        recruiter.email = person.primary_email
+                        fields_enriched.append("Email")
+                        if recruiter.review_reason == "Discovered via Scout (awaiting email enrichment)":
+                            recruiter.review_reason = None
+                            recruiter.needs_review = False
 
-                    existing_re = self.db.query(RecruiterEmail).filter(RecruiterEmail.email == person.primary_email).first()
-                    if not existing_re:
-                        self.db.add(RecruiterEmail(
-                            recruiter_id=recruiter.recruiter_id,
-                            email=person.primary_email,
-                            email_type="work",
-                            status=ei_p.get("status", "verified").lower() if ei_p else "verified",
-                            confidence_score=int(ei_p.get("confidence", 0.85) * 100) if ei_p else 90,
-                            is_primary=True,
-                            is_generated=is_gen_p,
-                            source=f"email_intel_{ei_p.get('pattern', 'direct')}" if ei_p else "extension_enrichment",
-                            verified_at=datetime.now(timezone.utc) if (ei_p and ei_p.get("has_mx")) else None,
-                        ))
+                        if ei_p:
+                            recruiter.email_status = ei_p.get("status", "observed")
+                            recruiter.email_confidence = int(ei_p.get("confidence", 0.85) * 100)
+                            recruiter.email_source = f"email_intel_{ei_p.get('pattern', 'direct')}"
+                            recruiter.email_generated = is_gen_p
+                            if mailbox_confirmed:
+                                recruiter.email_verified_at = datetime.now(timezone.utc)
+
+                        existing_re = self.db.query(RecruiterEmail).filter(RecruiterEmail.email == person.primary_email).first()
+                        if not existing_re:
+                            self.db.add(RecruiterEmail(
+                                recruiter_id=recruiter.recruiter_id,
+                                email=person.primary_email,
+                                email_type="work",
+                                status=ei_p.get("status", "observed").lower() if ei_p else "observed",
+                                confidence_score=int(ei_p.get("confidence", 0.85) * 100) if ei_p else 90,
+                                is_primary=True,
+                                is_generated=is_gen_p,
+                                source=f"email_intel_{ei_p.get('pattern', 'direct')}" if ei_p else "extension_enrichment",
+                                verified_at=datetime.now(timezone.utc) if mailbox_confirmed else None,
+                            ))
                 if person.primary_phone and not recruiter.phone:
                     recruiter.phone = person.primary_phone
                     fields_enriched.append("Phone")

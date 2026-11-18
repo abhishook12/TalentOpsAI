@@ -33,6 +33,7 @@ from ..utils.normalizer import (
     is_company_name,
     is_valid_email,
 )
+from .person_capture_fields import person_employer, person_location, field_evidence
 from ..utils.title_normalizer import classify_title
 from ..utils.state_recovery import infer_state_from_sources
 from .email_intelligence_service import email_intelligence
@@ -574,28 +575,19 @@ class DiscoveryProcessor:
         clean_titles = []
         clean_companies = []
 
+        employer_evidence = {}
+        location_evidence = {}
         for r in cluster:
-            t, c = split_title_and_company(
-                raw_title=r.raw_title,
-                raw_company=r.raw_company,
-                page_context=r.source_page_title
-            )
-
+            t, _ = split_title_and_company(r.raw_title, r.raw_company)
             if t and not is_ui_action(t):
                 clean_titles.append(t)
-            if c and not is_platform_name(c):
-                clean_companies.append(c)
-
-        # Fallback: Infer company from LinkedIn URL path if all raw companies were platform names or empty
-        if not clean_companies:
-            for r in cluster:
-                if r.source_url:
-                    comp_match = re.search(r'/company/([^/?#]+)', r.source_url)
-                    if comp_match:
-                        slug = comp_match.group(1).replace('-', ' ').strip()
-                        if slug and not is_platform_name(slug):
-                            clean_companies.append(slug.title())
-                            break
+            company, section, excerpt = person_employer(r)
+            if company:
+                clean_companies.append(company)
+                employer_evidence[company] = field_evidence(r, company, section, excerpt)
+            place = person_location(r.raw_location)
+            if place:
+                location_evidence[place] = field_evidence(r, place, "location_field", r.raw_location)
 
         # Most reliable values across observations
         raw_canonical = most_common([r.raw_name for r in cluster])
@@ -607,8 +599,7 @@ class DiscoveryProcessor:
         primary_email = most_common([self._normalize_email(r.raw_email) for r in cluster])
         primary_phone = most_common([r.raw_phone for r in cluster])
         linkedin_url = most_common([r.raw_linkedin for r in cluster])
-        raw_loc = most_common([r.raw_location for r in cluster])
-        location = clean_location_text(raw_loc) or raw_loc
+        location = most_common([person_location(r.raw_location) for r in cluster])
 
         # Progressive Profile Attributes
         education = most_common([getattr(r, "education", None) for r in cluster])
@@ -743,6 +734,11 @@ class DiscoveryProcessor:
                             meta_dict[k] = v
                 except Exception:
                     pass
+
+        meta_dict["person_field_evidence"] = {key: item for key, item in (
+            ("employer", employer_evidence.get(current_company)),
+            ("location", location_evidence.get(location)),
+        ) if item}
 
         # Attach structured Title Intelligence to ResolvedPerson
         meta_dict["title_intel"] = {
@@ -1107,6 +1103,10 @@ class DiscoveryProcessor:
             if not m_comp_name or normalize_text(person.current_company) != normalize_text(m_comp_name):
                 has_new_company = True
                 new_fields.append('company')
+
+        if has_new_company and m_comp_name:
+            return {"person": person, "recruiter": master_match, "decision": "CONFLICT",
+                    "reason": f"Employer needs confirmation: {m_comp_name} / {person.current_company}"}
 
         # Deep Profile Progressive Field Checks
         import json
@@ -1760,6 +1760,12 @@ class DiscoveryProcessor:
 
                 # Deep Profile Progressive Enrichment
                 meta = json.loads(recruiter.metadata_json) if recruiter.metadata_json else {}
+                incoming_evidence = json.loads(person.metadata_json or "{}").get("person_field_evidence", {})
+                accepted = {"location": "Location" in fields_enriched,
+                            "employer": any(f.startswith("Company:") for f in fields_enriched)}
+                for key, changed in accepted.items():
+                    if changed and key in incoming_evidence:
+                        meta.setdefault("person_field_evidence", {})[key] = incoming_evidence[key]
                 if person.education and not meta.get("education"):
                     meta["education"] = person.education
                     fields_enriched.append("Education")

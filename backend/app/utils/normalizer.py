@@ -486,7 +486,7 @@ def validate_company_for_person(company_name: Optional[str], person_name: Option
 
     # Reject known noise patterns
     for noise in COMPANY_NOISE_PATTERNS:
-        if noise == lower or noise in lower:
+        if re.search(r"(?<!\w)" + re.escape(noise) + r"(?!\w)", lower):
             return False, f"Company is system/application noise: '{raw}'"
 
     # Reject if it looks like a URL but not a real company website

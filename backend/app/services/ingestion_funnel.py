@@ -42,6 +42,7 @@ from typing import Dict, Any, List, Optional, Tuple
 from sqlalchemy.orm import Session
 from sqlalchemy import func as sqlfunc
 
+from .person_capture_fields import person_employer, person_location, field_evidence
 from ..models.staging_models import DiscoveryStaging, ResolvedPerson
 from ..models.models import Recruiter, Company, CompanyEmailPattern
 from ..models.knowledge_models import KnowledgeEntity, KnowledgeSignal
@@ -316,26 +317,17 @@ class UniversalIngestionFunnel:
 
         raw_name = clean_name_str
 
-        # Company Reconstruction: NEVER allow platform noise (Linkedin, Google, etc.)
-        cand_company = clean_company(raw_company) if raw_company else None
-        if not cand_company or is_platform_name(cand_company):
-            cand_company = None
-            # Infer from LinkedIn company URL: /company/<slug>/
-            if source_url:
-                comp_match = re.search(r'/company/([^/?#]+)', source_url)
-                if comp_match:
-                    slug = comp_match.group(1).replace('-', ' ').strip()
-                    if slug and not is_platform_name(slug):
-                        cand_company = slug.title()
-                        self.telemetry["gate_3_company_inferred"] += 1
-            # Infer from page title: "Company Name: People | LinkedIn"
-            if not cand_company and page_title:
-                pt_match = re.search(r'^([^:|]+)(?::\s*People|\s*\|\s*LinkedIn)', page_title, re.IGNORECASE)
-                if pt_match:
-                    pt_comp = pt_match.group(1).strip()
-                    if pt_comp and not is_platform_name(pt_comp):
-                        cand_company = pt_comp
-                        self.telemetry["gate_3_company_inferred"] += 1
+        cand_company, section, excerpt = person_employer(staged)
+        if not raw_company and staged.raw_company:
+            # An inverted sender/name field was discarded above.
+            if section == "company_field":
+                cand_company = None
+        raw_loc = person_location(staged.raw_location)
+        evidence = {}
+        if cand_company:
+            evidence["employer"] = field_evidence(staged, cand_company, section, excerpt)
+        if raw_loc:
+            evidence["location"] = field_evidence(staged, raw_loc, "location_field", staged.raw_location)
 
         # Title Sanitization: eliminate UI action words ('Contact', 'View profile')
         cand_title = raw_title
@@ -412,6 +404,25 @@ class UniversalIngestionFunnel:
         # ══════════════════════════════════════════════════════════════════════
         # GATE 7: MASTER CATALOG PROMOTION & DUAL-SYNC FLYWHEEL
         # ══════════════════════════════════════════════════════════════════════
+        # Preserve existing facts and keep conflicting observations in the review queue.
+        if raw_email and staged.raw_email and raw_email.casefold() == staged.raw_email.strip().casefold():
+            prior = db.query(Recruiter).filter(
+                (sqlfunc.lower(sqlfunc.trim(Recruiter.email)) == raw_email) |
+                (sqlfunc.lower(sqlfunc.trim(Recruiter.email2)) == raw_email)
+            ).first()
+            if prior:
+                conflicts = []
+                if cand_company and prior.company and prior.company.company_name.casefold().strip() != cand_company.casefold().strip():
+                    conflicts.append("employer")
+                if raw_loc and prior.location and prior.location.casefold().strip() != raw_loc.casefold().strip():
+                    conflicts.append("location")
+                if conflicts:
+                    staged.processing_status = "review"
+                    staged.decision = "REVIEW_PERSON_FIELD_CONFLICT"
+                    staged.decision_reason = "Conflicting " + " and ".join(conflicts) + " on existing recruiter"
+                    staged.processed_at = now_utc
+                    return {"gate": 7, "status": "HELD_REVIEW", "reason": staged.decision_reason}
+
         # Canonical Company Match
         company = None
         if cand_company:
@@ -471,9 +482,39 @@ class UniversalIngestionFunnel:
         all_incoming_phones = _extract_all_phones_list(staged.raw_phone, m_dict)
         all_incoming_emails = _extract_all_emails_list(staged.raw_email, m_dict)
 
+        def enrich_person_fields(recruiter, changes):
+            # Only attach facts on a matching name plus an email or profile anchor.
+            if (recruiter.recruiter_name or "").casefold().strip() != raw_name.casefold().strip():
+                return
+            profile_matches = bool(staged.raw_linkedin and recruiter.linkedin and
+                                   staged.raw_linkedin.rstrip("/").casefold() == recruiter.linkedin.rstrip("/").casefold())
+            observed_email = (staged.raw_email or "").strip().casefold()
+            email_matches = observed_email and observed_email in {
+                (recruiter.email or "").strip().casefold(), (recruiter.email2 or "").strip().casefold()}
+            if not (profile_matches or email_matches):
+                return
+            try:
+                metadata = json.loads(recruiter.metadata_json or "{}")
+            except (TypeError, ValueError):
+                return
+            if not isinstance(metadata, dict) or not isinstance(metadata.get("person_field_evidence", {}), dict):
+                return
+            accepted = {}
+            if raw_loc and not recruiter.location:
+                recruiter.location = raw_loc
+                accepted["location"] = evidence["location"]
+            if company and not recruiter.company_id:
+                recruiter.company_id = company.company_id
+                accepted["employer"] = evidence["employer"]
+            if accepted:
+                metadata.setdefault("person_field_evidence", {}).update(accepted)
+                recruiter.metadata_json = json.dumps(metadata)
+                changes.extend(accepted)
+
         if existing_recruiter:
             # Non-destructive enrichment
             fields_enriched = []
+            enrich_person_fields(existing_recruiter, fields_enriched)
             # Name correction: if existing recruiter has a noise/sender name, overwrite with verified human name
             curr_rec_name = (existing_recruiter.recruiter_name or "").lower().strip()
             if (curr_rec_name in GATE1_NOISE_NAMES or curr_rec_name.startswith(('link ', 'email ', 'emails ', 'phone '))) and raw_name and raw_name.lower().strip() not in GATE1_NOISE_NAMES:
@@ -571,7 +612,6 @@ class UniversalIngestionFunnel:
                 return {"gate": 6, "status": "HELD_REVIEW", "reason": staged.decision_reason}
 
             # Promote as verified new recruiter
-            raw_loc = (staged.raw_location or "").strip()
             state_abbr = None
             if raw_loc:
                 try:
@@ -649,6 +689,7 @@ class UniversalIngestionFunnel:
                     existing_by_final_email.alternate_emails = json.dumps(combined_alt_em)
                     fields_enriched.append("alternate_emails")
 
+                enrich_person_fields(existing_by_final_email, fields_enriched)
                 staged.processing_status = "enriched"
                 staged.decision = "ENRICHED_EXISTING"
                 staged.decision_reason = f"Gate 7: Enriched recruiter #{existing_by_final_email.recruiter_id} on final email match ({', '.join(fields_enriched) if fields_enriched else 'Confirmed'})"
@@ -684,6 +725,7 @@ class UniversalIngestionFunnel:
                 alternate_phones=new_p_alt,
                 alternate_emails=new_e_alt,
                 linkedin=(staged.raw_linkedin[:255] if staged.raw_linkedin and 'linkedin.com' in staged.raw_linkedin.lower() else None),
+                metadata_json=json.dumps({"person_field_evidence": evidence}),
                 location=raw_loc[:490] if raw_loc else None,
                 state=state_abbr[:2] if state_abbr else None,
                 email_status=email_status if final_email else "UNVERIFIED",
@@ -716,6 +758,7 @@ class UniversalIngestionFunnel:
                 "alternate_phones": new_recruiter.alternate_phones,
                 "alternate_emails": new_recruiter.alternate_emails,
                 "linkedin": new_recruiter.linkedin,
+                "metadata_json": new_recruiter.metadata_json,
                 "location": raw_loc or None,
                 "state": state_abbr,
                 "email_status": new_recruiter.email_status,

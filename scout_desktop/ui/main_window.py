@@ -709,6 +709,7 @@ class MainWindow(QMainWindow):
         fallback_id = f"cand-{hashlib.md5(cand_name.encode('utf-8')).hexdigest()[:8]}" if cand_name else "cand-active"
         cand_id = kwargs.get("id") or kwargs.get("candidate_id") or fallback_id
         self.page_scan._current_candidate_id = cand_id
+        self.page_scan._current_candidate_name = cand_name
 
         fc = kwargs.get("field_confidence") or {}
         name_conf = _to_pct(fc.get("name"), 85 if cand_name else 0)
@@ -736,6 +737,9 @@ class MainWindow(QMainWindow):
                 loc_conf=loc_conf,
                 cand_id=cand_id,
             )
+        if hasattr(self.page_scan, "update_verification_checklist"):
+            self.page_scan._current_checklist = list(kwargs.get("checklist") or [])
+            self.page_scan.update_verification_checklist(self.page_scan._current_checklist, "QUEUED")
 
         # Also ensure candidate is added or updated in the live Candidates table
         if cand_name and cand_name not in ("Unknown Candidate", "Professional Profile"):
@@ -753,8 +757,19 @@ class MainWindow(QMainWindow):
                 raw_title=cand_title,
                 raw_company=cand_company,
                 raw_location=cand_loc,
+                education=kwargs.get("education"),
+                field_confidence=fc,
+                checklist=kwargs.get("checklist"),
                 created_at=kwargs.get("created_at"),
                 entity_type=cand_entity_type,
+            )
+
+    def update_latest_candidate_sync(self, canonical_name: str, sync_state: str):
+        """Updates the visible record only when its own queue batch is acknowledged."""
+        current_name = getattr(self.page_scan, "_current_candidate_name", "")
+        if current_name and current_name.casefold() == (canonical_name or "").casefold():
+            self.page_scan.update_verification_checklist(
+                getattr(self.page_scan, "_current_checklist", []), sync_state
             )
 
     def _add_candidate_table_row(self, *args, **kwargs):
@@ -768,9 +783,11 @@ class MainWindow(QMainWindow):
         entity_type = data.get("entity_type") or kwargs.get("entity_type", "PERSON")
         name = data.get("name") or data.get("recruiter_name", "Unknown")
         initials = "".join([p[0].upper() for p in name.split()[:2]]) or "??"
-        title = data.get("title") or data.get("raw_title", "Professional")
-        company = data.get("company") or data.get("raw_company", "Organization")
-        location = data.get("location") or data.get("raw_location", "Remote")
+        title = data.get("title") or ""
+        company = data.get("company") or ""
+        location = data.get("location") or ""
+        education = data.get("education") or ""
+        scores = data.get("field_confidence") or {}
         status = data.get("status", "CANONICAL").upper()
         raw_conf = data.get("confidence", 95)
         conf = int(raw_conf * 100 if raw_conf <= 1.0 else raw_conf)
@@ -804,18 +821,16 @@ class MainWindow(QMainWindow):
                 "extractor": f"{EXTRACTOR_VERSION} (Perceptual + DOM fusion)",
                 "device": "Installation #483",
             },
+            "identity_resolution": {"status": status.replace("_", " ").title()},
             "fields": [
-                {"label": "Name", "value": name, "raw": name, "confidence": 98},
-                {"label": "Title", "value": title, "raw": title, "confidence": 95},
-                {"label": "Company", "value": company, "raw": company, "confidence": 92},
-                {"label": "Location", "value": location, "raw": location, "confidence": 88},
+                {"label": label, "value": value or "Unconfirmed",
+                 "raw": data.get("raw_" + label.lower()) or "—",
+                 "confidence": round(100 * scores.get(label.lower(), 0)) if value else 0}
+                for label, value in (("Name", name), ("Title", title), ("Company", company),
+                                     ("Location", location), ("Education", education))
             ],
-            "checklist": [
-                {"title": "Platform allowlisted", "detail": "Active recruitment source", "passed": True},
-                {"title": "Window stability check", "detail": "Stable frame capture", "passed": True},
-                {"title": "Layout recognized", "detail": f"{entity_type.capitalize()} card", "passed": True},
-                {"title": "Confidence threshold", "detail": "Passed quality gate", "passed": True},
-            ]
+            "checklist": [{"title": str(note), "detail": "Extraction gate",
+                           "passed": False} for note in data.get("checklist") or []]
         }
         # Check for duplicates before inserting
         dup_index = -1

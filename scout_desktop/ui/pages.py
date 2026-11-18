@@ -690,10 +690,11 @@ class ScanPage(QWidget):
         lbl_chk_title.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; padding-top: 4px;")
         latest_layout.addWidget(lbl_chk_title)
 
-        latest_layout.addWidget(self._create_checklist_item("■", "Person profile detected", True))
-        latest_layout.addWidget(self._create_checklist_item("■", "Identity evidence valid", True))
-        latest_layout.addWidget(self._create_checklist_item("■", "Duplicate check passed", True))
-        latest_layout.addWidget(self._create_checklist_item("■", "Cloud sync'd #131", True))
+        self.verification_items = []
+        for _ in range(4):
+            item = self._create_checklist_item("□", "Awaiting capture evidence", False)
+            self.verification_items.append(item)
+            latest_layout.addWidget(item)
 
         # Open record button
         self.btn_open_record = QPushButton("Open record →")
@@ -941,16 +942,16 @@ class ScanPage(QWidget):
         if hasattr(self, "stat_rejected") and hasattr(self.stat_rejected, "lbl_count"):
             self.stat_rejected.lbl_count.setText(str(rejected))
 
-        observed = metrics.get("observed", metrics.get("scanned", max(1, profiles)))
-        understood = metrics.get("understood", profiles)
-        validated = metrics.get("validated", metrics.get("staged", profiles))
-        canonical = metrics.get("canonical", metrics.get("synced_today", 0))
+        observed = metrics.get("observed", metrics.get("scanned", 0))
+        understood = min(metrics.get("understood", 0), observed)
+        validated = min(metrics.get("validated", 0), understood)
+        canonical = min(metrics.get("canonical", metrics.get("synced_today", 0)), validated)
 
         stage_vals = [
             ("STAGE 01: DETECTED", observed),
             ("STAGE 02: EXTRACTED", understood),
             ("STAGE 03: VERIFIED", validated),
-            ("STAGE 04: READY TO SYNC", canonical),
+            ("STAGE 04: CLOUD ACKNOWLEDGED", canonical),
         ]
 
         base_val = max(1, observed)
@@ -962,6 +963,30 @@ class ScanPage(QWidget):
                 row["lbl_pct"].setText(f"{pct * 100:.1f}%")
                 if hasattr(row["bar"], "set_progress"):
                     row["bar"].set_progress(pct)
+
+    def update_verification_checklist(self, checklist: Optional[List[str]], sync_state: str = "QUEUED"):
+        """Render only evidence returned by the candidate gate and queue acknowledgement."""
+        evidence = list(checklist or [])[:3]
+        sync_labels = {
+            "QUEUED": ("Queued for cloud sync", False),
+            "SYNCED": ("Cloud sync acknowledged", True),
+            "FAILED": ("Cloud sync failed. Retrying locally", False),
+        }
+        evidence.append(sync_labels.get(sync_state, sync_labels["QUEUED"])[0])
+        while len(evidence) < len(self.verification_items):
+            evidence.append("No additional evidence")
+        for index, widget in enumerate(self.verification_items):
+            text = evidence[index]
+            passed = index < len(evidence) - 1 and not text.startswith("No additional")
+            if index == len(self.verification_items) - 1:
+                passed = sync_labels.get(sync_state, sync_labels["QUEUED"])[1]
+            icon = widget.findChild(QLabel, "verification_icon")
+            label = widget.findChild(QLabel, "verification_text")
+            if icon and label:
+                icon.setText("■" if passed else "□")
+                icon.setStyleSheet("color: #FFFFFF;" if passed else f"color: {COLOR_TEXT_MUTED};")
+                label.setText(text)
+                label.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY if passed else COLOR_TEXT_MUTED};")
 
     def _create_mini_stat(self, icon: str, count: str, label: str) -> QWidget:
         return self._create_monochrome_stat(label.upper(), count, "")
@@ -1120,12 +1145,14 @@ class ScanPage(QWidget):
         l.setSpacing(6)
 
         lbl_i = QLabel("■" if passed else "□")
+        lbl_i.setObjectName("verification_icon")
         lbl_i.setFont(QFont("Consolas", 7, QFont.Weight.Bold))
         lbl_i.setStyleSheet("color: #FFFFFF;" if passed else f"color: {COLOR_TEXT_MUTED};")
         lbl_i.setFixedWidth(12)
         l.addWidget(lbl_i)
 
         lbl_t = QLabel(text)
+        lbl_t.setObjectName("verification_text")
         lbl_t.setFont(QFont("Segoe UI", 8))
         lbl_t.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY if passed else COLOR_TEXT_MUTED};")
         l.addWidget(lbl_t)

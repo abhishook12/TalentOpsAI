@@ -223,7 +223,8 @@ class AppBridge(QObject):
     capture_view_updated = Signal(str, float, str, object, dict, str) # (capture_id, delta, reason, img, breakdown, status)
     extraction_proof_updated = Signal(list)       # (observations)
     db_proof_updated = Signal(str, dict, str)     # (status, response_dict, result_str)
-    candidate_card_updated = Signal(str, str, str, str, str, str, object, str, int, object, object, str) # (name, title, company, location, status, desc, copilot_info, profile_url, confidence, checklist, field_confidence, entity_type)
+    candidate_sync_updated = Signal(str, str)     # (canonical_name, QUEUED|SYNCED|FAILED)
+    candidate_card_updated = Signal(str, str, str, str, str, str, object, str, int, object, object, str, str)
 
 
 class ScoutDesktopApp:
@@ -273,6 +274,7 @@ class ScoutDesktopApp:
         self._is_heartbeating = False
         self._last_ui_heartbeat = time.time()
         self._last_knowledge_sync_ts = 0.0
+        self._queued_record_names: Dict[int, str] = {}
         self._is_shutting_down = False
         self.subsystems: Dict[str, str] = {
             "ocr": "HEALTHY",
@@ -327,6 +329,7 @@ class ScoutDesktopApp:
         self.bridge.extraction_proof_updated.connect(self.main_window.update_extraction_proof)
         self.bridge.db_proof_updated.connect(self.main_window.update_database_proof)
         self.bridge.candidate_card_updated.connect(self._handle_candidate_card_update)
+        self.bridge.candidate_sync_updated.connect(self._handle_candidate_sync_update)
         self.bridge.frame_processed.connect(self.diagnostics.update_diagnostics)
 
         # Level 2 Edge Handle action -> Toggle Main Window
@@ -373,6 +376,8 @@ class ScoutDesktopApp:
                     title=cand["title"],
                     company=cand["company"],
                     location=cand["location"],
+                    education=cand.get("education"),
+                    field_confidence=cand.get("field_confidence"),
                     platform=cand["platform"],
                     status=cand["status"],
                     profile_url=cand.get("profile_url"),
@@ -459,15 +464,13 @@ class ScoutDesktopApp:
     def _show_pair_account_dialog(self):
         """Displays the Activation / Pair Account dialog on demand (from tray or settings)."""
         if getattr(self, "activation_window", None) and self.activation_window.isVisible():
-            self.activation_window.activateWindow()
-            self.activation_window.raise_()
+            self._force_foreground_window(self.activation_window)
             return
 
         self.activation_window = ActivationWindow(self.backend_client, parent=self.main_window)
         self.activation_window.activation_successful.connect(self._on_activation_complete)
         self.activation_window.show()
-        self.activation_window.activateWindow()
-        self.activation_window.raise_()
+        self._force_foreground_window(self.activation_window)
 
     def _on_activation_complete(self, data: Optional[Dict[str, Any]] = None):
         """Callback invoked when device is successfully paired/activated with backend."""
@@ -514,19 +517,132 @@ class ScoutDesktopApp:
         if not self.edge_handle.isVisible():
             self.edge_handle.show()
 
+    # ── Core Win32 Window Foreground Engine ──────────────────────────────────
+    # Windows prevents background processes from calling SetForegroundWindow()
+    # unless the caller owns the current foreground lock. Qt's activateWindow()
+    # and raise_() operate at the toolkit level and do NOT bypass this OS
+    # restriction, leaving Scout behind Chrome/Edge/Teams windows.
+    #
+    # This method uses the canonical Win32 workaround:
+    #   1. Press/release VK_MENU (Alt) to satisfy the foreground-lock check
+    #   2. AttachThreadInput to piggyback on the foreground thread's input queue
+    #   3. ShowWindow(SW_RESTORE) + BringWindowToTop + SetForegroundWindow
+    #   4. Momentary HWND_TOPMOST z-order flip to visually punch through
+    #   5. Detach thread input to restore normal input routing
+    #
+    # Every path that makes the main window visible MUST call this method
+    # instead of raw Qt .show()/.showNormal()/.activateWindow()/.raise_().
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def _force_foreground_window(self, target_window=None):
+        """
+        Reliably brings `target_window` (default: self.main_window) to the
+        visible foreground on Windows, bypassing the OS focus-steal prevention.
+
+        Safe to call from any context (tray click, edge-handle click, --show
+        flag at startup, supervisor re-launch, single-instance re-focus).
+        Falls back to Qt-only activation on non-Windows platforms.
+        """
+        win = target_window or self.main_window
+
+        # Phase 1: Qt-level visibility — ensures the widget is mapped and
+        # restored from minimized/hidden state before we touch Win32.
+        win.showNormal()
+
+        if sys.platform != "win32":
+            win.activateWindow()
+            win.raise_()
+            return
+
+        # Phase 2: Obtain the native HWND from Qt
+        try:
+            hwnd = int(win.winId())
+        except Exception:
+            # winId() can return 0 before the window is realized; fall back
+            win.activateWindow()
+            win.raise_()
+            return
+
+        if not hwnd:
+            win.activateWindow()
+            win.raise_()
+            return
+
+        try:
+            import ctypes
+            from ctypes import wintypes
+            user32 = ctypes.windll.user32
+            kernel32 = ctypes.windll.kernel32
+
+            # Constants
+            SW_RESTORE = 9
+            SW_SHOW = 5
+            SWP_NOMOVE = 0x0002
+            SWP_NOSIZE = 0x0001
+            SWP_SHOWWINDOW = 0x0040
+            HWND_TOPMOST = -1
+            HWND_NOTOPMOST = -2
+            VK_MENU = 0x12
+            KEYEVENTF_KEYUP = 0x0002
+
+            # 2a. Restore if minimized, then ensure SW_SHOW
+            user32.ShowWindow(hwnd, SW_RESTORE)
+            user32.ShowWindow(hwnd, SW_SHOW)
+
+            # 2b. Simulate Alt press/release — this satisfies the Windows
+            # requirement that the calling thread has had recent user input,
+            # which unlocks SetForegroundWindow for background processes.
+            user32.keybd_event(VK_MENU, 0, 0, 0)
+            user32.keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, 0)
+
+            # 2c. Attach our thread to the current foreground window's input
+            # queue so our SetForegroundWindow call is treated as coming from
+            # the interactive user's context.
+            fg_hwnd = user32.GetForegroundWindow()
+            fg_tid = user32.GetWindowThreadProcessId(fg_hwnd, None) if fg_hwnd else 0
+            our_tid = kernel32.GetCurrentThreadId()
+            attached = False
+            if fg_tid and fg_tid != our_tid:
+                attached = bool(user32.AttachThreadInput(our_tid, fg_tid, True))
+
+            # 2d. Bring to top and set foreground
+            user32.BringWindowToTop(hwnd)
+            user32.SetForegroundWindow(hwnd)
+
+            # 2e. Momentary TOPMOST z-order flip — forces the window above
+            # all non-topmost windows (Chrome, Teams, etc.) then immediately
+            # drops it back to normal z-order so it doesn't stay always-on-top.
+            user32.SetWindowPos(
+                hwnd, HWND_TOPMOST,
+                0, 0, 0, 0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW
+            )
+            user32.SetWindowPos(
+                hwnd, HWND_NOTOPMOST,
+                0, 0, 0, 0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW
+            )
+
+            # 2f. Detach thread input
+            if attached:
+                user32.AttachThreadInput(our_tid, fg_tid, False)
+
+            logger.debug("_force_foreground_window: HWND %s brought to foreground", hwnd)
+        except Exception as e:
+            logger.debug("_force_foreground_window Win32 fallback: %s", e)
+            # Fallback to Qt-only
+            win.activateWindow()
+            win.raise_()
+
     def _toggle_main_window(self):
         """Toggles visibility of the Level 3 Main Window."""
         if self.main_window.isVisible() and not self.main_window.isMinimized():
             self.main_window.hide()
         else:
-            self.main_window.showNormal()
-            self.main_window.activateWindow()
-            self.main_window.raise_()
+            self._force_foreground_window()
 
     def _show_main_window(self):
-        self.main_window.showNormal()
-        self.main_window.activateWindow()
-        self.main_window.raise_()
+        self._force_foreground_window()
 
     def _show_connection_status(self):
         self.settings_window.show()
@@ -637,6 +753,13 @@ class ScoutDesktopApp:
             self.bridge.metrics_updated.emit(metrics_payload)
         except Exception as e:
             logger.debug("Error in _refresh_ui_status: %s", e)
+
+    def _track_queued_record(self, queue_id: int, record: Dict[str, Any]):
+        """Keeps the current UI record tied to its local queue acknowledgement."""
+        if queue_id >= 0:
+            name = record.get("canonical_name") or record.get("recruiter_name") or record.get("company_name")
+            if name:
+                self._queued_record_names[queue_id] = str(name)
 
     def _init_watchdog(self):
         """Starts independent background watchdog monitoring OCR daemon, sampler thread, sync flush, and UI responsiveness."""
@@ -896,7 +1019,7 @@ class ScoutDesktopApp:
         # By default, runs silently in system tray so tasks run in background without desktop window popups
         if "--show" in sys.argv or "--open" in sys.argv or os.environ.get("SCOUT_SHOW_WINDOW") == "1":
             self.edge_handle.show()
-            self.main_window.show()
+            self._force_foreground_window()
         else:
             logger.info("TalentOps Scout Desktop running in background (system tray).")
 
@@ -1492,14 +1615,31 @@ class ScoutDesktopApp:
                 logger.debug("UIA text extraction failed: %s (falling back to OCR)", uia_err)
 
         # Layer 2: Fall back to OCR with image preprocessing
-        if not uia_used and capture_item and os.path.exists(capture_item.file_path):
+        # A successful accessibility read may still omit the small affiliation
+        # rail or other visible profile text. For individual profile frames,
+        # supplement that read with the same frame's OCR before extraction.
+        from urllib.parse import urlsplit
+        frame_url = urlsplit(page_url or "")
+        frame_host = (frame_url.hostname or "").lower()
+        profile_frame = (
+            (frame_host == "linkedin.com" or frame_host.endswith(".linkedin.com"))
+            and frame_url.path.startswith("/in/")
+        )
+        if (not uia_used or profile_frame) and capture_item and os.path.exists(capture_item.file_path):
             # OCR must see the whole visible source window.  A delta rectangle is
             # useful for deciding *when* to scan, but not for deciding *what* is
             # on a profile: the name/header often remains outside a scroll delta.
             # Full-frame OCR prevents half profiles and keeps every visible field
             # available to the layout, quality, and evidence gates.
             ocr_target_path = capture_item.file_path
-            ocr_lines = self.ocr_engine.extract_text_from_image(ocr_target_path)
+            image_lines = self.ocr_engine.extract_text_from_image(ocr_target_path)
+            if uia_used:
+                from scout_desktop.extractor.profile_frame_text import supplement_profile_text
+                ocr_lines = supplement_profile_text(
+                    ocr_lines, image_lines, cand_name or (uia_candidate or {}).get("canonical_name")
+                )
+            else:
+                ocr_lines = image_lines
 
         from scout_desktop.extractor.patterns import normalize_capture_line
         lines = [normalize_capture_line(line) for line in ocr_lines]
@@ -1561,7 +1701,7 @@ class ScoutDesktopApp:
 
                     # Track field additions via context memory
                     entity_state = self.context_memory.find_entity_by_name(
-                        c.canonical_name, c.entity_type
+                        c.canonical_name, c.entity_type, page_url
                     )
                     if entity_state is None:
                         entity_state = self.context_memory.register_entity(
@@ -1646,7 +1786,10 @@ class ScoutDesktopApp:
                         target_type not in ("LINKEDIN", "ZOOMINFO", "APOLLO", "INDEED", "SIMPLYHIRED")
                         or target_type in (stitched.observed_channels or [])
                     )
-                    if can_backfill_employment:
+                    candidate_name = " ".join((staged_contact.get("recruiter_name") or "").casefold().split())
+                    remembered_name = " ".join((stitched.canonical_name or "").casefold().split())
+                    names_compatible = bool(candidate_name and candidate_name == remembered_name)
+                    if can_backfill_employment and names_compatible:
                         if not staged_contact.get("company_name") and stitched.current_company:
                             staged_contact["company_name"] = stitched.current_company
                         if not staged_contact.get("title") and stitched.current_title:
@@ -1655,9 +1798,6 @@ class ScoutDesktopApp:
                             staged_contact["location"] = stitched.location
 
                     # Only backfill email/phone if candidate name is compatible with stitched profile
-                    cand_n = (staged_contact.get("recruiter_name") or "").strip().lower()
-                    stitch_n = (stitched.canonical_name or "").strip().lower()
-                    names_compatible = (not cand_n or not stitch_n or cand_n in stitch_n or stitch_n in cand_n)
                     if names_compatible:
                         if not staged_contact.get("email") and stitched.primary_email:
                             staged_contact["email"] = stitched.primary_email
@@ -1724,6 +1864,7 @@ class ScoutDesktopApp:
                     staged_contact["quality_score"] = 90
                     staged_contact["identity_confidence"] = 0.90
                     qid = self.local_queue.enqueue_cluster(staged_contact)
+                    self._track_queued_record(qid, staged_contact)
                     if qid != -1:
                         self.cnt_staged += 1
                     breakdown["companies"] += 1
@@ -1737,6 +1878,7 @@ class ScoutDesktopApp:
                     staged_contact["quality_score"] = 85
                     staged_contact["identity_confidence"] = 0.85
                     qid = self.local_queue.enqueue_cluster(staged_contact)
+                    self._track_queued_record(qid, staged_contact)
                     if qid != -1:
                         self.cnt_staged += 1
                     breakdown["jobs"] += 1
@@ -1748,6 +1890,7 @@ class ScoutDesktopApp:
                     staged_contact["quality_score"] = 80
                     staged_contact["identity_confidence"] = 0.80
                     qid = self.local_queue.enqueue_cluster(staged_contact)
+                    self._track_queued_record(qid, staged_contact)
                     if qid != -1:
                         self.cnt_staged += 1
                     breakdown["signals"] += len(getattr(c, "observations", []))
@@ -1793,6 +1936,7 @@ class ScoutDesktopApp:
                         continue
 
                     qid = self.local_queue.enqueue_cluster(staged_contact)
+                    self._track_queued_record(qid, staged_contact)
                     if qid != -1:
                         self.cnt_staged += 1
 
@@ -1851,6 +1995,7 @@ class ScoutDesktopApp:
                         ["Company classification verified", "Domain allowlisted"],
                         {"name": 0.95, "company": 0.95},
                         ENTITY_COMPANY,
+                        "",
                     )
                     verified_emitted += 1
                     continue
@@ -1875,6 +2020,7 @@ class ScoutDesktopApp:
                         ["Job posting detected", "Requisition context preserved"],
                         {"name": 0.90, "title": 0.90},
                         ENTITY_JOB_POSTING,
+                        "",
                     )
                     verified_emitted += 1
                     continue
@@ -1966,6 +2112,7 @@ class ScoutDesktopApp:
                         c_gate.audit_checklist,
                         c_gate.field_confidence,
                         ENTITY_PERSON,
+                        str(getattr(c, "education", "") or ""),
                     )
                     try:
                         title_str = c_gate.title or "Unknown Title"
@@ -2116,6 +2263,10 @@ class ScoutDesktopApp:
 
             if success:
                 self.local_queue.mark_batch_synced(queue_ids)
+                for queue_id in queue_ids:
+                    name = self._queued_record_names.pop(queue_id, None)
+                    if name:
+                        self.bridge.candidate_sync_updated.emit(name, "SYNCED")
                 staged_cnt = res.get("staged", len(pending))
                 self.cnt_db_updates += staged_cnt
 
@@ -2132,6 +2283,10 @@ class ScoutDesktopApp:
             else:
                 err = res.get("error", "Network error")
                 self.local_queue.mark_batch_failed(queue_ids, err)
+                for queue_id in queue_ids:
+                    name = self._queued_record_names.get(queue_id)
+                    if name:
+                        self.bridge.candidate_sync_updated.emit(name, "FAILED")
                 self.bridge.event_logged.emit("DB_SYNC_FAILED", f"Error: {err}")
                 self.bridge.db_proof_updated.emit("ERROR", res, f"FAILED: {err}")
 
@@ -2336,7 +2491,7 @@ class ScoutDesktopApp:
             self.edge_handle.set_status_state("IDLE")
             self.tray.update_icon_status("IDLE")
 
-    @Slot(str, str, str, str, str, str, object, str, int, object, object, str)
+    @Slot(str, str, str, str, str, str, object, str, int, object, object, str, str)
     def _handle_candidate_card_update(
         self,
         name: str,
@@ -2351,6 +2506,7 @@ class ScoutDesktopApp:
         checklist: Optional[list] = None,
         field_confidence: Optional[dict] = None,
         entity_type: str = "PERSON",
+        education: str = "",
     ):
         self.main_window.lbl_target_desc.setText(f"Extracted: {desc}")
         self.main_window.update_candidate_card(
@@ -2364,8 +2520,14 @@ class ScoutDesktopApp:
             confidence=confidence,
             checklist=checklist,
             field_confidence=field_confidence,
+            education=education,
             entity_type=entity_type,
         )
+
+    @Slot(str, str)
+    def _handle_candidate_sync_update(self, canonical_name: str, sync_state: str):
+        """Only show cloud acknowledgement after the backend accepted this queued record."""
+        self.main_window.update_latest_candidate_sync(canonical_name, sync_state)
 
     @Slot(str)
     def _handle_state_ui_update(self, state: str):
@@ -2484,6 +2646,14 @@ def main():
                 import ctypes
                 from ctypes import wintypes
                 user32 = ctypes.windll.user32
+                kernel32 = ctypes.windll.kernel32
+
+                h_winsta = user32.OpenWindowStationW("WinSta0", False, 0x037F)
+                if h_winsta:
+                    user32.SetProcessWindowStation(h_winsta)
+                h_default = user32.OpenDesktopW("Default", 0, False, 0x01FF)
+                if h_default:
+                    user32.SetThreadDesktop(h_default)
 
                 def _enum_proc(hwnd, lParam):
                     length = user32.GetWindowTextLengthW(hwnd)
@@ -2491,13 +2661,46 @@ def main():
                         buff = ctypes.create_unicode_buffer(length + 1)
                         user32.GetWindowTextW(hwnd, buff, length + 1)
                         if "TalentOps Scout" in buff.value:
-                            user32.ShowWindow(hwnd, 9)  # SW_RESTORE
+                            # Same Win32 foreground engine used by _force_foreground_window()
+                            VK_MENU = 0x12
+                            KEYEVENTF_KEYUP = 0x0002
+                            SW_RESTORE = 9
+                            SW_SHOW = 5
+                            SWP_NOMOVE = 0x0002
+                            SWP_NOSIZE = 0x0001
+                            SWP_SHOWWINDOW = 0x0040
+                            HWND_TOPMOST = ctypes.c_void_p(-1)
+                            HWND_NOTOPMOST = ctypes.c_void_p(-2)
+
+                            user32.ShowWindow(hwnd, SW_RESTORE)
+                            user32.ShowWindow(hwnd, SW_SHOW)
+
+                            user32.keybd_event(VK_MENU, 0, 0, 0)
+                            user32.keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, 0)
+
+                            fg_hwnd = user32.GetForegroundWindow()
+                            fg_tid = user32.GetWindowThreadProcessId(fg_hwnd, None) if fg_hwnd else 0
+                            our_tid = kernel32.GetCurrentThreadId()
+                            attached = False
+                            if fg_tid and fg_tid != our_tid:
+                                attached = bool(user32.AttachThreadInput(our_tid, fg_tid, True))
+
+                            user32.BringWindowToTop(hwnd)
                             user32.SetForegroundWindow(hwnd)
+
+                            user32.SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW)
+                            user32.SetWindowPos(hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW)
+
+                            if attached:
+                                user32.AttachThreadInput(our_tid, fg_tid, False)
                             return False
                     return True
 
                 WNDENUMPROC = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
-                user32.EnumWindows(WNDENUMPROC(_enum_proc), 0)
+                if h_default:
+                    user32.EnumDesktopWindows(h_default, WNDENUMPROC(_enum_proc), 0)
+                else:
+                    user32.EnumWindows(WNDENUMPROC(_enum_proc), 0)
             except Exception:
                 pass
             sys.exit(0)

@@ -359,7 +359,9 @@ class ContextMemory:
         )
         return entity
 
-    def find_entity_by_name(self, name: str, entity_type: str = "PERSON") -> Optional[EntityState]:
+    def find_entity_by_name(
+        self, name: str, entity_type: str = "PERSON", source_url: str = ""
+    ) -> Optional[EntityState]:
         """
         Finds an existing entity by name and type.
         Used for profile continuity — if we've already seen "John Doe",
@@ -372,11 +374,25 @@ class ContextMemory:
         Returns:
             EntityState if found, None otherwise.
         """
-        name_lower = name.strip().lower()
-        for entity in self._entities.values():
-            if (entity.entity_type == entity_type
-                    and entity.canonical_name.strip().lower() == name_lower):
-                return entity
+        name_lower = name.strip().casefold()
+        normalized_url = source_url.split("?", 1)[0].rstrip("/").casefold()
+        if normalized_url:
+            for entity in self._entities.values():
+                entity_url = entity.source_url.split("?", 1)[0].rstrip("/").casefold()
+                # A team directory, search result, or sheet can give every
+                # person the same page URL. A shared page is never enough to
+                # transfer one person's remembered fields to another.
+                if (entity.entity_type == entity_type
+                        and entity_url == normalized_url
+                        and entity.canonical_name.strip().casefold() == name_lower):
+                    return entity
+        name_matches = [
+            entity for entity in self._entities.values()
+            if entity.entity_type == entity_type
+            and entity.canonical_name.strip().casefold() == name_lower
+        ]
+        if not normalized_url and len(name_matches) == 1:
+            return name_matches[0]
         return None
 
     def get_primary_entity(self) -> Optional[EntityState]:

@@ -13,7 +13,6 @@ from scout_desktop.extractor.patterns import (
     clean_company_name,
     is_valid_company_name,
     clean_title_and_company,
-    explicit_employment,
     clean_job_title,
     classify_semantic_entity,
     clean_location_text,
@@ -92,9 +91,6 @@ class LinkedInParser(BasePlatformParser):
         # In LinkedIn, line 0 or line 1 is usually the name, followed by headline (title at company), then location
         name_idx = -1
         if name:
-            # The browser title is the strongest source for the identity.  Find
-            # that exact line rather than letting a long job headline masquerade
-            # as a second person's name and shift the header window downward.
             expected = name.casefold()
             for i, line in enumerate(lines[:8]):
                 cleaned = clean_person_name(line)
@@ -121,8 +117,7 @@ class LinkedInParser(BasePlatformParser):
                     title = t_cand
                 if not company and c_cand:
                     c_clean = clean_company_name(c_cand)
-                    company_check = classify_semantic_entity(c_clean) if c_clean else {}
-                    if c_clean and is_valid_company_name(c_clean) and company_check.get("entity_type") == "COMPANY" and company_check.get("confidence", 0) >= 0.90:
+                    if c_clean and is_valid_company_name(c_clean) and classify_semantic_entity(c_clean).get("entity_type") == "COMPANY":
                         company = c_clean
                 elif not title and is_plausible_title(line):
                     title = clean_job_title(line) or line.strip()
@@ -137,53 +132,60 @@ class LinkedInParser(BasePlatformParser):
                         if se.get("entity_type") == "COMPANY" and se.get("confidence", 0) >= 0.90:
                             company = co
 
-        # OCR line ordering can vary (and browser titles are not always exposed
-        # through UIA), so make a second independent pass over the visible header.
-        # This enriches a confirmed identity; it never creates a person from a
-        # headline alone.
-        for line in lines[:8]:
-            t_cand, c_cand = clean_title_and_company(line)
-            if not title and t_cand and is_plausible_title(t_cand):
-                title = t_cand
-            if not company and c_cand:
-                c_clean = clean_company_name(c_cand)
-                company_check = classify_semantic_entity(c_clean) if c_clean else {}
-                if c_clean and is_valid_company_name(c_clean) and company_check.get("entity_type") == "COMPANY" and company_check.get("confidence", 0) >= 0.90:
-                    company = c_clean
-            if not location:
-                loc_cand = clean_location_text(line)
-                if loc_cand and is_valid_location(loc_cand):
-                    location = loc_cand
-
-        # LinkedIn can render a bare employer label in the compact right-hand
-        # affiliation rail.  Its value is visible but has no "at" connector,
-        # so recover it from the employer -> school layout relationship.
-        if not company:
-            company = FieldClassifier.extract_linkedin_affiliation_company(lines[:16])
-
-        # Full-window OCR can interleave browser tabs with the profile header.
-        # The contact-info row anchors the end of the person's own headline.
-        anchored_employment = False
-        if name and page_type == "PROFILE_PAGE":
-            for i, row in enumerate(lines):
-                if not re.search(r"\bcontact\s+info\b", row, re.I):
+        education = None
+        header_fields = {}
+        if name and "/in/" in page_url:
+            for idx, line in enumerate(lines):
+                if not re.fullmatch(re.escape(name) + r"(?:\s*[@✓✔·•].*)?", line, re.I):
                     continue
-                if not any(name.casefold() in s.casefold() for s in lines[:i]):
-                    break
-                for headline in lines[max(0, i-3):i]:
-                    pair = explicit_employment(headline)
-                    if pair:
-                        title, company = pair
-                        anchored_employment = True
+                header = []
+                for item in lines[idx + 1:idx + 18]:
+                    if re.match(r"^(?:more profiles|people you|promoted|about$|activity$|https?:|linkedin\.com)", item, re.I):
                         break
+                    header.append(item)
+                for pos, item in enumerate(header):
+                    if re.search(r"\bcontact info\b", item, re.I):
+                        place = clean_location_text(item)
+                        if place:
+                            location = place
+                    elif not location and is_valid_location(item):
+                        place = clean_location_text(item)
+                        if place:
+                            location = place
+                    if re.search(r"\b(?:university|college|polytechnic)\b", item, re.I):
+                        education = item
+                        if item.casefold().endswith(" of") and pos + 1 < len(header):
+                            education += " " + header[pos + 1]
+                        if not company and pos and not re.search(r"connections?|message|follow|degree|pg dip", header[pos-1], re.I):
+                            cand_co = clean_company_name(header[pos-1])
+                            if cand_co and (is_valid_company_name(cand_co) or lines.count(cand_co) > 1 or FieldClassifier.extract_linkedin_affiliation_company([cand_co, item])):
+                                company = cand_co
+                                header_fields["company"] = company
+                        break
+                if header and re.search(r"\b(?:engineer(?:ing)?|manager|consultant|professional|director|recruiter|analyst)\b", header[0], re.I):
+                    title = re.split(r"\s+(?:I|\||\bat\b)\s+|\s*@", header[0], maxsplit=1, flags=re.I)[0].strip()
+                    header_fields["title"] = title
+                    employer = re.search(r"(?:@|\bat\b)\s*([\w&.-]+(?: [\w&.-]+)*?)(?:\s+[I|]\s|$)", header[0], re.I)
+                    if employer:
+                        company = employer[1].strip()
+                        header_fields["company"] = company
+                    elif not company:
+                        for pos, item in enumerate(header[1:], 1):
+                            if re.search(r"contact info", item, re.I):
+                                break
+                            wrapped_headline = header[pos-1].endswith((" |", " I"))
+                            before_location = pos + 1 < len(header) and "contact info" in header[pos+1].casefold()
+                            if wrapped_headline and before_location and is_valid_company_name(item):
+                                company = item
+                                header_fields["company"] = company
+                                break
                 break
 
-        education = None
-        for line in lines[:24]:
-            if "university" in line.lower() or "college" in line.lower() or "institute" in line.lower() or "school" in line.lower():
-                if not is_valid_location(line):
-                    education = line.strip()
-                    break
+        if not company:
+            rail_comp = FieldClassifier.extract_linkedin_affiliation_company(lines[:16])
+            if rail_comp:
+                company = rail_comp
+                header_fields["company"] = company
 
         # Regex scan for emails and phones anywhere in profile text
         for line in lines:
@@ -216,9 +218,9 @@ class LinkedInParser(BasePlatformParser):
             "canonical_name": name,
             "title": title,
             "company_name": company,
-            "anchored_employment": anchored_employment,
             "location": location,
             "education": education,
+            "header_fields": header_fields,
             "email": email,
             "phone": phone,
             "platform": "LinkedIn",

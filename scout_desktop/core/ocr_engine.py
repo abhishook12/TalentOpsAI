@@ -80,10 +80,7 @@ class OcrEngine:
             startupinfo = None
             creationflags = 0
             if sys.platform == "win32":
-                creationflags = (
-                    getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
-                    | getattr(subprocess, "BELOW_NORMAL_PRIORITY_CLASS", 0x00004000)
-                )
+                creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
                 startupinfo = subprocess.STARTUPINFO()
                 startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
                 startupinfo.wShowWindow = subprocess.SW_HIDE
@@ -142,8 +139,8 @@ class OcrEngine:
     def _file_hash(self, path: str) -> str:
         """Computes quick SHA256 of file header/stat to avoid re-OCR identical screenshots."""
         try:
-            st = os.stat(path)
-            return f"{st.st_size}_{st.st_mtime}"
+            with open(path, "rb") as source:
+                return hashlib.sha256(source.read()).hexdigest()
         except Exception:
             return path
 
@@ -186,6 +183,7 @@ class OcrEngine:
             clean_stdout = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", " ", stdout)
             data = json.loads(clean_stdout, strict=False)
             raw_lines = data.get("lines", [])
+            self._layout = (raw_lines, data.get("positions", []), data.get("width", 0))
             return [
                 re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", " ", l).strip()
                 for l in raw_lines
@@ -203,13 +201,17 @@ class OcrEngine:
         """
         try:
             from PIL import Image, ImageFilter, ImageOps
-            img = Image.open(image_path)
+            with Image.open(image_path) as source:
+                img = source.convert("RGB")
 
-            # Smaller desktop captures need enlargement for legible 5-7px text.
-            # Large captures keep their native resolution to avoid unnecessary
-            # memory pressure, but still receive the contrast/sharpening pass.
-            if img.width < 2400 or img.height < 1400:
-                img = img.resize((img.width * 2, img.height * 2), Image.Resampling.LANCZOS)
+            # Skip preprocessing if image is already large (e.g. pre-upscaled crop)
+            if img.width >= 3000 and img.height >= 2000:
+                return image_path
+
+            # 2x LANCZOS upscale for sharper glyph edges
+            new_w = img.width * 2
+            new_h = img.height * 2
+            img = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
 
             # Convert to grayscale to eliminate ClearType RGB subpixel colors
             img = img.convert("L")
@@ -229,7 +231,46 @@ class OcrEngine:
             logger.debug("Image preprocessing failed: %s (using raw image)", e)
             return image_path
 
-    def extract_text_from_image(self, image_path: str) -> List[str]:
+    def _profile_detail(self, image_path, name):
+        """Read the text block surrounding the named heading at higher resolution."""
+        import tempfile
+        from PIL import Image, ImageOps
+        lines, positions, width = self._layout
+        if not width or not name:
+            return []
+        with Image.open(image_path) as frame:
+            scale = frame.width / width
+            for line, (px, py, ph) in zip(lines, positions):
+                if not re.fullmatch(re.escape(name) + r"(?:\s*[@✓✔·•].*)?", line.strip(), re.I):
+                    continue
+                x, y, h = round(px * scale), round(py * scale), max(8, round(ph * scale))
+                if y < frame.height * .14 or x < 6 or y < 5:
+                    continue
+                # Find the gutter separating the profile from the sidebar.
+                bg = frame.getpixel((x - 4, y))
+                right = x
+                gap = 0
+                for col in range(x, frame.width):
+                    if any(frame.getpixel((col, row)) == bg for row in
+                           range(max(0, y-h), min(frame.height, y+4*h), 3)):
+                        right, gap = col + 1, 0
+                    else:
+                        gap += 1
+                        if gap >= 12:
+                            break
+                if right - x < frame.width * .25:
+                    continue
+                crop = frame.crop((x-4, y-6, right, min(frame.height, y+11*h))).convert("L")
+                if crop.resize((1,1), Image.Resampling.BOX).getpixel((0,0)) < 110:
+                    crop = ImageOps.invert(crop)
+                factor = min(4, 4000 / crop.width)
+                with tempfile.TemporaryDirectory() as directory:
+                    target = os.path.join(directory, "detail.png")
+                    crop.resize((round(crop.width*factor), round(crop.height*factor)), Image.Resampling.LANCZOS).save(target)
+                    return self._run_single_shot(target)
+        return []
+
+    def extract_text_from_image(self, image_path: str, profile_name: str = "") -> List[str]:
         """
         Runs Windows Media OCR on the given image file path completely silently.
         Uses persistent high-speed WinRT daemon (<25ms) with single-shot fallback.
@@ -239,29 +280,20 @@ class OcrEngine:
         if not os.path.exists(image_path):
             return []
 
-        cache_key = self._file_hash(image_path)
+        cache_key = (self._file_hash(image_path), profile_name)
         if cache_key in self._ocr_cache:
             return list(self._ocr_cache[cache_key])
 
         import time
-        now = time.time()
-        if now - self._last_ocr_time < self.cooldown_sec:
-            # Never attach text from a previous screenshot to a new screenshot.
-            # The sampler will submit a later full frame after the short cooldown.
-            logger.debug("OCR deferred by cooldown; waiting for a fresh frame.")
-            return []
-
-        acquired = self._lock.acquire(blocking=False)
-        if not acquired:
-            # A stale OCR result is worse than a skipped frame: it can create a
-            # candidate from the wrong page.  Single-flight callers retry later.
-            logger.debug("OCR already running; deferring this frame.")
-            return []
+        self._lock.acquire()
 
         prep_path = None
         try:
+            if cache_key in self._ocr_cache:
+                return list(self._ocr_cache[cache_key])
             self._last_ocr_time = time.time()
             clean_lines = []
+            self._layout = ([], [], 0)
 
             # Preprocess image for better OCR accuracy
             prep_path = self._preprocess_for_ocr(image_path)
@@ -296,6 +328,29 @@ class OcrEngine:
                     self._init_daemon()
 
             if clean_lines:
+                if profile_name:
+                    try:
+                        detail = self._profile_detail(image_path, profile_name)
+                        if any(re.match(re.escape(profile_name) + r"(?:\s|$)", line, re.I) for line in detail):
+                            original_places = [line for line in clean_lines if "contact info" in line.casefold()]
+                            if len(original_places) == 1:
+                                original = original_places[0]
+                                for i, line in enumerate(detail):
+                                    if "contact info" not in line.casefold() or line == original:
+                                        continue
+                                    if original.count(",") > line.count(","):
+                                        detail[i] = original
+                                    else:
+                                        first = re.split(r"\s+contact info", original, flags=re.I)[0].strip()
+                                        second = re.split(r"\s+contact info", line, flags=re.I)[0].strip()
+                                        city = first.partition(",")[0]
+                                        country = first.rsplit(" ", 1)[-1]
+                                        if city == second.partition(",")[0] and country in {"India", "Ireland", "Canada", "Australia"} and second.endswith(" " + country):
+                                            detail[i] = f"{city}, {country}   Contact info"
+                            # Retain the original pass for independent spelling corroboration.
+                            clean_lines = detail + clean_lines
+                    except (OSError, ValueError, subprocess.SubprocessError) as err:
+                        logger.debug("Profile detail read unavailable: %s", err)
                 self._ocr_cache[cache_key] = clean_lines
                 self._last_lines = clean_lines
                 if len(self._ocr_cache) > 40:

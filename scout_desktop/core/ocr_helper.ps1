@@ -47,21 +47,27 @@ try {
             $ocrResult = Await-Async ($engine.RecognizeAsync($bitmap)) ([Windows.Media.Ocr.OcrResult])
 
             $lines = @()
+            $positions = @()
             foreach ($line in $ocrResult.Lines) {
                 $cleanLine = $line.Text -replace '[\u0000-\u0008\u000B\u000C\u000E-\u001F]', ' '
                 $cleanLine = $cleanLine.Trim()
                 if ($cleanLine.Length -gt 0) {
                     $lines += $cleanLine
+                    $word = $line.Words | Select-Object -First 1
+                    $rect = $word.BoundingRect
+                    $positions += ,@([int](@($rect.X)[0]), [int](@($rect.Y)[0]), [int](@($rect.Height)[0]))
                 }
             }
 
             $cleanFull = $ocrResult.Text -replace '[\u0000-\u0008\u000B\u000C\u000E-\u001F]', ' '
             $outObj = @{
                 "lines" = $lines
+                "positions" = $positions
+                "width" = $bitmap.PixelWidth
                 "full_text" = $cleanFull.Trim()
             }
 
-            [Console]::Out.WriteLine(($outObj | ConvertTo-Json -Compress))
+            [Console]::Out.WriteLine(($outObj | ConvertTo-Json -Depth 4 -Compress))
             [Console]::Out.Flush()
         } catch {
             $errObj = @{ "lines" = @(); "full_text" = ""; "error" = $_.Exception.Message }

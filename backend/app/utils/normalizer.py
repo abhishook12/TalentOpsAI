@@ -229,7 +229,7 @@ KNOWN_COMPANIES = frozenset({
     'mindlance', 'rangam', 'spectraforce', 'tech mahindra', 'tata consultancy services',
     'tcs', 'infosys', 'wipro', 'cognizant', 'hcl', 'accenture', 'deloitte', 'pwc',
     'ey', 'kpmg', 'google', 'microsoft', 'apple', 'amazon', 'meta', 'netflix',
-    'salesforce', 'oracle', 'ibm', 'cisco', 'intel', 'nvidia'
+    'salesforce', 'oracle', 'ibm', 'cisco', 'intel', 'nvidia', 'morgan mckinley', 'myntra'
 })
 
 # Standard Company Industry Descriptions (Never Job Titles)

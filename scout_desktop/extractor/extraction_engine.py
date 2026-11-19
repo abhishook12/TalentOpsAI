@@ -208,7 +208,8 @@ class ScoutExtractionEngine:
         )
 
         # Fallback/Enrich with Modular Platform Parser if generic header missed name
-        if (not name or name_conf < 0.75) and modular_res and modular_res.get("recruiter_name"):
+        header_fields = (modular_res or {}).get("header_fields", {})
+        if (header_fields or not name or name_conf < 0.75) and modular_res and modular_res.get("recruiter_name"):
             name = modular_res["recruiter_name"]
             name_conf = 0.90
             name_ev = "Modular Parser Header Extraction"
@@ -254,10 +255,10 @@ class ScoutExtractionEngine:
             layout.headline_candidates, layout.header_lines, layout.experience_lines
         )
         if modular_res:
-            if not title and modular_res.get("title"):
+            if (header_fields.get("title") or not title) and modular_res.get("title"):
                 title = modular_res["title"]
                 title_conf = 0.85
-            if not company and modular_res.get("company_name"):
+            if (header_fields.get("company") or not company) and modular_res.get("company_name"):
                 company = modular_res["company_name"]
                 company_conf = 0.85
 
@@ -269,11 +270,6 @@ class ScoutExtractionEngine:
                 company = uia_candidate["company"]
                 company_conf = 0.95
 
-        if (modular_res and modular_res.get("anchored_employment")
-                and modular_res["recruiter_name"].casefold() == name.casefold()):
-            title, company = modular_res["title"], modular_res["company_name"]
-            title_conf = company_conf = 0.95
-
         # Fallback Post-OCR Neural Lexicon Healing: ONLY run if title is NOT already plausible or has OCR corruption
         if title and not is_plausible_title(title) and (not uia_candidate or not uia_candidate.get("title")):
             from .neural_lexicon_repair import lexicon_repair
@@ -282,7 +278,7 @@ class ScoutExtractionEngine:
                 title = repaired_title
                 title_conf = max(title_conf, rep_conf)
 
-        if company and not is_valid_company_name(company) and (not uia_candidate or not uia_candidate.get("company")):
+        if company and company != header_fields.get("company") and not is_valid_company_name(company) and (not uia_candidate or not uia_candidate.get("company")):
             from .neural_lexicon_repair import lexicon_repair
             repaired_company, _ = lexicon_repair.repair_company_name(company)
             if repaired_company:
@@ -304,10 +300,6 @@ class ScoutExtractionEngine:
         if uia_candidate and uia_candidate.get("location"):
             clean_location = uia_candidate["location"]
             loc_conf = 0.95
-        if clean_location:
-            normalized = LocationResolver.resolve(clean_location)
-            if normalized.display_name:
-                clean_location = normalized.display_name
 
         # Canonical Profile URL
         canonical_url, url_conf = FieldClassifier.extract_canonical_profile_url(source_url, platform=p_class["platform"])
@@ -404,18 +396,20 @@ class ScoutExtractionEngine:
         cluster.current_company = company
         cluster.location = clean_location
         cluster.linkedin_url = canonical_url
+        cluster.header_fields = header_fields
         if modular_res:
+            if modular_res.get("education") and modular_res.get("canonical_name") == name:
+                cluster.education = modular_res["education"]
             if modular_res.get("email"):
                 cluster.email = modular_res["email"]
             if modular_res.get("phone"):
                 cluster.phone = modular_res["phone"]
-            if modular_res.get("education"):
-                cluster.education = modular_res["education"]
 
         # Step 8: Centralized Candidate Creation Gate Enforcement (Rule 2)
         from scout_desktop.extractor.candidate_gate import create_candidate_if_valid
 
         gate_res = create_candidate_if_valid({
+            "header_fields": header_fields,
             "name": name,
             "title": title,
             "company": company,

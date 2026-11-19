@@ -216,3 +216,60 @@ def test_sync_to_database_and_evidence_read_back(monkeypatch):
         assert "person_field_evidence" in meta
         assert meta["person_field_evidence"]["employer"]["section"] == "company_field"
         assert meta["person_field_evidence"]["location"]["capture_id"] == "scout-cap-20261119-01"
+
+
+def test_benchmark_bev_wood_extraction():
+    """
+    Benchmark 4: Bev Wood (live bug regression — v2.14.5 showed Company:'krit', Location:'Not detected')
+
+    Root causes fixed in v2.14.7:
+    - 'Followed by Kritika' was bleeding into header; OCR fragment 'krit' became Company.
+    - middle-dot '·' in 'South Africa · Contact info' was not recognised as a location separator.
+    - 'Temporary Staffing Professionals + 1 more' affiliation pill suffix was not stripped.
+    - Name anchor regex did not handle the '3rd' connection-degree badge on the name line.
+    - 'South Africa', 'Eastern Cape', 'Port Elizabeth' were absent from GEO_INDICATORS.
+
+    Expected: Bev Wood, Payroll Manager EMEA, Temporary Staffing Professionals,
+              Port Elizabeth, Eastern Cape, South Africa.
+    """
+    ocr_lines = [
+        "Bev Wood 3rd",
+        "Payroll Manager EMEA | Payroll Manager SA | Global Head of Operations Payroll | EOR | Re-Engineering Payroll Process through Web Development & Innovation",
+        "Temporary Staffing Professionals + 1 more",
+        "Port Elizabeth, Eastern Cape, South Africa \u00b7 Contact info",
+        "302 connections",
+        "Followed by Kritika",
+        "Message",
+        "Follow",
+        "About",
+        "I am an outgoing person who strives to live a fulfilling life.",
+        "Activity",
+        "More profiles for you",
+    ]
+    ctx = {
+        "source_url": "https://www.linkedin.com/in/bev-wood-smile/",
+        "window_title": "Bev Wood | LinkedIn - Google Chrome",
+        "platform": "LinkedIn",
+    }
+    parsed = parse_with_modular_parsers("\n".join(ocr_lines), ctx)
+    assert parsed is not None, "Parser returned None for Bev Wood profile"
+
+    # Name
+    assert parsed["recruiter_name"] == "Bev Wood", f"Name: {parsed['recruiter_name']!r}"
+
+    # Title — headline may be truncated at first pipe segment
+    assert parsed["title"] is not None, "Title must not be None"
+    assert "Payroll Manager" in parsed["title"], f"Title: {parsed['title']!r}"
+
+    # Company — must be the affiliation pill, not noise
+    assert parsed["company_name"] == "Temporary Staffing Professionals", \
+        f"Company: {parsed['company_name']!r}"
+    assert parsed["company_name"] != "krit", "OCR noise 'krit' must never become a company"
+    assert "krit" not in (parsed["company_name"] or "").lower(), \
+        f"'krit' fragment must not appear in company: {parsed['company_name']!r}"
+    assert "Kritika" not in (parsed["company_name"] or ""), \
+        f"Social-proof name must not bleed into company: {parsed['company_name']!r}"
+
+    # Location — South African three-part comma format
+    assert parsed["location"] == "Port Elizabeth, Eastern Cape, South Africa", \
+        f"Location: {parsed['location']!r}"

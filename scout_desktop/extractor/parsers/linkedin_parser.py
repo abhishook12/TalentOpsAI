@@ -136,13 +136,19 @@ class LinkedInParser(BasePlatformParser):
         header_fields = {}
         if name and "/in/" in page_url:
             for idx, line in enumerate(lines):
-                if not re.fullmatch(re.escape(name) + r"(?:\s*[@✓✔·•].*)?", line, re.I):
+                if not re.fullmatch(re.escape(name) + r"(?:\s*(?:\d+(?:st|nd|rd|th)\+?|[@✓✔·•].*))?", line, re.I):
                     continue
                 header = []
                 for item in lines[idx + 1:idx + 18]:
                     if re.match(r"^(?:more profiles|people you|promoted|about$|activity$|https?:|linkedin\.com)", item, re.I):
                         break
-                    header.append(item)
+                    # Reject social-proof noise lines that must never become a company or any field
+                    if re.match(r"^(?:followed\s+by|mutual\s+connections?|\d+\s*connections?|connections?\s+in\s+common|people\s+you\s+may)", item, re.I):
+                        continue
+                    # Strip "+ N more" affiliation suffix before storing
+                    item = re.sub(r"\s*\+\s*\d+\s+more\b.*$", "", item, flags=re.I).strip()
+                    if item:
+                        header.append(item)
                 for pos, item in enumerate(header):
                     if re.search(r"\bcontact info\b", item, re.I):
                         place = clean_location_text(item)
@@ -175,6 +181,13 @@ class LinkedInParser(BasePlatformParser):
                                 break
                             wrapped_headline = header[pos-1].endswith((" |", " I"))
                             before_location = pos + 1 < len(header) and "contact info" in header[pos+1].casefold()
+                            # Accept line immediately before location as company if:
+                            # (a) headline wraps onto it, or (b) it passes company validation on its own
+                            # This catches LinkedIn affiliation pills like "Temporary Staffing Professionals"
+                            if before_location and is_valid_company_name(item):
+                                company = item
+                                header_fields["company"] = company
+                                break
                             if wrapped_headline and before_location and is_valid_company_name(item):
                                 company = item
                                 header_fields["company"] = company

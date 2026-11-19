@@ -2,7 +2,7 @@
 version.py — Single Source of Truth for TalentOps Scout Desktop Versioning.
 """
 
-__version__ = "2.14.6"
+__version__ = "2.14.7"
 VERSION_INFO = (2, 14, 6)
 EXTRACTOR_VERSION = "5.1.2"
 RELEASE_CHANNEL = "stable"

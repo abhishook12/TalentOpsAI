@@ -44,7 +44,19 @@ GEO_INDICATORS = re.compile(
     r"manchester|birmingham|leeds|edinburgh|bristol|são paulo|sao paulo|buenos aires|bogotá|bogota|"
     r"las vegas|fort worth|milwaukee|indianapolis|columbus|charlotte|baltimore|tampa|orlando|"
     r"pittsburgh|cincinnati|cleveland|sacramento|kansas city|san antonio|el paso|nashville|"
-    r"memphis|oklahoma city|louisville|albuquerque|tucson|fresno|mesa|omaha|germantown|madison)\b",
+    r"memphis|oklahoma city|louisville|albuquerque|tucson|fresno|mesa|omaha|germantown|madison|"
+    r"south africa|eastern cape|western cape|northern cape|kwazulu-natal|gauteng|limpopo|mpumalanga|"
+    r"free state|north west|port elizabeth|cape town|johannesburg|durban|pretoria|east london|"
+    r"bloemfontein|pietermaritzburg|polokwane|nelspruit|kimberley|bisho|mahikeng|mbombela|"
+    r"nigeria|lagos|abuja|kenya|nairobi|ghana|accra|ethiopia|addis ababa|egypt|cairo|"
+    r"tanzania|dar es salaam|uganda|kampala|senegal|dakar|cameroon|douala|ivory coast|abidjan|"
+    r"morocco|casablanca|rabat|algeria|tunis|tunisia|angola|luanda|zambia|lusaka|"
+    r"zimbabwe|harare|botswana|gaborone|namibia|windhoek|mozambique|maputo|rwanda|kigali|"
+    r"new zealand|auckland|wellington|christchurch|oslo|helsinki|riga|tallinn|vilnius|"
+    r"budapest|prague|bratislava|zagreb|belgrade|sofia|bucharest|athens|istanbul|ankara|"
+    r"beirut|amman|riyadh|jeddah|doha|kuwait|muscat|abu dhabi|karachi|lahore|"
+    r"islamabad|dhaka|colombo|kathmandu|yangon|bangkok|hanoi|jakarta|manila|"
+    r"kuala lumpur|hong kong|taipei|seoul|osaka|beijing|shanghai|shenzhen|guangzhou)\b",
     re.IGNORECASE,
 )
 
@@ -1202,6 +1214,13 @@ def is_valid_company_name(text: Optional[str]) -> bool:
         if t_lower not in valid_short_corps:
             return False
 
+    # Single-word all-lowercase strings under 6 characters that are not known corporate abbreviations
+    # are almost always OCR name fragments (e.g. "krit" from "Kritika", "jain", "moh")
+    if len(comp_tokens) == 1 and len(t) <= 5 and t == t_lower:
+        valid_short_corps_lower = {"ibm", "sap", "pwc", "att", "ups", "aws", "bnp", "dhl", "adp", "3m", "8x8", "abb", "nab", "ing", "ubs", "aia", "aig", "aon", "bdo", "dbs", "dkb", "esb", "ifm", "ihi", "ing", "mtu", "nab", "ned", "ntt", "oci", "ptt", "rtl", "ses", "sky", "tui", "xpo", "yum"}
+        if t_lower not in valid_short_corps_lower:
+            return False
+
     # Reject strings starting or ending with special characters or trailing digits (OCR artifacts like "%iApps", "-5", "System;", "281-")
     if t[0] in "-–—_%#@!~`^&*()[]{}<>|\\;:\"'/?.,":
         return False
@@ -1224,7 +1243,7 @@ def is_valid_company_name(text: Optional[str]) -> bool:
     if re.search(r"\b\d{3,}[-.\s]\d{3,}[-.\s]?\d{0,4}\b", t) or re.search(r"\b\d{7,}\b", t):
         return False
     # Reject strings containing individual professional job titles (e.g. "Cindy Davis Consultant", "Senior Software Engineer") unless corporate designators present
-    has_comp_org_suffix = bool(re.search(r"\b(?:group|partners|associates|consulting|consultancy|advisors?|advisers?|agency|capital|systems|inc|llc|corp|board|holdings|services|solutions|firm|network)\b", t, re.IGNORECASE))
+    has_comp_org_suffix = bool(re.search(r"\b(?:group|partners|associates|consulting|consultancy|advisors?|advisers?|agency|capital|systems|inc|llc|corp|board|holdings|services|solutions|firm|network|staffing|recruitment|recruiting|resourcing|talent|search|executive|ventures|labs?|studio|works|collective)\b", t, re.IGNORECASE))
     if not has_comp_org_suffix and re.search(
         r"\b(?:consultant|recruiter|sourcer|coordinator|advisor|adviser|specialist|manager|director|"
         r"officer|engineer|engineering|developer|architect|designer|analyst|scientist|researcher|"
@@ -1370,7 +1389,7 @@ def is_valid_company_name(text: Optional[str]) -> bool:
         return False
 
     # Pure job titles are not company names unless they contain explicit corporate/org identifiers
-    has_comp_suffix = bool(re.search(r"\b(?:inc|llc|ltd|corp|corporation|technologies|group|partners|holdings|labs|studio|ventures|consulting|agency|capital|systems)\b", t, re.IGNORECASE))
+    has_comp_suffix = bool(re.search(r"\b(?:inc|llc|ltd|corp|corporation|technologies|group|partners|holdings|labs|studio|ventures|consulting|agency|capital|systems|staffing|recruitment|recruiting|resourcing|executive|collective|works)\b", t, re.IGNORECASE))
     if not has_comp_suffix and is_plausible_title(t):
         return False
 
@@ -1992,7 +2011,7 @@ def classify_semantic_entity(text: Optional[str]) -> Dict[str, Any]:
         return {"entity_type": "LOCATION", "confidence": 0.95, "details": "Geographic location or postal code"}
 
     # 15. Professional Job Titles
-    has_comp_suffix = bool(re.search(r"\b(?:inc|llc|ltd|corp|corporation|technologies|group|partners|holdings|labs|studio|ventures|consulting|agency|capital|systems)\b", t, re.IGNORECASE))
+    has_comp_suffix = bool(re.search(r"\b(?:inc|llc|ltd|corp|corporation|technologies|group|partners|holdings|labs|studio|ventures|consulting|agency|capital|systems|staffing|recruitment|recruiting|resourcing|executive|collective|works)\b", t, re.IGNORECASE))
     if not has_comp_suffix and is_plausible_title(t):
         return {"entity_type": "JOB_TITLE", "confidence": 0.92, "details": "Professional job title"}
 

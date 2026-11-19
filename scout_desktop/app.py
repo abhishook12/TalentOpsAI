@@ -1632,11 +1632,13 @@ class ScoutDesktopApp:
             # Full-frame OCR prevents half profiles and keeps every visible field
             # available to the layout, quality, and evidence gates.
             ocr_target_path = capture_item.file_path
-            image_lines = self.ocr_engine.extract_text_from_image(ocr_target_path)
+            name = (uia_candidate or {}).get("canonical_name") or cand_name or (page_title or "").split("|")[0].strip()
+            name = re.sub(r"^\(\d+\)\s*", "", name)
+            image_lines = self.ocr_engine.extract_text_from_image(ocr_target_path, name if profile_frame else "")
             if uia_used:
                 from scout_desktop.extractor.profile_frame_text import supplement_profile_text
                 ocr_lines = supplement_profile_text(
-                    ocr_lines, image_lines, cand_name or (uia_candidate or {}).get("canonical_name")
+                    ocr_lines, image_lines, name
                 )
             else:
                 ocr_lines = image_lines
@@ -1732,6 +1734,7 @@ class ScoutDesktopApp:
                     })
 
                 staged_contact = c.to_staged_contact_dict()
+                staged_contact["header_fields"] = getattr(c, "header_fields", {})
                 if entity_state:
                     # A single visible frame often contains only one section of
                     # a LinkedIn profile.  Carry prior, same-profile evidence

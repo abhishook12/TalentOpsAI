@@ -501,7 +501,7 @@ KNOWN_STANDALONE_CORPS = frozenset({
     "randstad", "robert half", "allegis", "teksystems", "apex systems", "aerotek",
     "insight global", "collabera", "kforce", "manpower", "adecco", "kelly services",
     "amazon web services", "aws", "figma", "docker", "dropbox", "github", "gitlab",
-    "atlassian", "snowflake", "mongodb", "datadog", "elastic",
+    "atlassian", "snowflake", "mongodb", "datadog", "elastic", "morgan mckinley", "myntra",
 })
 
 # Thread-safe Dynamic Runtime Knowledge Sets (Synchronized from Fleet AI Teacher without app restart)

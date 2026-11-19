@@ -308,6 +308,9 @@ def sanitize_location(raw_location: Optional[str]) -> Tuple[Optional[str], bool]
     """
     if not raw_location or not isinstance(raw_location, str):
         return None, False
+    from .interface_labels import interface_label
+    if interface_label(raw_location):
+        return None, True
     loc = raw_location.strip()
     if re.fullmatch(r"(?:remote|hybrid|on[ -]?site)(?:\s+(?:work|only))?", loc, re.I):
         return None, False
@@ -499,6 +502,9 @@ def create_candidate_if_valid(
 
     # 4. Organization / Company Validation (Rule 11, 20)
     raw_comp = observation.get("company_name") or observation.get("raw_company") or observation.get("company")
+    from .interface_labels import interface_label
+    if interface_label(raw_comp):
+        raw_comp = None
     valid_company = None
     if raw_comp and isinstance(raw_comp, str):
         c_clean = clean_company_name(raw_comp)
@@ -522,7 +528,8 @@ def create_candidate_if_valid(
             pass
 
         heading = re.match(r"^\s*(?:our team|meet (?:the|our) team|careers|job openings)\s*[-–—|:]", raw_comp, re.I)
-        if not heading and c_clean and is_valid_company_name(c_clean) and c_type == "COMPANY":
+        anchored = (observation.get("header_fields") or {}).get("company") == c_clean
+        if not heading and c_clean and (anchored or (is_valid_company_name(c_clean) and c_type == "COMPANY")):
             valid_company = c_clean
             field_conf["company"] = 0.90
             checklist.append(f"Plausible company verified: {valid_company}")
@@ -535,11 +542,14 @@ def create_candidate_if_valid(
 
     # 5. Professional Title Validation (Rule 10, 11)
     raw_title = observation.get("title") or observation.get("raw_title") or observation.get("current_title")
+    if interface_label(raw_title) or interface_label(observation.get("raw_title")):
+        raw_title = None
     valid_title = None
     if raw_title and isinstance(raw_title, str):
         t_clean = clean_job_title(raw_title)
         listing = re.search(r"\b(?:remote|hybrid|on[ -]?site)\b.*\b(?:jobs|vacancies|openings)\s*$", raw_title, re.I)
-        if not listing and t_clean and is_plausible_title(t_clean):
+        anchored = (observation.get("header_fields") or {}).get("title") == raw_title
+        if not listing and t_clean and (anchored or is_plausible_title(t_clean)):
             valid_title = t_clean
             field_conf["title"] = 0.90
             checklist.append(f"Professional title verified: {valid_title}")

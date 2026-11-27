@@ -1546,7 +1546,28 @@ def get_data_health(db: Session = Depends(get_db), current_user: User = Depends(
         """), {"user_email": current_user.email, "user_id": current_user.id}).fetchone()
 
         if not row or row[0] == 0:
-            return {"total": 0, "metrics": []}
+            # Fallback to DuckDB Parquet store (local/hybrid deployments)
+            try:
+                recruiter_store._ensure_loaded()
+                if recruiter_store._conn is not None:
+                    drow = recruiter_store._conn.execute("""
+                        SELECT
+                            COUNT(*) AS total,
+                            SUM(CASE WHEN email IS NULL OR TRIM(email) = '' THEN 1 ELSE 0 END) AS missing_email,
+                            SUM(CASE WHEN phone IS NULL OR TRIM(phone) = '' THEN 1 ELSE 0 END) AS missing_phone,
+                            SUM(CASE WHEN location IS NULL OR TRIM(location) = '' THEN 1 ELSE 0 END) AS missing_location,
+                            SUM(CASE WHEN company_id IS NULL OR TRIM(CAST(company_id AS VARCHAR)) = '' THEN 1 ELSE 0 END) AS missing_company,
+                            SUM(CASE WHEN linkedin IS NULL OR TRIM(linkedin) = '' THEN 1 ELSE 0 END) AS missing_linkedin
+                        FROM recruiters
+                        WHERE COALESCE(is_active, true) = true
+                    """).fetchone()
+                    if drow and drow[0] > 0:
+                        row = drow
+            except Exception as duck_err:
+                logger.warning(f"DuckDB data_health fallback failed: {duck_err}")
+
+        if not row or row[0] == 0:
+            return {"total_active": 0, "overall_health_score": 0, "metrics": []}
             
         t = row[0]
         metrics = [

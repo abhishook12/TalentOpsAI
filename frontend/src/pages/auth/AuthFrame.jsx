@@ -6,7 +6,7 @@ const shellStyles = `
   .auth-page {
     min-height: 100dvh;
     display: flex;
-    width: 100vw;
+    width: 100%;
     background: #0c0c0f;
     color: #ffffff;
     font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -236,7 +236,7 @@ const shellStyles = `
     height: 44px !important;
     min-height: 44px !important;
     line-height: 44px !important;
-    font-size: 14px !important;
+    font-size: max(16px, 1rem) !important;
     transition: border-color 0.2s, box-shadow 0.2s !important;
   }
 
@@ -318,7 +318,7 @@ export default function AuthFrame({ children, isAuthenticating }) {
           </div>
         </div>
 
-        <div className="auth-form-panel">
+        <main className="auth-form-panel">
           <div className="auth-mobile-brand">
             <div className="auth-monogram">
               <span>T</span><div className="auth-logo-divider"></div><span>O</span>
@@ -329,7 +329,7 @@ export default function AuthFrame({ children, isAuthenticating }) {
           <div className={`auth-form-container glass-panel modal-enter ${isAuthenticating ? 'is-authenticating' : ''}`}>
             {children}
           </div>
-        </div>
+        </main>
 
       </div>
     </>

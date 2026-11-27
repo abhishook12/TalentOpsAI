@@ -183,11 +183,13 @@ function AppShell() {
 
   if (!user && isPublicDownloadPage) {
     return (
-      <div className="cc-public-shell" style={{ minHeight: '100vh', backgroundColor: 'var(--main-bg, #09090b)', color: 'var(--text-primary, #fafafa)', display: 'flex', flexDirection: 'column' }}>
+      <div className="cc-public-shell" style={{ minHeight: '100vh', backgroundColor: 'var(--main-bg, #09090b)', color: 'var(--text-primary, #fafafa)', display: 'flex', flexDirection: 'column', maxWidth: '100%', overflowX: 'clip' }}>
         <header style={{
-          padding: '16px 32px',
+          padding: '14px 20px',
           borderBottom: '1px solid var(--border, rgba(255,255,255,0.08))',
           display: 'flex',
+          flexWrap: 'wrap',
+          gap: 12,
           justifyContent: 'space-between',
           alignItems: 'center',
           backgroundColor: 'var(--card-bg, #0b0b0c)',
@@ -196,7 +198,7 @@ function AppShell() {
           zIndex: 50
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <img src="/talentops-logo.png" alt="TalentOps" style={{ width: 34, height: 34, borderRadius: 8 }} />
+            <img src="/talentops-logo.webp" width={34} height={34} alt="TalentOps" style={{ width: 34, height: 34, borderRadius: 8 }} />
             <div>
               <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary, #fafafa)', lineHeight: 1.1 }}>TalentOps</div>
               <div style={{ fontSize: 10, color: 'var(--text-muted, #a1a1aa)', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}>Desktop Scout Official Setup</div>

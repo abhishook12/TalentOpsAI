@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Link } from '@tanstack/react-router';
 import AuthFrame from './AuthFrame';
@@ -8,11 +8,14 @@ export default function ForgotPassword() {
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitLockRef = useRef(false);
   
   const { forgotPassword } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitLockRef.current || isSubmitting) return;
+    submitLockRef.current = true;
     setError('');
     setStatus('');
     setIsSubmitting(true);
@@ -23,6 +26,7 @@ export default function ForgotPassword() {
     } catch (err) {
       setError(err?.response?.data?.detail || 'Failed to send reset link.');
     } finally {
+      submitLockRef.current = false;
       setIsSubmitting(false);
     }
   };
@@ -60,7 +64,7 @@ export default function ForgotPassword() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="name@company.com"
-              className="pl-10"
+              className="pl-10 w-full"
             />
           </div>
         </div>

@@ -69,13 +69,17 @@ class EngineImmunitySentinel:
         """
         Proactively sweeps any orphaned chrome-headless-shell processes (>45s old,
         or >6 instances, or when system RAM >= 75%) and purges stale Playwright temp folders.
-        Guarantees background engines NEVER degrade workstation RAM or Chrome stability.
+        Skipped when ENABLE_WEB_HARVEST is disabled so external QA/browser suites are untouched.
         """
         try:
             import os
             import glob
             import shutil
             import psutil
+
+            from ..config import ENABLE_WEB_HARVEST
+            if not ENABLE_WEB_HARVEST:
+                return
 
             now_ts = time.time()
             vm = psutil.virtual_memory()

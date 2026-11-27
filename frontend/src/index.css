@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
 @import "./styles/ai_design_tokens.css";
 
@@ -112,8 +111,8 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
     
     /* Warm Ivory & Readable Supporting Tones */
     --text-primary: #F1F0E8;
-    --text-secondary: #B0B7AE;
-    --text-muted: #929B91;
+    --text-secondary: #C5CCC3;
+    --text-muted: #B0B7AE;
     --text-inverse: #101211;
     
     /* Primary Accent: Sage Green */
@@ -244,8 +243,8 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
     --border-ai: rgba(184, 213, 160, 0.35);
     
     --text-primary: #F1F0E8;
-    --text-secondary: #B0B7AE;
-    --text-muted: #929B91;
+    --text-secondary: #C5CCC3;
+    --text-muted: #B0B7AE;
     --text-inverse: #101211;
     
     --brand: #B8D5A0;
@@ -524,6 +523,8 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
   .cc-shell {
     min-height: 100dvh;
     display: flex;
+    max-width: 100%;
+    overflow-x: clip;
     background: transparent;
     color: var(--text-primary);
   }
@@ -531,6 +532,7 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
   .cc-main {
     flex: 1;
     min-width: 0;
+    max-width: 100%;
     display: flex;
     flex-direction: column;
     min-height: 100dvh;
@@ -677,19 +679,35 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
   .cc-content {
     flex: 1 0 auto;
     min-width: 0;
+    max-width: 100%;
+    overflow-x: clip;
     min-height: 0;
     display: flex;
     flex-direction: column;
-    overflow: visible;
     background: var(--bg-primary);
   }
 
   .cc-page-body {
     flex: 1;
+    min-width: 0;
+    max-width: 100%;
     min-height: 0;
     display: flex;
     flex-direction: column;
     padding: 24px 24px 96px;
+  }
+
+  .cc-card, .cc-section-header {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .cc-section-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
   }
 
   .cc-footer {
@@ -952,3 +970,89 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
   }
 
 
+
+/* ── Mobile Responsive & Accessibility Fixes ──────────────────────────── */
+@media (max-width: 899px) {
+  .cc-topbar {
+    padding-left: 64px !important;
+    padding-right: 12px !important;
+    gap: 8px !important;
+  }
+
+  .cc-page-body {
+    padding: 16px 14px 96px !important;
+  }
+
+  .cc-footer {
+    left: 0 !important;
+    padding: 10px 14px max(10px, env(safe-area-inset-bottom)) 14px !important;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .cc-icon-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* Prevent iOS input zoom */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="search"],
+  input[type="tel"],
+  textarea,
+  select {
+    font-size: max(16px, 1em) !important;
+  }
+
+  /* Auth form container - fix overflow */
+  .auth-form-container {
+    overflow: hidden;
+  }
+}
+
+/* Sensible max-width on ultra-wide screens (2560px - 3840px) */
+.cc-page-body {
+  width: 100%;
+  max-width: 1800px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Safe area insets for notched phones */
+.cc-footer {
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+  padding-left: max(0px, env(safe-area-inset-left));
+  padding-right: max(0px, env(safe-area-inset-right));
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Print Stylesheet ───────────────────────────────────────────────── */
+@media print {
+  aside, #sidebar-nav, .cc-topbar, .cc-footer, button[aria-label="Open navigation menu"], .no-print {
+    display: none !important;
+  }
+  html, body, .cc-shell, .cc-main, .cc-content, .cc-page-body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+  .cc-card, .glass-card, .glass-panel {
+    border: 1px solid #d4d4d8 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    break-inside: avoid;
+  }
+}

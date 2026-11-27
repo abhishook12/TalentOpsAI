@@ -1,5 +1,16 @@
 import { Globe } from 'lucide-react'
-import { useMemo, useState, useCallback, useRef } from 'react'
+import { useMemo, useState, useCallback, useRef, useEffect } from 'react'
+
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < breakpoint)
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${breakpoint - 1}px)`)
+    const handler = (e) => setIsMobile(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [breakpoint])
+  return isMobile
+}
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { useAuth } from '../context/AuthContext'
@@ -61,6 +72,7 @@ export default function Dashboard() {
   const [lastUpdated, setLastUpdated] = useState(() => new Date())
   const [refreshError, setRefreshError] = useState(null)
   const isManualRefreshing = useRef(false)
+  const isMobile = useIsMobile(768)
 
   const sharedQueryOpts = {
     staleTime: 30_000,
@@ -242,26 +254,29 @@ export default function Dashboard() {
             borderRadius: 6,
             padding: '14px 20px',
             display: 'flex',
+            flexWrap: 'wrap',
+            gap: 12,
             alignItems: 'center',
             justifyContent: 'space-between',
             cursor: 'pointer',
-            transition: 'border-color 0.15s ease'
+            transition: 'border-color 0.15s ease',
+            maxWidth: '100%'
           }}
           onClick={() => navigate({ to: '/admin/web-harvest' })}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <Globe size={22} className="text-white/80" />
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0, flex: '1 1 280px' }}>
+            <Globe size={22} className="text-white/80 shrink-0" />
+            <div style={{ minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
                   WebHarvest Autonomous Discovery Engine
                 </span>
                 <span style={{
-                  fontSize: 11.5, fontWeight: 500,
-                  background: 'rgba(228, 25, 55, 0.14)',
-                  color: '#e41937',
+                  fontSize: 11.5, fontWeight: 600,
+                  background: 'rgba(228, 25, 55, 0.16)',
+                  color: '#fda4af',
                   padding: '2px 8px', borderRadius: 4,
-                  border: '1px solid rgba(228, 25, 55, 0.35)'
+                  border: '1px solid rgba(253, 164, 175, 0.35)'
                 }}>
                   ● 24/7 Background Engine Active
                 </span>
@@ -271,8 +286,8 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <div style={{ textAlign: 'right' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+            <div style={{ textAlign: isMobile ? 'left' : 'right' }}>
               <div style={{ fontSize: 11.5, color: 'var(--text-muted)', fontWeight: 500 }}>Engine Status</div>
               <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Autonomous Background Crawl</div>
             </div>
@@ -331,7 +346,7 @@ export default function Dashboard() {
         </div>
       ) : (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
             {metrics.map((metric) => (
               <div
                 key={metric.label}
@@ -352,7 +367,7 @@ export default function Dashboard() {
             <USHeatmap />
           </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.35fr 0.95fr', gap: 12, minHeight: 0 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.35fr 0.95fr', gap: 12, minHeight: 0 }}>
         <ShellCard style={{ padding: 18, minHeight: 0 }}>
           <SectionHeader
             title="Data Integrity Health"
@@ -388,7 +403,7 @@ export default function Dashboard() {
         </ShellCard>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr 0.9fr', gap: 12, minHeight: 0 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 0.8fr 0.9fr', gap: 12, minHeight: 0 }}>
         <ShellCard style={{ padding: 18, minHeight: 0 }}>
           <SectionHeader
             title="Top Companies"

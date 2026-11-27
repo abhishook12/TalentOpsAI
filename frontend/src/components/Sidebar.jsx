@@ -1,13 +1,52 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link as NavLink, useLocation } from '@tanstack/react-router'
 import api, { clearStoredToken } from '../services/api'
-import { LayoutDashboard, Activity, Users, Map, BarChart2, Search, Eye, Radar, LogOut, ShieldCheck, Settings, UserCircle, HeartPulse, UserCog, Server, Shield, Mail, Layers, Laptop, Globe, MessageSquare } from 'lucide-react'
+import { LayoutDashboard, Activity, Users, Map, BarChart2, Search, Eye, Radar, LogOut, ShieldCheck, Settings, UserCircle, HeartPulse, UserCog, Server, Shield, Mail, Layers, Laptop, Globe, MessageSquare, Menu, X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+
+function useIsMobile(bp = 900) {
+  const [v, setV] = useState(() => typeof window !== 'undefined' && window.innerWidth < bp)
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${bp - 1}px)`)
+    const h = (e) => setV(e.matches)
+    mq.addEventListener('change', h)
+    return () => mq.removeEventListener('change', h)
+  }, [bp])
+  return v
+}
 
 export default function Sidebar() {
   const location = useLocation()
   const { isAdmin, user } = useAuth()
   const [pendingDevicesCount, setPendingDevicesCount] = useState(0)
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const isMobile = useIsMobile()
+  const sidebarRef = useRef(null)
+
+  // Close on route change
+  useEffect(() => { setMobileOpen(false) }, [location.pathname])
+
+  // Close on Escape
+  useEffect(() => {
+    if (!mobileOpen) return
+    const handler = (e) => { if (e.key === 'Escape') setMobileOpen(false) }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [mobileOpen])
+
+  // Close on outside click
+  useEffect(() => {
+    if (!mobileOpen) return
+    const handler = (e) => {
+      if (sidebarRef.current && !sidebarRef.current.contains(e.target)) setMobileOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    document.addEventListener('touchstart', handler)
+    return () => {
+      document.removeEventListener('mousedown', handler)
+      document.removeEventListener('touchstart', handler)
+    }
+  }, [mobileOpen])
 
   useEffect(() => {
     if (isAdmin) {
@@ -85,23 +124,78 @@ export default function Sidebar() {
   const nav = isAdmin ? [...userNav, ...adminNav] : userNav
 
   return (
-    <aside style={{
-      width: 'var(--sidebar-width)',
-      height: '100dvh',
-      background: 'var(--sidebar-bg)',
-      borderRight: '1px solid var(--sidebar-border)',
-      display: 'flex',
-      flexDirection: 'column',
-      position: 'sticky',
-      top: 0,
-      flexShrink: 0,
-      zIndex: 20,
-    }}>
+    <>
+      {/* Mobile hamburger button */}
+      {isMobile && !mobileOpen && (
+        <button
+          aria-label="Open navigation menu"
+          aria-expanded={mobileOpen}
+          aria-controls="sidebar-nav"
+          onClick={() => setMobileOpen(true)}
+          style={{
+            position: 'fixed', top: 8, left: 10, zIndex: 100,
+            width: 44, height: 44,
+            background: 'var(--bg-surface)', border: '1px solid var(--sidebar-border)',
+            borderRadius: 8, padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', color: 'var(--text-primary)',
+          }}
+        >
+          <Menu size={20} />
+        </button>
+      )}
+
+      {/* Mobile backdrop overlay */}
+      {isMobile && mobileOpen && (
+        <div
+          aria-hidden="true"
+          onClick={() => setMobileOpen(false)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+            zIndex: 99, backdropFilter: 'blur(2px)',
+          }}
+        />
+      )}
+
+      <aside
+        ref={sidebarRef}
+        id="sidebar-nav"
+        role="navigation"
+        aria-label="Main navigation"
+        style={{
+          width: 'var(--sidebar-width)',
+          height: '100dvh',
+          background: 'var(--sidebar-bg)',
+          borderRight: '1px solid var(--sidebar-border)',
+          display: isMobile && !mobileOpen ? 'none' : 'flex',
+          flexDirection: 'column',
+          position: isMobile ? 'fixed' : 'sticky',
+          top: 0,
+          left: 0,
+          flexShrink: 0,
+          zIndex: isMobile ? 100 : 20,
+          transform: isMobile ? (mobileOpen ? 'translateX(0)' : 'translateX(-100%)') : 'none',
+          transition: 'transform 0.25s ease',
+        }}>
+      {isMobile && (
+        <button
+          aria-label="Close navigation menu"
+          onClick={() => setMobileOpen(false)}
+          style={{
+            position: 'absolute', top: 10, right: 10, background: 'transparent',
+            border: 'none', color: 'var(--text-secondary)', cursor: 'pointer',
+            width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10,
+          }}
+        >
+          <X size={18} />
+        </button>
+      )}
       <div style={{ padding: '24px 20px', flexShrink: 0 }}>
         
         <NavLink to="/" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, textDecoration: 'none', color: 'inherit', cursor: 'pointer' }} title="TalentOps Home">
           <img 
-            src="/talentops-logo.png" 
+            src="/talentops-logo.webp" 
+            width={34}
+            height={34}
             alt="TalentOps" 
             style={{ 
               width: 34, 
@@ -300,5 +394,6 @@ export default function Sidebar() {
         </button>
       </div>
     </aside>
+    </>
   )
 }

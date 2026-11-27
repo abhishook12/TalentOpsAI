@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /login
+Allow: /register
+Allow: /download-scout
+Disallow: /admin
+Disallow: /admin/
+Disallow: /api/
+
+Sitemap: https://talentops.ai/sitemap.xml

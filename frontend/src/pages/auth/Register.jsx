@@ -199,9 +199,9 @@ export default function Register() {
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="flex items-start gap-2 text-[13px] text-[#a0a0a0] cursor-pointer">
+          <label className="flex items-start gap-2 text-[13px] text-[#a1a1aa] cursor-pointer">
             <input
-              className="appearance-none w-4 h-4 cursor-pointer bg-[var(--bg-surface)] border border-[#444] rounded flex-shrink-0 relative transition-all checked:bg-[var(--brand)] checked:border-[var(--brand)] focus-visible:outline-none focus-visible:shadow-[0_0_0_3px_var(--brand-bg)] mt-[2px] after:content-[''] after:absolute after:left-[4px] after:top-[1px] after:w-[5px] after:h-[9px] after:border-solid after:border-white after:border-0 after:border-r-2 after:border-b-2 after:rotate-45 after:opacity-0 checked:after:opacity-100"
+              className="w-4 h-4 cursor-pointer rounded flex-shrink-0 mt-[2px]"
               type="checkbox"
               checked={agreeTerms}
               onChange={(e) => setAgreeTerms(e.target.checked)}
@@ -235,13 +235,29 @@ export default function Register() {
       </div>
 
       {(showTermsModal || showPrivacyModal) ? (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'grid', placeItems: 'center', zIndex: 1000, backdropFilter: 'blur(2px)', padding: 20 }}>
-          <div style={{ width: 'min(420px, 100%)', background: '#18181b', padding: 24, borderRadius: 6, border: '1px solid #27272a' }}>
-            <h2 style={{ margin: '0 0 16px', fontSize: 18, color: 'var(--text-primary)' }}>{showTermsModal ? 'Terms of Service' : 'Privacy Policy'}</h2>
-            <p style={{ color: '#a1a1aa', fontSize: 14, lineHeight: 1.6, marginBottom: 24 }}>
-              {showTermsModal ? 'Terms of Service — Coming Soon' : 'Privacy Policy — Coming Soon'}
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="register-legal-modal-title"
+          onClick={(e) => { if (e.target === e.currentTarget) { setShowTermsModal(false); setShowPrivacyModal(false) } }}
+          onKeyDown={(e) => { if (e.key === 'Escape') { setShowTermsModal(false); setShowPrivacyModal(false) } }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', display: 'grid', placeItems: 'center', zIndex: 1000, backdropFilter: 'blur(2px)', padding: 20 }}
+        >
+          <div style={{ width: 'min(440px, 100%)', background: '#18181b', padding: 24, borderRadius: 8, border: '1px solid #343b35' }}>
+            <h2 id="register-legal-modal-title" style={{ margin: '0 0 12px', fontSize: 18, color: 'var(--text-primary)' }}>
+              {showTermsModal ? 'Terms of Service' : 'Privacy Policy'}
+            </h2>
+            <p style={{ color: '#b0b7ae', fontSize: 14, lineHeight: 1.6, marginBottom: 20 }}>
+              {showTermsModal
+                ? 'TalentOps is provided for authorized enterprise recruiting intelligence and talent pipeline management. Users agree to protect candidate data, comply with applicable outreach regulations, and keep credentials confidential.'
+                : 'TalentOps processes recruiter and workspace account data solely to power platform authentication, enrichment workflows, and audit logging. Session tokens are encrypted in transit and never shared with unauthorized third parties.'}
             </p>
-            <button onClick={() => { setShowTermsModal(false); setShowPrivacyModal(false) }} style={{ width: '100%', padding: 10, background: '#d4d4d8', color: '#ffffff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
+            <button
+              type="button"
+              autoFocus
+              onClick={() => { setShowTermsModal(false); setShowPrivacyModal(false) }}
+              style={{ width: '100%', minHeight: 44, padding: 10, background: '#e4e4e7', color: '#101211', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}
+            >
               Close
             </button>
           </div>

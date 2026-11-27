@@ -276,9 +276,9 @@ export default function Analytics() {
   )
 
   if (isAnalyticsError) return (
-    <div style={{ padding: '16px 20px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, color: '#e41937', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8, margin: '16px 0' }}>
+    <div style={{ padding: '16px 20px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, color: '#fda4af', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8, margin: '16px 0' }}>
       <span>Failed to load data. Please try again.</span>
-      <button onClick={() => refetchAnalytics()} style={{ marginLeft: 'auto', background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.3)', color: '#e41937', borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontSize: 12 }}>Retry</button>
+      <button onClick={() => refetchAnalytics()} style={{ marginLeft: 'auto', background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.3)', color: '#fda4af', borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontSize: 12 }}>Retry</button>
     </div>
   )
 
@@ -313,7 +313,7 @@ export default function Analytics() {
           <KPI inline label="Known State" value={dq?.known_state_count?.toLocaleString()} color="#ffffff" icon="ti-map-pin-filled" />
           <KPI inline label="Explicit State" value={dq?.explicit_state_count?.toLocaleString()} color="#d4d4d8" icon="ti-target" />
           <KPI inline label="Inferred State" value={dq?.inferred_state_count?.toLocaleString()} color="#a1a1aa" icon="ti-wand" />
-          <KPI inline label="Unknown State" value={dq?.unknown_state_count?.toLocaleString()} color="#e41937" icon="ti-alert-triangle" />
+          <KPI inline label="Unknown State" value={dq?.unknown_state_count?.toLocaleString()} color="#fda4af" icon="ti-alert-triangle" />
         </div>
         <div style={{ fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.5, padding: '10px 14px', background: 'var(--card-bg-elevated)', borderRadius: 6, border: '1px solid var(--card-border)' }}>
           <i className="ti ti-info-circle" style={{ marginRight: 6, color: 'var(--accent-primary)' }} />
@@ -456,7 +456,7 @@ export default function Analytics() {
 
       {/* Bottom row: 3 equal panels */}
       {!isEmptyAnalytics && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: 16 }}>
           <SectionCard title="Daily — 7 Days" icon="ti-chart-area-line" compact style={{ minHeight: 0 }}>
             {dailyData.length === 0 ? (
               <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>No data</div>
@@ -534,12 +534,12 @@ export default function Analytics() {
       {!isEmptyAnalytics && (
         <SectionCard title="Industry Taxonomy Intelligence" icon="ti-category" compact style={{ gridColumn: '1 / -1', minHeight: 0 }}>
           {isTaxError && (
-            <div style={{ padding: '16px 20px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, color: '#e41937', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8, margin: '16px 0' }}>
+            <div style={{ padding: '16px 20px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, color: '#fda4af', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8, margin: '16px 0' }}>
               <span>Failed to load data. Please try again.</span>
-              <button onClick={() => refetchTaxonomy()} style={{ marginLeft: 'auto', background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.3)', color: '#e41937', borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontSize: 12 }}>Retry</button>
+              <button onClick={() => refetchTaxonomy()} style={{ marginLeft: 'auto', background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.3)', color: '#fda4af', borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontSize: 12 }}>Retry</button>
             </div>
           )}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, alignItems: 'start' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(260px, 100%), 1fr))', gap: 16, alignItems: 'start' }}>
             {/* Pie Chart */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
               {taxonomyData?.distribution?.length > 0 ? (
@@ -575,14 +575,14 @@ export default function Analytics() {
 
             {/* Stats + Sync Button */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(260px, 100%), 1fr))', gap: 8 }}>
                 <KPI inline label="Categorized" value={taxonomyData?.categorized?.toLocaleString() || '0'} color="var(--text-muted)" icon="ti-check" />
                 <KPI inline label="Uncategorized" value={taxonomyData?.uncategorized?.toLocaleString() || '0'} color="var(--text-muted)" icon="ti-alert-triangle" />
                 <KPI inline label="Coverage" value={`${taxonomyData?.coverage_pct || 0}%`} color="var(--text-muted)" icon="ti-percentage" />
                 <KPI inline label="Total Active" value={taxonomyData?.total?.toLocaleString() || '0'} color="var(--text-muted)" icon="ti-users" />
               </div>
 
-              <div style={{ padding: '14px 16px', background: 'var(--card-border)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: 10 }}>
+              <div style={{ padding: '14px 16px', background: 'var(--bg-elevated)', border: '1px solid var(--card-border)', borderRadius: 10 }}>
                 <h4 style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-primary)' }}>
                   <i className="ti ti-sparkles" style={{ color: 'var(--text-primary)', marginRight: 4 }} />
                   Taxonomy Sync
@@ -606,7 +606,7 @@ export default function Analytics() {
                   {syncing ? 'Syncing with Gemini...' : taxonomyData?.uncategorized === 0 ? 'All Titles Categorized' : `Categorize ${taxonomyData?.uncategorized?.toLocaleString()} Titles`}
                 </button>
                 {syncResult && (
-                  <div style={{ marginTop: 8, fontSize: 11, padding: '8px 10px', borderRadius: 6, background: syncResult.error ? 'rgba(239,68,68,0.1)' : 'rgba(255,255,255,0.06)', color: syncResult.error ? '#e41937' : '#ffffff', border: `1px solid ${syncResult.error ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.12)'}` }}>
+                  <div style={{ marginTop: 8, fontSize: 11, padding: '8px 10px', borderRadius: 6, background: syncResult.error ? 'rgba(239,68,68,0.1)' : 'rgba(255,255,255,0.06)', color: syncResult.error ? '#fda4af' : '#ffffff', border: `1px solid ${syncResult.error ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.12)'}` }}>
                     {syncResult.error || `✓ ${syncResult.message} — ${syncResult.updated_recruiters} recruiters updated.`}
                   </div>
                 )}
@@ -687,7 +687,7 @@ export default function Analytics() {
                   { label: 'Delivered', value: funnelData.funnel?.delivered || 0, color: '#e4e4e7' },
                   { label: 'Opened', value: funnelData.funnel?.opened || 0, color: '#d4d4d8' },
                   { label: 'Replied', value: funnelData.funnel?.replied || 0, color: '#ffffff' },
-                  { label: 'Bounced', value: funnelData.funnel?.bounced || 0, color: '#e41937' },
+                  { label: 'Bounced', value: funnelData.funnel?.bounced || 0, color: '#fda4af' },
                 ].map(m => (
                   <div key={m.label} style={{ padding: 12, borderRadius: 8, background: 'rgba(255,255,255,0.03)', textAlign: 'center' }}>
                     <div style={{ fontSize: 20, fontWeight: 800, color: m.color }}>{m.value.toLocaleString()}</div>
@@ -704,7 +704,7 @@ export default function Analytics() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
                   {Object.entries(funnelData.conversion_rates).map(([key, val]) => (
                     <div key={key} style={{ padding: 10, borderRadius: 8, background: 'rgba(255,255,255,0.03)' }}>
-                      <div style={{ fontSize: 18, fontWeight: 800, color: val > 50 ? '#ffffff' : val > 20 ? '#d4d4d8' : '#e41937' }}>{val}%</div>
+                      <div style={{ fontSize: 18, fontWeight: 800, color: val > 50 ? '#ffffff' : val > 20 ? '#d4d4d8' : '#fda4af' }}>{val}%</div>
                       <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, textTransform: 'capitalize' }}>{key.replace(/_/g, ' ')}</div>
                     </div>
                   ))}
@@ -728,9 +728,9 @@ function DataHealthScorecard() {
 
   if (isLoading) return <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)' }}>Loading health data...</div>
   if (isHealthError) return (
-    <div style={{ padding: '16px 20px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, color: '#e41937', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8, margin: '16px 0' }}>
+    <div style={{ padding: '16px 20px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, color: '#fda4af', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8, margin: '16px 0' }}>
       <span>Failed to load data. Please try again.</span>
-      <button onClick={() => refetchHealth()} style={{ marginLeft: 'auto', background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.3)', color: '#e41937', borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontSize: 12 }}>Retry</button>
+      <button onClick={() => refetchHealth()} style={{ marginLeft: 'auto', background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.3)', color: '#fda4af', borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontSize: 12 }}>Retry</button>
     </div>
   )
   if (!data || !data.metrics) return <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)' }}>No data available</div>
@@ -738,11 +738,11 @@ function DataHealthScorecard() {
   const getScoreColor = (score) => {
     if (score >= 90) return '#ffffff'
     if (score >= 70) return '#a1a1aa'
-    return '#e41937' // Red
+    return '#fda4af' // Red
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 24, alignItems: 'center' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(260px, 100%), 1fr))', gap: 24, alignItems: 'center' }}>
       <div style={{ textAlign: 'center', padding: '20px 0' }}>
         <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 140, height: 140, borderRadius: '50%', background: `conic-gradient(${getScoreColor(data.overall_health_score)} ${data.overall_health_score}%, var(--card-border) 0)` }}>
           <div style={{ position: 'absolute', inset: 8, background: 'var(--card-bg)', borderRadius: '50%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
@@ -761,7 +761,7 @@ function DataHealthScorecard() {
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, alignItems: 'baseline' }}>
               <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{m.field} Coverage</span>
               <div style={{ display: 'flex', gap: 12, alignItems: 'baseline' }}>
-                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}><span style={{ color: '#e41937', fontWeight: 600 }}>{m.missing.toLocaleString()}</span> missing</span>
+                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}><span style={{ color: '#fda4af', fontWeight: 600 }}>{m.missing.toLocaleString()}</span> missing</span>
                 <span style={{ fontSize: 14, fontWeight: 700, color: getScoreColor(m.health_pct) }}>{m.health_pct}%</span>
               </div>
             </div>

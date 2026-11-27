@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -12,10 +12,10 @@ import {
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import AddScoutModal from '../components/AddScoutModal';
-import ScoutUserProfileDrawer from '../components/ScoutUserProfileDrawer';
-import ScoutNodesPanel from '../components/ScoutNodesPanel';
-import ScoutReleaseGovernance from '../components/ScoutReleaseGovernance';
+const AddScoutModal = lazy(() => import('../components/AddScoutModal'));
+const ScoutUserProfileDrawer = lazy(() => import('../components/ScoutUserProfileDrawer'));
+const ScoutNodesPanel = lazy(() => import('../components/ScoutNodesPanel'));
+const ScoutReleaseGovernance = lazy(() => import('../components/ScoutReleaseGovernance'));
 
 // 9 Exact Supported Platform Categories Monitored by Desktop Scout (scout_desktop/core/window_tracker.py & browser_tracker.py)
 const SCOUT_PLATFORM_CATEGORIES = [
@@ -114,7 +114,7 @@ const SCOUT_PLATFORM_CATEGORIES = [
     id: "resumes",
     name: "PDF Resumes & Portfolios",
     icon: FileText,
-    color: "#e11d48",
+    color: "#fda4af",
     badge: "Target 3",
     description: "Direct local PDF parsing & in-browser CV extraction with offline OCR.",
     targets: [
@@ -780,7 +780,7 @@ export default function DownloadScout() {
               }}>
                 <div style={{
                   width: 10, height: 10, borderRadius: '50%',
-                  background: myDeviceData?.devices?.some(d => d.is_online) ? '#ffffff' : '#71717a',
+                  background: myDeviceData?.devices?.some(d => d.is_online) ? '#ffffff' : '#a1a1aa',
                   boxShadow: myDeviceData?.devices?.some(d => d.is_online) ? '0 0 10px #ffffff' : 'none'
                 }} />
                 <div>
@@ -862,7 +862,7 @@ export default function DownloadScout() {
           )}
 
           {/* 2-Column Action Cards: Download (Left) & Enter Code / Sign In (Right) */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 20, marginBottom: 28 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(360px, 100%), 1fr))', gap: 20, marginBottom: 28 }}>
             {/* CARD 1: DOWNLOAD INSTALLER */}
             <div style={{
               background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #232326)', borderRadius: 14, padding: '24px 26px',
@@ -911,7 +911,7 @@ export default function DownloadScout() {
                     borderRadius: 8, padding: '8px 12px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8
                   }}>
                     <div style={{ minWidth: 0, overflow: 'hidden' }}>
-                      <div style={{ fontSize: 10, color: 'var(--text-muted, #71717a)', textTransform: 'uppercase', fontWeight: 700 }}>SHA-256 Verified</div>
+                      <div style={{ fontSize: 10, color: 'var(--text-muted, #a1a1aa)', textTransform: 'uppercase', fontWeight: 700 }}>SHA-256 Verified</div>
                       <div style={{ fontSize: 11, fontFamily: 'monospace', color: 'var(--text-secondary, #a1a1aa)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {releaseInfo.sha256}
                       </div>
@@ -991,7 +991,7 @@ export default function DownloadScout() {
                   fontSize: 11, color: 'var(--text-secondary, #a1a1aa)', lineHeight: 1.4
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <span style={{ color: '#e41937', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ color: '#fda4af', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
                       <span>🛡️ Antivirus or Code 225 Warning?</span>
                     </span>
                     <button
@@ -1074,10 +1074,10 @@ export default function DownloadScout() {
                   <button
                     onClick={() => navigate({ to: '/login', search: { redirect: '/download-scout' } })}
                     style={{
-                      width: '100%', padding: '12px 18px', background: 'linear-gradient(135deg, #a1a1aa 0%, #52525b 100%)',
-                      color: '#fff', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                      width: '100%', minHeight: 44, padding: '12px 18px', background: '#f4f4f5',
+                      color: '#09090b', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                      boxShadow: '0 4px 15px rgba(161, 161, 170, 0.35)'
+                      boxShadow: '0 4px 15px rgba(161, 161, 170, 0.25)'
                     }}
                   >
                     <UserCheck size={16} />
@@ -1162,9 +1162,10 @@ export default function DownloadScout() {
                             toast.success('Activation code copied to clipboard!');
                           }}
                           style={{
+                            minHeight: 44,
                             padding: '10px 14px',
                             background: '#e4e4e7',
-                            color: '#fff',
+                            color: '#09090b',
                             border: 'none',
                             borderRadius: 8,
                             fontSize: 12,
@@ -1213,11 +1214,12 @@ export default function DownloadScout() {
                         type="submit"
                         disabled={pairingLoading || !pairingCodeInput.trim()}
                         style={{
-                          padding: '13px 22px', background: 'linear-gradient(135deg, #a1a1aa 0%, #52525b 100%)',
-                          color: '#fff', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700,
+                          minHeight: 44,
+                          padding: '13px 22px', background: '#f4f4f5',
+                          color: '#09090b', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700,
                           cursor: pairingLoading || !pairingCodeInput.trim() ? 'not-allowed' : 'pointer',
                           display: 'flex', alignItems: 'center', gap: 8, opacity: pairingLoading || !pairingCodeInput.trim() ? 0.6 : 1,
-                          boxShadow: '0 4px 15px rgba(161, 161, 170, 0.35)', whiteSpace: 'nowrap'
+                          boxShadow: '0 4px 15px rgba(161, 161, 170, 0.25)', whiteSpace: 'nowrap'
                         }}
                       >
                         {pairingLoading ? <RefreshCw size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
@@ -1229,7 +1231,7 @@ export default function DownloadScout() {
                   {pairingError && (
                     <div style={{
                       background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(228, 25, 55, 0.35)',
-                      borderRadius: 8, padding: '10px 14px', color: '#e41937', fontSize: 12, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12
+                      borderRadius: 8, padding: '10px 14px', color: '#fda4af', fontSize: 12, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12
                     }}>
                       <AlertCircle size={15} flexShrink={0} />
                       <span>{pairingError}</span>
@@ -1247,7 +1249,7 @@ export default function DownloadScout() {
                   )}
                 </div>
 
-                <div style={{ fontSize: 11, color: '#71717a', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ fontSize: 11, color: '#a1a1aa', display: 'flex', alignItems: 'center', gap: 6 }}>
                   <ShieldCheck size={14} color="#ffffff" />
                   <span>Encrypted end-to-end device token bound strictly to your user profile.</span>
                 </div>
@@ -1283,7 +1285,7 @@ export default function DownloadScout() {
               </div>
 
               {myDeviceData?.devices && myDeviceData.devices.length > 0 ? (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(320px, 100%), 1fr))', gap: 16 }}>
                   {myDeviceData.devices.map((dev) => (
                     <div
                       key={dev.device_id}
@@ -1305,7 +1307,7 @@ export default function DownloadScout() {
                               <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary, #fafafa)' }}>
                                 {dev.name || 'Windows Desktop'}
                               </div>
-                              <div style={{ fontSize: 11, color: 'var(--text-muted, #71717a)', fontFamily: 'monospace' }}>
+                              <div style={{ fontSize: 11, color: 'var(--text-muted, #a1a1aa)', fontFamily: 'monospace' }}>
                                 {dev.device_id?.substring(0, 16)}...
                               </div>
                             </div>
@@ -1320,7 +1322,7 @@ export default function DownloadScout() {
                           }}>
                             <span style={{
                               width: 6, height: 6, borderRadius: '50%',
-                              background: dev.is_online ? '#ffffff' : 'var(--text-muted, #71717a)'
+                              background: dev.is_online ? '#ffffff' : 'var(--text-muted, #a1a1aa)'
                             }} />
                             {dev.is_online ? 'ONLINE & STREAMING' : 'STANDBY'}
                           </span>
@@ -1331,25 +1333,25 @@ export default function DownloadScout() {
                           padding: '10px 14px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16
                         }}>
                           <div>
-                            <div style={{ fontSize: 10, color: 'var(--text-muted, #71717a)', textTransform: 'uppercase' }}>Version</div>
+                            <div style={{ fontSize: 10, color: 'var(--text-muted, #a1a1aa)', textTransform: 'uppercase' }}>Version</div>
                             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary, #e4e4e7)', fontFamily: 'monospace' }}>
                               v{dev.version || displayVersion}
                             </div>
                           </div>
                           <div>
-                            <div style={{ fontSize: 10, color: 'var(--text-muted, #71717a)', textTransform: 'uppercase' }}>Last Active</div>
+                            <div style={{ fontSize: 10, color: 'var(--text-muted, #a1a1aa)', textTransform: 'uppercase' }}>Last Active</div>
                             <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary, #fafafa)' }}>
                               {formatTimeAgo(dev.last_seen_at)}
                             </div>
                           </div>
                           <div>
-                            <div style={{ fontSize: 10, color: 'var(--text-muted, #71717a)', textTransform: 'uppercase' }}>Candidates Added</div>
+                            <div style={{ fontSize: 10, color: 'var(--text-muted, #a1a1aa)', textTransform: 'uppercase' }}>Candidates Added</div>
                             <div style={{ fontSize: 12, fontWeight: 700, color: '#e4e4e7' }}>
                               {dev.total_accepted || 0}
                             </div>
                           </div>
                           <div>
-                            <div style={{ fontSize: 10, color: 'var(--text-muted, #71717a)', textTransform: 'uppercase' }}>Observations</div>
+                            <div style={{ fontSize: 10, color: 'var(--text-muted, #a1a1aa)', textTransform: 'uppercase' }}>Observations</div>
                             <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #a1a1aa)' }}>
                               {dev.total_submitted || 0}
                             </div>
@@ -1363,7 +1365,7 @@ export default function DownloadScout() {
                           disabled={disconnectingId === dev.device_id}
                           style={{
                             padding: '6px 12px', background: 'transparent', border: '1px solid rgba(228, 25, 55, 0.35)',
-                            color: '#e41937', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                            color: '#fda4af', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer',
                             display: 'flex', alignItems: 'center', gap: 5
                           }}
                         >
@@ -1461,7 +1463,7 @@ export default function DownloadScout() {
             </div>
 
             {/* Platform Categories Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: 16 }}>
               {displayedPlatforms.map(cat => {
                 const CatIcon = cat.icon;
                 return (
@@ -1515,7 +1517,7 @@ export default function DownloadScout() {
                                 {t.scope}
                               </code>
                             </div>
-                            <div style={{ fontSize: 11, color: 'var(--text-muted, #71717a)', lineHeight: 1.3 }}>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted, #a1a1aa)', lineHeight: 1.3 }}>
                               {t.details}
                             </div>
                           </div>
@@ -1545,7 +1547,7 @@ export default function DownloadScout() {
               </p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: 14 }}>
               {COMMAND_CENTER_VIEWS.map(v => {
                 const VIcon = v.icon;
                 return (
@@ -1594,7 +1596,7 @@ export default function DownloadScout() {
               </p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(260px, 100%), 1fr))', gap: 14 }}>
               {TRUST_PILLARS.map((p, idx) => {
                 const PIcon = p.icon;
                 return (
@@ -1658,7 +1660,7 @@ export default function DownloadScout() {
 
           {showSetupGuide && (
             <div style={{
-              marginBottom: 20, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 14
+              marginBottom: 20, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(240px, 100%), 1fr))', gap: 14
             }}>
               <div style={{ background: 'var(--panel-bg, #0b0b0c)', border: '1px solid var(--card-border, #232326)', borderRadius: 8, padding: 14 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-primary, #e4e4e7)', marginBottom: 4 }}>1. Download &amp; Run</div>
@@ -1703,7 +1705,7 @@ export default function DownloadScout() {
                 <div style={{
                   background: 'var(--card-bg, #0b0b0c)', border: '1px solid var(--card-border, #232326)', borderRadius: 8, padding: 12, marginBottom: 10
                 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#e41937', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#fda4af', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
                     <AlertTriangle size={13} />
                     Google Chrome — "Virus detected" or "Dangerous file"
                   </div>
@@ -1739,7 +1741,7 @@ export default function DownloadScout() {
                     <li>Click <b>"More info"</b> (the small link text below the warning).</li>
                     <li>Click <b>"Run anyway"</b>.</li>
                   </ol>
-                  <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-muted, #71717a)', borderTop: '1px dashed var(--card-border, #232326)', paddingTop: 6 }}>
+                  <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-muted, #a1a1aa)', borderTop: '1px dashed var(--card-border, #232326)', paddingTop: 6 }}>
                     💡 <b>Terminal shortcut:</b> Run <code style={{ fontSize: 10, color: 'var(--text-primary, #e4e4e7)' }}>Unblock-File "$env:USERPROFILE\Downloads\TalentOpsScoutSetup.exe"</code> in PowerShell to remove the download flag immediately.
                   </div>
                 </div>
@@ -1763,13 +1765,13 @@ export default function DownloadScout() {
                     >
                       {releaseInfo.sha256}
                     </code>
-                    <div style={{ fontSize: 10, color: '#71717a', marginTop: 4 }}>
+                    <div style={{ fontSize: 10, color: '#a1a1aa', marginTop: 4 }}>
                       Verify with PowerShell: <code style={{ fontSize: 10 }}>Get-FileHash TalentOpsScoutSetup.exe -Algorithm SHA256</code>
                     </div>
                   </div>
                 )}
 
-                <div style={{ marginTop: 8, fontSize: 11, color: '#71717a' }}>
+                <div style={{ marginTop: 8, fontSize: 11, color: '#a1a1aa' }}>
                   <b>Privacy Guardrail:</b> Scout never accesses passwords, cookies, financial info, or personal browsing data.
                   Only candidate profile fields (name, title, company) are captured from sourcing platforms.
                 </div>
@@ -1811,7 +1813,7 @@ export default function DownloadScout() {
                     }}>
                       {displayVersion} Production
                     </span>
-                    <span style={{ fontSize: 12, color: 'var(--text-muted, #71717a)' }}>• Windows 10/11 64-bit ({displaySize})</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-muted, #a1a1aa)' }}>• Windows 10/11 64-bit ({displaySize})</span>
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--text-secondary, #a1a1aa)', marginTop: 2 }}>
                     Native Win32 background engine with offline OCR and local SQLite buffer queue. Replaces legacy browser extension.
@@ -1890,7 +1892,7 @@ export default function DownloadScout() {
                 {pairingError && (
                   <div style={{
                     background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.4)',
-                    borderRadius: 8, padding: '8px 14px', color: '#e41937', fontSize: 12, display: 'flex', alignItems: 'center', gap: 8
+                    borderRadius: 8, padding: '8px 14px', color: '#fda4af', fontSize: 12, display: 'flex', alignItems: 'center', gap: 8
                   }}>
                     <AlertCircle size={15} flexShrink={0} />
                     <span>{pairingError}</span>
@@ -1966,7 +1968,7 @@ export default function DownloadScout() {
             </div>
 
             {/* Two Operational Cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(340px, 100%), 1fr))', gap: 16 }}>
               {/* Option A: Force-Pair 4-char Code from Remote Desktop */}
               <div style={{ background: 'var(--card-bg, #0b0b0c)', border: '1px solid var(--card-border, #232326)', borderRadius: 10, padding: '16px 20px', boxShadow: 'var(--shadow)' }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary, #e4e4e7)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -2077,7 +2079,7 @@ export default function DownloadScout() {
               borderRadius: 8, padding: '12px 18px', marginBottom: 16, display: 'flex',
               alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#e41937', fontSize: 13 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#fda4af', fontSize: 13 }}>
                 <AlertCircle size={18} />
                 <span>Backend telemetry engine is currently deploying or reconnecting. Telemetry will sync automatically.</span>
               </div>
@@ -2120,7 +2122,7 @@ export default function DownloadScout() {
           </div>
 
           {/* KPI Cards Strip */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 14, marginBottom: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(170px, 100%), 1fr))', gap: 14, marginBottom: 20 }}>
             {[
               { label: 'TOTAL SCOUT USERS', value: totalUsersCount, icon: Users, color: '#e4e4e7', sub: 'Registered & active' },
               { label: 'ACTIVE USERS', value: activeUsersCount, icon: Activity, color: '#ffffff', sub: 'Seen last 24h' },
@@ -2136,7 +2138,7 @@ export default function DownloadScout() {
               { label: 'CONTRIBUTING USERS', value: contributingUsersCount, icon: Sparkles, color: '#a1a1aa', sub: 'Added / enriched data' },
               { label: 'OFFLINE USERS', value: offlineUsersCount, icon: Clock, color: '#a1a1aa', sub: 'No signal > 7d' },
               { label: 'UPDATE REQUIRED', value: updateReqCount, icon: AlertTriangle, color: '#d4d4d8', sub: `Prod is v${latestProdVer}` },
-              { label: 'REVOKED', value: revokedCount, icon: ShieldAlert, color: '#e41937', sub: 'Blocked or quarantined' },
+              { label: 'REVOKED', value: revokedCount, icon: ShieldAlert, color: '#fda4af', sub: 'Blocked or quarantined' },
             ].map((card, idx) => {
               const Icon = card.icon;
               return (
@@ -2159,7 +2161,7 @@ export default function DownloadScout() {
                   <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary, #fafafa)', lineHeight: 1.1, marginBottom: 4 }}>
                     {card.value.toLocaleString()}
                   </div>
-                  <div style={{ fontSize: 11, color: card.clickable ? '#ffffff' : 'var(--text-muted, #71717a)', fontWeight: card.clickable ? 600 : 400 }}>
+                  <div style={{ fontSize: 11, color: card.clickable ? '#ffffff' : 'var(--text-muted, #a1a1aa)', fontWeight: card.clickable ? 600 : 400 }}>
                     {card.sub}
                   </div>
                 </div>
@@ -2171,7 +2173,7 @@ export default function DownloadScout() {
           <div style={{
             background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(228, 228, 231, 0.05) 100%)',
             border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: 12, padding: '16px 20px',
-            display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 24, marginBottom: 20, alignItems: 'center'
+            display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: 24, marginBottom: 20, alignItems: 'center'
           }}>
             {/* Left: Canonical Enrichment Stats */}
             <div style={{ display: 'flex', gap: 24, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -2215,7 +2217,7 @@ export default function DownloadScout() {
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {Object.entries(versionDistribution).length === 0 ? (
-                  <span style={{ fontSize: 12, color: 'var(--text-muted, #71717a)' }}>No device versions reported</span>
+                  <span style={{ fontSize: 12, color: 'var(--text-muted, #a1a1aa)' }}>No device versions reported</span>
                 ) : (
                   Object.entries(versionDistribution).map(([ver, count]) => {
                     const isLatest = ver === latestProdVer;
@@ -2243,7 +2245,7 @@ export default function DownloadScout() {
           }}>
             {/* Search Input */}
             <div style={{ position: 'relative', flex: '1 1 280px', maxWidth: 380 }}>
-              <Search size={15} color="#71717a" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
+              <Search size={15} color="#a1a1aa" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
               <input
                 type="text"
                 placeholder="Search by user name, email, or company..."
@@ -2259,7 +2261,7 @@ export default function DownloadScout() {
 
             {/* Status Filters */}
             <div style={{ display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted, #71717a)', marginRight: 4 }}>STATUS:</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted, #a1a1aa)', marginRight: 4 }}>STATUS:</span>
               {['ALL', 'CONTRIBUTING', 'ACTIVE', 'PAIRED', 'REGISTERED', 'REVOKED'].map((st) => (
                 <button
                   key={st}
@@ -2279,7 +2281,7 @@ export default function DownloadScout() {
 
             {/* Sort Select */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted, #71717a)' }}>SORT:</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted, #a1a1aa)' }}>SORT:</span>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
@@ -2307,7 +2309,7 @@ export default function DownloadScout() {
                 <div>Loading Scout Contributors...</div>
               </div>
             ) : users.length === 0 ? (
-              <div style={{ padding: 60, textAlign: 'center', color: '#71717a' }}>
+              <div style={{ padding: 60, textAlign: 'center', color: '#a1a1aa' }}>
                 <Users size={32} style={{ margin: '0 auto 12px', opacity: 0.5 }} />
                 <div style={{ fontSize: 15, fontWeight: 600, color: '#a1a1aa', marginBottom: 4 }}>No Scout users match this query</div>
                 <div style={{ fontSize: 12 }}>Try clearing the search query or selecting a different status filter.</div>
@@ -2362,11 +2364,11 @@ export default function DownloadScout() {
                           <td style={{ padding: '14px 18px' }}>
                             <div style={{ fontWeight: 700, color: 'var(--text-primary, #fafafa)', display: 'flex', alignItems: 'center', gap: 6 }}>
                               <span>{userName}</span>
-                              <span style={{ fontSize: 11, color: 'var(--text-muted, #71717a)' }}>#{u.user_id}</span>
+                              <span style={{ fontSize: 11, color: 'var(--text-muted, #a1a1aa)' }}>#{u.user_id}</span>
                             </div>
                             <div style={{ fontSize: 12, color: 'var(--text-secondary, #a1a1aa)', marginTop: 2 }}>{u.email}</div>
                             {userTenant && (
-                              <div style={{ fontSize: 11, color: 'var(--text-muted, #71717a)', marginTop: 2 }}>{userTenant}</div>
+                              <div style={{ fontSize: 11, color: 'var(--text-muted, #a1a1aa)', marginTop: 2 }}>{userTenant}</div>
                             )}
                           </td>
 
@@ -2387,9 +2389,9 @@ export default function DownloadScout() {
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-primary, #fafafa)' }}>
                               <Laptop size={14} color="var(--text-secondary, #e4e4e7)" />
                               <span style={{ fontWeight: 600 }}>{activeCount}</span>
-                              <span style={{ color: 'var(--text-muted, #71717a)' }}>/ {deviceCount}</span>
+                              <span style={{ color: 'var(--text-muted, #a1a1aa)' }}>/ {deviceCount}</span>
                             </div>
-                            <div style={{ fontSize: 11, color: 'var(--text-muted, #71717a)', marginTop: 2 }}>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted, #a1a1aa)', marginTop: 2 }}>
                               {activeCount > 0 ? `${activeCount} active node(s)` : 'No active nodes'}
                             </div>
                           </td>
@@ -2409,7 +2411,7 @@ export default function DownloadScout() {
                                 </span>
                               )}
                             </div>
-                            <div style={{ fontSize: 11, color: 'var(--text-muted, #71717a)', marginTop: 2 }}>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted, #a1a1aa)', marginTop: 2 }}>
                               {u.primary_platform || 'Windows 64-bit'}
                             </div>
                           </td>
@@ -2419,7 +2421,7 @@ export default function DownloadScout() {
                             <div style={{ color: 'var(--text-primary, #fafafa)', fontWeight: 500 }}>
                               {lastSeenDisplay}
                             </div>
-                            <div style={{ fontSize: 11, color: 'var(--text-muted, #71717a)', marginTop: 2 }}>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted, #a1a1aa)', marginTop: 2 }}>
                               Contrib: {lastContribDisplay}
                             </div>
                           </td>
@@ -2440,7 +2442,7 @@ export default function DownloadScout() {
                                 +{enrichedPeople} enriched
                               </span>
                             </div>
-                            <div style={{ fontSize: 11, color: 'var(--text-muted, #71717a)', marginTop: 3 }}>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted, #a1a1aa)', marginTop: 3 }}>
                               {rawObs.toLocaleString()} observations
                             </div>
                           </td>
@@ -2483,7 +2485,9 @@ export default function DownloadScout() {
       {/* ========================================================================= */}
       {isAdmin && currentView === 'fleet_nodes' && (
         <div style={{ marginTop: 8 }}>
-          <ScoutNodesPanel />
+          <Suspense fallback={null}>
+            <ScoutNodesPanel />
+          </Suspense>
         </div>
       )}
 
@@ -2492,34 +2496,44 @@ export default function DownloadScout() {
       {/* ========================================================================= */}
       {isAdmin && currentView === 'governance' && (
         <div style={{ marginTop: 8 }}>
-          <ScoutReleaseGovernance
-            onReleaseChanged={() => {
-              api.get('/scout/updates/latest')
-                .then(res => {
-                  if (res?.data?.version) setReleaseInfo(prev => ({ ...prev, ...res.data }));
-                })
-                .catch(() => {});
-              refetch();
-            }}
-          />
+          <Suspense fallback={null}>
+            <ScoutReleaseGovernance
+              onReleaseChanged={() => {
+                api.get('/scout/updates/latest')
+                  .then(res => {
+                    if (res?.data?.version) setReleaseInfo(prev => ({ ...prev, ...res.data }));
+                  })
+                  .catch(() => {});
+                refetch();
+              }}
+            />
+          </Suspense>
         </div>
       )}
 
       {/* User Forensic Slide-over Drawer */}
-      <ScoutUserProfileDrawer
-        userId={selectedUserId}
-        onClose={() => setSelectedUserId(null)}
-        onRefreshList={() => refetch()}
-      />
+      {selectedUserId && (
+        <Suspense fallback={null}>
+          <ScoutUserProfileDrawer
+            userId={selectedUserId}
+            onClose={() => setSelectedUserId(null)}
+            onRefreshList={() => refetch()}
+          />
+        </Suspense>
+      )}
 
       {/* Add Scout Modal */}
-      <AddScoutModal
-        isOpen={showAddModal}
-        onClose={() => {
-          setShowAddModal(false);
-          refetch();
-        }}
-      />
+      {showAddModal && (
+        <Suspense fallback={null}>
+          <AddScoutModal
+            isOpen={showAddModal}
+            onClose={() => {
+              setShowAddModal(false);
+              refetch();
+            }}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

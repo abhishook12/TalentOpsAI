@@ -25,14 +25,14 @@ const LiveRecruiterRow = memo(function LiveRecruiterRow({ r, isSelected, toggleS
       <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{r.company_name || 'Independent / Unlisted'}</td>
       <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{r.location || r.state || '—'}</td>
       <td style={{ padding: '10px 12px' }}>
-        <Badge color={r.is_active ? '#ffffff' : '#e41937'}>{r.is_active ? 'Active' : 'Inactive'}</Badge>
+        <Badge color={r.is_active ? '#ffffff' : '#fda4af'}>{r.is_active ? 'Active' : 'Inactive'}</Badge>
       </td>
       <td style={{ padding: '10px 12px' }}>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           <button onClick={() => openEdit(r)} style={{ background: 'var(--bg-hover)', border: '1px solid var(--card-border)', color: '#e4e4e7', padding: '6px 10px', borderRadius: 8, fontSize: 11.5, cursor: 'pointer' }}>
             Edit
           </button>
-          <button onClick={() => handleDelete(r)} style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.22)', color: '#e41937', padding: '6px 10px', borderRadius: 8, fontSize: 11.5, cursor: 'pointer' }}>
+          <button onClick={() => handleDelete(r)} style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.22)', color: '#fda4af', padding: '6px 10px', borderRadius: 8, fontSize: 11.5, cursor: 'pointer' }}>
             Delete
           </button>
         </div>
@@ -713,7 +713,7 @@ export default function AdminTerminal() {
             <i className="ti ti-trash" /> Shrink Storage
           </button>
           {cacheMsg && <span style={{ fontSize: 13, color: 'var(--text-primary)' }}>{cacheMsg}</span>}
-          <button onClick={doLogout} style={{ background: '#300', border: '1px solid #7f1d1d', color: '#e41937', padding: '8px 14px', borderRadius: 6, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button onClick={doLogout} style={{ background: '#300', border: '1px solid #7f1d1d', color: '#fda4af', padding: '8px 14px', borderRadius: 6, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
             <i className="ti ti-logout" /> Logout
           </button>
         </div>
@@ -743,7 +743,7 @@ export default function AdminTerminal() {
           borderRadius: 10,
           border: `1px solid ${actionNotice.type === 'success' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(248,113,113,0.28)'}`,
           background: actionNotice.type === 'success' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(248,113,113,0.08)',
-          color: actionNotice.type === 'success' ? '#ffffff' : '#e41937',
+          color: actionNotice.type === 'success' ? '#ffffff' : '#fda4af',
           fontSize: 12.5,
           fontWeight: 600,
         }}>
@@ -818,7 +818,7 @@ export default function AdminTerminal() {
               <Section
                 title="System Alerts"
                 icon="ti-alert-triangle"
-                action={<Badge color={(Array.isArray(alerts) && alerts.some(a => a.severity === 'critical') ? '#e41937' : 'var(--text-muted)')}>{Array.isArray(alerts) && alerts.some(a => a.severity === 'critical') ? 'CRITICAL' : 'ACTIVE'}</Badge>}
+                action={<Badge color={(Array.isArray(alerts) && alerts.some(a => a.severity === 'critical') ? '#fda4af' : 'var(--text-muted)')}>{Array.isArray(alerts) && alerts.some(a => a.severity === 'critical') ? 'CRITICAL' : 'ACTIVE'}</Badge>}
                 style={{ marginBottom: 0 }}
               >
                 {(!Array.isArray(alerts) || alerts.length === 0) ? (
@@ -828,7 +828,7 @@ export default function AdminTerminal() {
                     {(Array.isArray(alerts) ? alerts : []).slice(0, 4).map((a, i) => (
                       <div key={i} style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 6, padding: 12, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                         <div style={{ width: 34, height: 34, borderRadius: 10, background: a.severity === 'critical' ? 'rgba(239,68,68,0.18)' : 'rgba(255, 255, 255, 0.05)', border: `1px solid ${a.severity === 'critical' ? 'rgba(239,68,68,0.35)' : 'rgba(255, 255, 255, 0.05)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <i className={`ti ${a.severity === 'critical' ? 'ti-alert-triangle' : 'ti-alert-circle'}`} style={{ color: a.severity === 'critical' ? '#e41937' : '#d4d4d8' }} />
+                          <i className={`ti ${a.severity === 'critical' ? 'ti-alert-triangle' : 'ti-alert-circle'}`} style={{ color: a.severity === 'critical' ? '#fda4af' : '#d4d4d8' }} />
                         </div>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-primary)' }}>{a.title}</div>
@@ -898,7 +898,7 @@ export default function AdminTerminal() {
             {dataOps && (
               <>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14, marginBottom: 20 }}>
-                  <StatCard icon="ti-copy" label="Duplicate Groups" value={fmt(dataOps.counts?.duplicate_email_groups)} sub={`${fmt(dataOps.counts?.duplicate_email_rows)} rows involved`} color="#e41937" glow={(dataOps.counts?.duplicate_email_groups || 0) > 0} />
+                  <StatCard icon="ti-copy" label="Duplicate Groups" value={fmt(dataOps.counts?.duplicate_email_groups)} sub={`${fmt(dataOps.counts?.duplicate_email_rows)} rows involved`} color="#fda4af" glow={(dataOps.counts?.duplicate_email_groups || 0) > 0} />
                   <StatCard icon="ti-mail-off" label="Missing Emails" value={fmt(dataOps.counts?.missing_emails)} color="#d4d4d8" glow={(dataOps.counts?.missing_emails || 0) > 0} />
                   <StatCard icon="ti-phone-off" label="Missing Phones" value={fmt(dataOps.counts?.missing_phones)} color="#d4d4d8" glow={(dataOps.counts?.missing_phones || 0) > 0} />
                   <StatCard icon="ti-map-pin-off" label="Missing Locations" value={fmt(dataOps.counts?.missing_locations)} color="#e4e4e7" glow={(dataOps.counts?.missing_locations || 0) > 0} />
@@ -925,7 +925,7 @@ export default function AdminTerminal() {
                       <tr key={f.id} style={{ borderBottom: '1px solid var(--card-border)' }}>
                         <td style={{ padding: '10px 12px', color: 'var(--text-primary)' }}>{f.name}</td>
                         <td style={{ padding: '10px 12px' }}>
-                          <Badge color={f.status.includes('Verified') ? '#ffffff' : f.status.includes('Failed') ? '#e41937' : '#d4d4d8'}>
+                          <Badge color={f.status.includes('Verified') ? '#ffffff' : f.status.includes('Failed') ? '#fda4af' : '#d4d4d8'}>
                             {f.status.toUpperCase()}
                           </Badge>
                         </td>
@@ -933,7 +933,7 @@ export default function AdminTerminal() {
                         <td style={{ padding: '10px 12px' }}>
                           <div style={{ display: 'flex', gap: 6 }}>
                             <button onClick={() => verifyFeature(f.id, 'Verified')} style={{ background: 'var(--card-bg)', border: '1px solid #ffffff', color: '#ffffff', padding: '4px 8px', borderRadius: 6, fontSize: 11, cursor: 'pointer' }}>Verify</button>
-                            <button onClick={() => verifyFeature(f.id, 'Failed Verification')} style={{ background: 'var(--card-bg)', border: '1px solid #e41937', color: '#e41937', padding: '4px 8px', borderRadius: 6, fontSize: 11, cursor: 'pointer' }}>Fail</button>
+                            <button onClick={() => verifyFeature(f.id, 'Failed Verification')} style={{ background: 'var(--card-bg)', border: '1px solid #fda4af', color: '#fda4af', padding: '4px 8px', borderRadius: 6, fontSize: 11, cursor: 'pointer' }}>Fail</button>
                             <button onClick={() => verifyFeature(f.id, 'Pending Verification')} style={{ background: 'var(--card-bg)', border: '1px solid #d4d4d8', color: '#d4d4d8', padding: '4px 8px', borderRadius: 6, fontSize: 11, cursor: 'pointer' }}>Retest</button>
                           </div>
                         </td>
@@ -1069,7 +1069,7 @@ export default function AdminTerminal() {
                       <button onClick={exportSelectedRecruiters} disabled={!selectedRecruiters.length} style={{ background: 'var(--bg-hover)', border: '1px solid var(--card-border)', color: '#e4e4e7', padding: '7px 12px', borderRadius: 8, fontSize: 12, cursor: selectedRecruiters.length ? 'pointer' : 'not-allowed', opacity: selectedRecruiters.length ? 1 : 0.55 }}>
                         Export Selected
                       </button>
-                      <button onClick={batchDeleteRecruiters} disabled={!selectedRecruiters.length} style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.22)', color: '#e41937', padding: '7px 12px', borderRadius: 8, fontSize: 12, cursor: selectedRecruiters.length ? 'pointer' : 'not-allowed', opacity: selectedRecruiters.length ? 1 : 0.55 }}>
+                      <button onClick={batchDeleteRecruiters} disabled={!selectedRecruiters.length} style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.22)', color: '#fda4af', padding: '7px 12px', borderRadius: 8, fontSize: 12, cursor: selectedRecruiters.length ? 'pointer' : 'not-allowed', opacity: selectedRecruiters.length ? 1 : 0.55 }}>
                         Delete Selected
                       </button>
                     </div>
@@ -1167,7 +1167,7 @@ export default function AdminTerminal() {
                   {Object.entries(fieldAudit.fields || {}).map(([field, info]) => {
                     const filled = fieldAudit.total - info.missing
                     const coverage = 100 - info.pct
-                    const color = coverage > 80 ? '#ffffff' : coverage > 50 ? '#d4d4d8' : '#e41937'
+                    const color = coverage > 80 ? '#ffffff' : coverage > 50 ? '#d4d4d8' : '#fda4af'
                     return (
                       <div key={field} style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 10, padding: 16 }}>
                         <div style={{ fontSize: 10.5, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>{field.replace('missing_', '')}</div>
@@ -1194,14 +1194,14 @@ export default function AdminTerminal() {
                 <>
                   <div style={{ marginBottom: 14, display: 'flex', gap: 14 }}>
                     <div style={{ background: 'var(--panel-bg)', borderRadius: 10, padding: '12px 20px', textAlign: 'center' }}>
-                      <div style={{ fontSize: 28, fontWeight: 700, color: dupes.total_duplicate_groups > 0 ? '#e41937' : '#ffffff', fontFamily: "'DM Mono', monospace" }}>{dupes.total_duplicate_groups}</div>
+                      <div style={{ fontSize: 28, fontWeight: 700, color: dupes.total_duplicate_groups > 0 ? '#fda4af' : '#ffffff', fontFamily: "'DM Mono', monospace" }}>{dupes.total_duplicate_groups}</div>
                       <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>duplicate groups</div>
                     </div>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 400, overflowY: 'auto' }}>
                     {dupes.duplicates.slice(0, 30).map((d, i) => (
                       <div key={i} style={{ background: 'var(--panel-bg)', border: '1px solid #2d1a1a', borderRadius: 8, padding: '10px 14px', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                        <span style={{ background: '#f8717122', color: '#e41937', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 99, whiteSpace: 'nowrap' }}>×{d.count}</span>
+                        <span style={{ background: '#f8717122', color: '#fda4af', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 99, whiteSpace: 'nowrap' }}>×{d.count}</span>
                         <div>
                           <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: "'DM Mono', monospace", marginBottom: 4 }}>{d.email}</div>
                           <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{d.names.join(' · ')}</div>
@@ -1314,7 +1314,7 @@ export default function AdminTerminal() {
               <StatCard icon="ti-database" label="Database Size" value={sysInfo.database_size} color="#e4e4e7" glow />
               <StatCard icon="ti-clock" label="PG Uptime" value={sysInfo.uptime} color="#e4e4e7" />
               <StatCard icon="ti-users-group" label="Connections" value={sysInfo.active_connections} color="#d4d4d8" />
-              <StatCard icon="ti-alert-triangle" label="Slow Queries" value={sysInfo.slow_queries} color={sysInfo.slow_queries > 0 ? '#e41937' : '#ffffff'} glow={sysInfo.slow_queries > 0} />
+              <StatCard icon="ti-alert-triangle" label="Slow Queries" value={sysInfo.slow_queries} color={sysInfo.slow_queries > 0 ? '#fda4af' : '#ffffff'} glow={sysInfo.slow_queries > 0} />
             </div>
 
             <Section title="PostgreSQL Version" icon="ti-server">
@@ -1365,7 +1365,7 @@ export default function AdminTerminal() {
             </div>
 
             {logsError && (
-              <div style={{ background: 'rgba(248,113,113,0.1)', border: '1px solid #7f1d1d', borderRadius: 10, padding: '12px 16px', marginBottom: 16, color: '#e41937', fontSize: 12.5 }}>
+              <div style={{ background: 'rgba(248,113,113,0.1)', border: '1px solid #7f1d1d', borderRadius: 10, padding: '12px 16px', marginBottom: 16, color: '#fda4af', fontSize: 12.5 }}>
                 <i className="ti ti-alert-circle" style={{ marginRight: 6 }} />
                 Could not load visitor log: {logsError}
               </div>
@@ -1474,7 +1474,7 @@ export default function AdminTerminal() {
               }}>
                 {logLines.length === 0 && <span style={{ color: 'var(--card-border)' }}>— No activity yet —</span>}
                 {logLines.map((l, i) => (
-                  <div key={i} style={{ color: l.type === 'error' ? '#e41937' : l.type === 'warn' ? '#d4d4d8' : l.type === 'ok' ? '#ffffff' : 'var(--text-muted)' }}>
+                  <div key={i} style={{ color: l.type === 'error' ? '#fda4af' : l.type === 'warn' ? '#d4d4d8' : l.type === 'ok' ? '#ffffff' : 'var(--text-muted)' }}>
                     <span style={{ color: 'var(--card-border)', userSelect: 'none' }}>[{l.ts}] </span>{l.msg}
                   </div>
                 ))}
@@ -1539,7 +1539,7 @@ export default function AdminTerminal() {
                 </div>
                 <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 6, padding: 14 }}>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Status</div>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: reviewQueueError ? '#e41937' : (reviewQueueLoading ? '#d4d4d8' : '#ffffff'), marginTop: 8 }}>{reviewQueueError ? 'Unavailable' : (reviewQueueLoading ? 'Loading' : 'Ready')}</div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: reviewQueueError ? '#fda4af' : (reviewQueueLoading ? '#d4d4d8' : '#ffffff'), marginTop: 8 }}>{reviewQueueError ? 'Unavailable' : (reviewQueueLoading ? 'Loading' : 'Ready')}</div>
                 </div>
               </div>
 

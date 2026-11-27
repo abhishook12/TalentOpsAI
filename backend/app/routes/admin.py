@@ -892,16 +892,26 @@ def admin_data_quality(db: Session = Depends(get_db)):
 @router.get("/table-sizes")
 @cached_route(ttl=120)
 def admin_table_sizes(db: Session = Depends(get_db)):
-    rows = db.execute(text("""
-        SELECT
-            relname AS table_name,
-            pg_size_pretty(pg_total_relation_size(relid)) AS total_size,
-            pg_total_relation_size(relid) AS size_bytes,
-            n_live_tup AS live_rows
-        FROM pg_stat_user_tables
-        ORDER BY size_bytes DESC
-    """)).mappings().all()
-    return [dict(r) for r in rows]
+    db_url = str(db.bind.url) if hasattr(db, "bind") and db.bind else str(db.get_bind().url)
+    if "sqlite" in db_url:
+        rows = db.execute(text("""
+            SELECT name AS table_name, 0 AS size_bytes, 0 AS live_rows
+            FROM sqlite_master
+            WHERE type='table' AND name NOT LIKE 'sqlite_%'
+            ORDER BY name ASC
+        """)).mappings().all()
+        return [{"table_name": r["table_name"], "total_size": "N/A (SQLite)", "size_bytes": 0, "live_rows": 0} for r in rows]
+    else:
+        rows = db.execute(text("""
+            SELECT
+                relname AS table_name,
+                pg_size_pretty(pg_total_relation_size(relid)) AS total_size,
+                pg_total_relation_size(relid) AS size_bytes,
+                n_live_tup AS live_rows
+            FROM pg_stat_user_tables
+            ORDER BY size_bytes DESC
+        """)).mappings().all()
+        return [dict(r) for r in rows]
 
 
 # ── 7. Companies without recruiter ───────────────────────────────────────────
@@ -965,22 +975,37 @@ def admin_sql(body: SqlQuery, db: Session = Depends(get_db)):
 @router.get("/system-info")
 @cached_route(ttl=120)
 def admin_system_info(db: Session = Depends(get_db)):
-    pg_ver = db.execute(text("SELECT version()")).scalar()
-    db_size = db.execute(text("SELECT pg_size_pretty(pg_database_size(current_database()))")).scalar()
-    uptime = db.execute(text("SELECT date_trunc('second', now() - pg_postmaster_start_time())")).scalar()
-    connections = db.execute(text("SELECT count(*) FROM pg_stat_activity")).scalar()
-    slow_queries = db.execute(text("""
-        SELECT count(*) FROM pg_stat_activity
-        WHERE state = 'active'
-        AND now() - query_start > interval '5 seconds'
-    """)).scalar()
-    return {
-        "postgres_version": pg_ver,
-        "database_size": db_size,
-        "uptime": str(uptime),
-        "active_connections": connections,
-        "slow_queries": slow_queries,
-    }
+    db_url = str(db.bind.url) if hasattr(db, "bind") and db.bind else str(db.get_bind().url)
+    if "sqlite" in db_url:
+        sqlite_ver = db.execute(text("SELECT sqlite_version()")).scalar()
+        db_path = db_url.replace("sqlite:///", "")
+        import os
+        db_size_bytes = os.path.getsize(db_path) if os.path.exists(db_path) else 0
+        db_size_str = f"{db_size_bytes / 1024 / 1024:.2f} MB"
+        return {
+            "postgres_version": f"SQLite {sqlite_ver}",
+            "database_size": db_size_str,
+            "uptime": "N/A (SQLite)",
+            "active_connections": 1,
+            "slow_queries": 0,
+        }
+    else:
+        pg_ver = db.execute(text("SELECT version()")).scalar()
+        db_size = db.execute(text("SELECT pg_size_pretty(pg_database_size(current_database()))")).scalar()
+        uptime = db.execute(text("SELECT date_trunc('second', now() - pg_postmaster_start_time())")).scalar()
+        connections = db.execute(text("SELECT count(*) FROM pg_stat_activity")).scalar()
+        slow_queries = db.execute(text("""
+            SELECT count(*) FROM pg_stat_activity
+            WHERE state = 'active'
+            AND now() - query_start > interval '5 seconds'
+        """)).scalar()
+        return {
+            "postgres_version": pg_ver,
+            "database_size": db_size,
+            "uptime": str(uptime),
+            "active_connections": connections,
+            "slow_queries": slow_queries,
+        }
 
 
 # ── 11. Visitor Log Book ──────────────────────────────────────────────────────

@@ -475,7 +475,7 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleA
                                 r.email_status === 'needs_monitoring' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(228, 25, 55, 0.14)',
                     color: r.email_status === 'verified' ? '#ffffff' : 
                            r.email_status === 'likely_valid' ? 'var(--brand)' :
-                           r.email_status === 'needs_monitoring' ? '#a1a1aa' : '#e41937',
+                           r.email_status === 'needs_monitoring' ? '#d4d4d8' : '#fda4af',
                     border: `1px solid ${
                       r.email_status === 'verified' ? 'rgba(255, 255, 255, 0.2)' : 
                       r.email_status === 'likely_valid' ? 'rgba(184, 213, 160, 0.35)' :
@@ -585,9 +585,10 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleA
       <td style={{ padding: '24px 24px', textAlign: 'right', verticalAlign: 'middle' }}>
         <button
           title="Open Full Candidate Profile"
+          aria-label={`Open full profile for ${r.recruiter_name || 'recruiter'}`}
           style={{
-            width: 32, height: 32, borderRadius: '8px', background: 'rgba(16, 185, 129, 0.1)',
-            border: '1px solid rgba(16, 185, 129, 0.3)', color: '#10b981', cursor: 'pointer',
+            width: 36, height: 36, borderRadius: '8px', background: 'rgba(16, 185, 129, 0.1)',
+            border: '1px solid rgba(16, 185, 129, 0.3)', color: '#34d399', cursor: 'pointer',
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             transition: 'all 0.2s ease', marginRight: 6
           }}
@@ -603,6 +604,8 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleA
         </button>
         <button 
           className="cc-action-btn"
+          title="More actions"
+          aria-label={`Edit or manage ${r.recruiter_name || 'recruiter'}`}
           style={{ 
             width: 36, height: 36, borderRadius: '50%', background: 'transparent', 
             border: 'none', color: 'var(--text-muted)', cursor: 'pointer',
@@ -1035,14 +1038,14 @@ export default function Recruiters() {
 
       <div style={{ flex: 1, minWidth: 0 }}>
           {/* Header */}
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
-            <div>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
+            <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6 }}>Recruiters</div>
               <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: 4 }}>Recruiters</h1>
               <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Manage and explore recruiter records across the database.</p>
             </div>
             
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', maxWidth: '100%' }}>
               <span style={{ fontSize: 11, color: 'var(--text-muted)', marginRight: 8 }}>Updated: {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
               <button onClick={exportRecruiters} className="cc-ghost-button" style={{ fontSize: 13 }}>
                   <i className="ti ti-download" /> Export Excel
@@ -1299,9 +1302,9 @@ export default function Recruiters() {
                     </tr>
                   </thead>
                   <tbody>
-                    {recruiters.map(r => (
+                    {recruiters.map((r, idx) => (
                       <RecruiterTableRow 
-                        key={r.recruiter_id} 
+                        key={`${r.recruiter_id}-${idx}`} 
                         r={r} 
                         toggleActive={toggleActive} 
                         openEdit={openEdit} 
@@ -1315,7 +1318,7 @@ export default function Recruiters() {
                 {/* Server-Side Pagination Footer */}
                 <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderTop: '1px solid var(--card-border)', background: 'transparent' }}>
                   <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                    <button disabled={page <= 1} onClick={() => setPage(p => p - 1)} style={{ padding: '6px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: page <= 1 ? 'not-allowed' : 'pointer', opacity: page <= 1 ? 0.5 : 1 }}>
+                    <button aria-label="Previous page" disabled={page <= 1} onClick={() => setPage(p => p - 1)} style={{ padding: '6px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: page <= 1 ? 'not-allowed' : 'pointer', opacity: page <= 1 ? 0.5 : 1 }}>
                       <i className="ti ti-chevron-left" />
                     </button>
                     
@@ -1336,7 +1339,7 @@ export default function Recruiters() {
                       </button>
                     )}
 
-                    <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} style={{ padding: '6px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: page >= totalPages ? 'not-allowed' : 'pointer', opacity: page >= totalPages ? 0.5 : 1 }}>
+                    <button aria-label="Next page" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} style={{ padding: '6px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: page >= totalPages ? 'not-allowed' : 'pointer', opacity: page >= totalPages ? 0.5 : 1 }}>
                       <i className="ti ti-chevron-right" />
                     </button>
                   </div>
